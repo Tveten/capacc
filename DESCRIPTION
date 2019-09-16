@@ -1,0 +1,18 @@
+Package: mvcapaCor
+Type: Package
+Title: Exploring cross-stream correlations in MVCAPA
+Version: 0.1.0
+Author: Martin Tveten
+Maintainer: Martin Tveten <matveten@gmail.com>
+Description: More about what it does (maybe more than one line)
+    Use four spaces when indenting paragraphs within the Description.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    anomaly (>= 2.0.1),
+    MASS (>= 7.3)
+Suggests: 
+    testthat (>= 2.1.0)
+Remotes:
+    Tveten/tpca
