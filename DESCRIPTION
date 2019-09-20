@@ -9,9 +9,14 @@ Description: More about what it does (maybe more than one line)
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
+Depends:
+    data.table (>= 1.12)
 Imports: 
     anomaly (>= 2.0.1),
-    MASS (>= 7.3)
+    MASS (>= 7.3),
+    ggplot2 (>= 3.2),
+    gridExtra (>= 2.3),
+    doParallel (>= 1.0)
 Suggests: 
     testthat (>= 2.1.0)
 Remotes:

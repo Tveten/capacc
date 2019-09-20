@@ -1,0 +1,160 @@
+# DONE: Try other penalties by adjusting psi = a log(n).
+# DONE: Create function for running simulation study with different a.
+### DONE: Make sure within detectability boundaries.
+
+init_setup <- function(n = 10^3, p = 4, proportions = 0, mu = 1,
+                       locations = n - durations - 1, durations = 0) {
+  return(list('n'           = n,
+              'p'           = p,
+              'proportions' = proportions,
+              'mu'          = mu,
+              'locations'   = locations,
+              'durations'   = durations))
+}
+
+simulate_mvcapa <- function(setup = init_setup(10^3, 4), Sigma = diag(1, setup$p), a = 'default') {
+  if (setup$proportions > 0)
+    sim_data <- simulate_cor(n = setup$n, p = setup$p, mu = setup$mu, Sigma = Sigma,
+                             locations = setup$locations, durations = setup$durations,
+                             proportions = setup$proportions)
+  else {
+    sim_data <- MASS::mvrnorm(setup$n, rep(0, setup$p), Sigma)
+  }
+  if (a != 'default') beta <- adjusted_penalty(a, n = setup$n, p = setup$p)
+  else beta <- NULL
+
+  anomaly::capa.mv(sim_data, type = 'mean', beta = beta,
+                   max_seg_len = min(2000, max(100, 3 * setup$durations)))
+}
+
+rK_hat <- function(n_sim = 1, setup = init_setup(10^3, 4), Sigma = diag(1, setup$p), a = 'default') {
+  vapply(1:n_sim, function(i) {
+      res <- simulate_mvcapa(setup = setup, Sigma = Sigma, a = a)
+      c_anomalies <- anomaly::collective_anomalies(res)
+      if (is.na(c_anomalies$start[1])) return(0)
+      else return(length(unique(c_anomalies$start)))
+    },
+    numeric(1))
+}
+
+rK_hat_for <- function(param_name, params, setup = init_setup(10^3, 4),
+                       n_sim = 10^3, parallelise = TRUE) {
+  valid_param_name <- function() {
+    return(any(c('a', 'rho', 'phi', 'alphad') == param_name))
+  }
+
+  get_Sigma <- function(param_name, param) {
+    if (param_name == 'a') return(diag(1, setup$p))
+    if (param_name == 'rho') return(constant_cor_mat(setup$p, param))
+    if (param_name == 'phi') return(ar_cor_mat(setup$p, param))
+    if (param_name == 'alphad') return(tpca::rcor_mat(setup$p, alphad = param))
+  }
+
+  get_a <- function(param_name, param) {
+    if (param_name == 'a') return(param)
+    else {
+      if (setup$proportions > 0) return(4)
+      else return(3)
+    }
+  }
+
+  valid_param_name()
+
+  if (parallelise) {
+    comp_cluster <- setup_parallel()
+    `%dopar%` <- foreach::`%dopar%`
+    K_hat_list_of_lists <- foreach::foreach(param = params,
+                                            .export = c('ar_cor_mat',
+                                                        'constant_cor_mat',
+                                                        'adjusted_penalty',
+                                                        'simulate_mvcapa',
+                                                        'rK_hat')) %dopar% {
+      list(param, rK_hat(n_sim, setup,
+                         Sigma = get_Sigma(param_name, param),
+                         a     = get_a(param_name, param))
+      )
+    }
+    stop_parallel(comp_cluster)
+  }
+  else {
+    K_hat_list_of_lists <- lapply(params, function(param) {
+      list(param, rK_hat(n_sim, setup,
+                         Sigma = get_Sigma(param_name, param),
+                         a     = get_a(param_name, param))
+      )
+    })
+  }
+
+  K_hat_list <- extract_nested_element(2, K_hat_list_of_lists)
+  names(K_hat_list) <- unlist(extract_nested_element(1, K_hat_list_of_lists))
+  K_hat_dt <- data.table::as.data.table(reshape2::melt(K_hat_list, value.name = 'K_hat'))
+  names(K_hat_dt)[2] <- 'param_value'
+  K_hat_dt[, 'param' := rep(param_name, .N)]
+  K_hat_dt
+}
+
+run_sim <- function(run_name, setup, n_sim = 10^3, parallelise = TRUE) {
+  # WARNING: Assumes that 'full_K_hat_list' exists in the global environment.
+  # If K > 0, remember to check min_duration().
+  get_as <- function(prop) {
+    if(prop > 0) return(c('default', 2.5, 3, 3.5, 4))
+    else return(c('default', 2, 2.5, 3))
+  }
+
+  K_hat <- setup
+  K_hat$n_sim <- n_sim
+
+  as <- get_as(setup$proportions)
+  correlation_params <- c(0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99)
+  param_names = c('a', 'rho', 'phi')
+  params = list(as, correlation_params, correlation_params)
+  K_hat_dt_list <- Map(rK_hat_for, param_names, params,
+                       MoreArgs = list('setup' = setup, 'n_sim' = n_sim, 'parallelise' = parallelise))
+  K_hat$dt <- do.call('rbind', K_hat_dt_list)
+
+  all_K_hat_results[[run_name]] <<- K_hat
+  save(all_K_hat_results, file = 'current_results.RData')
+}
+
+run_all <- function() {
+  # p = 4
+  run_sim('n1e3p4prop0',  init_setup(n = 10^3, p = 4, proportions = 0))
+  run_sim('n1e4p4prop05', init_setup(n = 10^4, p = 4, proportions = 0.5, durations = 800))
+
+  # p = 100
+  run_sim('n1e3p100prop0',   init_setup(n = 10^3,     p = 100, proportions = 0))
+  run_sim('n3e3p100prop003', init_setup(n = 3 * 10^3, p = 100, proportions = 0.03, durations = 420))
+}
+
+plot_K_hat <- function(K_hat_list, xlim = c(0, 7), ylim = c(0, n_sim)) {
+  # K_hat_list: Output from run_sim
+
+  get_title <- function(param_name) {
+    # title <- paste0('P(K_hat = k) for different ', param_name)
+    title <- 'P(K_hat = k)'
+    if (param_name == 'a')
+      title <- paste0(title, ', Sigma = I')
+    title <- paste0(title,
+                    '. n = ', K_hat_list$n,
+                    ', p = ', K_hat_list$p,
+                    ', prop = ', K_hat_list$proportions)
+    if (K_hat_list$proportions > 0)
+      title <- paste0(title, ', dur = ', K_hat_list$durations)
+    title
+  }
+
+  plot_K_hat_pmf <- function(param_name) {
+    K_hat_dt <- K_hat_list$dt[param == param_name]
+    K_hat_dt[K_hat > xlim[2], K_hat := xlim[2]]
+    ggplot2::ggplot(data = K_hat_dt, ggplot2::aes(K_hat, fill = param_value)) +
+      ggplot2::geom_bar(alpha = 1, width = 0.7, position = ggplot2::position_dodge()) +
+      ggplot2::ggtitle(get_title(param_name)) +
+      ggplot2::labs(fill = param_name) +
+      ggplot2::coord_cartesian(xlim = xlim, ylim = ylim)
+  }
+
+  n_sim <- K_hat_list$n_sim
+  param_names <- unique(K_hat_list$dt$param)
+  pmf_plots <- lapply(param_names, plot_K_hat_pmf)
+  gridExtra::grid.arrange(gridExtra::arrangeGrob(grobs = pmf_plots, nrow = length(pmf_plots)))
+}
