@@ -1,0 +1,112 @@
+%
+% ENVIRONMENT DEFINITIONS.
+%
+\makeatletter
+\newtheorem*{rep@theorem}{\rep@title}
+\newcommand{\newreptheorem}[2]{%
+\newenvironment{rep#1}[1]{%
+ \def\rep@title{#2 \ref{##1}}%
+ \begin{rep@theorem}}%
+ {\end{rep@theorem}}}
+\makeatother
+
+\theoremstyle{plain}
+\newtheorem{mytheorem}{Theorem}
+\newtheorem{myprop}[mytheorem]{Proposition}
+\newreptheorem{myprop}{Proposition}
+\newtheorem{mylemma}[mytheorem]{Lemma}
+
+\theoremstyle{definition}
+\newtheorem{mydef}{Definition}
+\newtheorem{myex}[mytheorem]{Example}
+
+\newtheorem*{myremark}{Remark}
+\newtheorem*{myremarks}{Remarks}
+
+%
+% NEW COMMANDS
+%
+\newcommand{\Unif}{\text{\normalfont{Unif}}}
+\newcommand{\Beta}{\text{\normalfont{Beta}}}
+\newcommand{\Multinom}{\text{\normalfont{Multinom}}}
+\newcommand{\Dir}{\text{\normalfont{Dir}}}
+\newcommand{\Gam}{\text{\normalfont{Gamma}}}
+\newcommand{\Pois}{\text{\normalfont{Poisson}}}
+\newcommand{\Cov}{\text{\normalfont{Cov}}}
+\newcommand{\Var}{\text{\normalfont{Var}}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\V}{\mathbb{V}}
+\newcommand{\p}{\mathbb{P}}
+\newcommand{\iidsim}{\overset{iid}{\sim}}
+\newcommand{\indsim}{\overset{ind}{\sim}}
+\newcommand{\comp}{\mathsf{c}}
+\newcommand{\sign}{\text{\normalfont{sign}}}
+
+\newcommand{\bA}{\mathbf{A}}
+\newcommand{\bD}{\mathbf{D}}
+\newcommand{\bJ}{\mathbf{J}}
+\newcommand{\bS}{\mathbf{S}}
+\newcommand{\bu}{\mathbf{u}}
+\newcommand{\bU}{\mathbf{U}}
+\newcommand{\bv}{\mathbf{v}}
+\newcommand{\bV}{\mathbf{V}}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\bX}{\mathbf{X}}
+\newcommand{\by}{\mathbf{y}}
+\newcommand{\bz}{\mathbf{z}}
+\newcommand{\bZ}{\mathbf{Z}}
+
+\newcommand{\blambda}{\boldsymbol{\lambda}}
+\newcommand{\bmu}{\boldsymbol{\mu}}
+\newcommand{\bsigma}{\boldsymbol{\sigma}}
+\newcommand{\btheta}{\boldsymbol{\theta}}
+\newcommand{\bSigma}{\boldsymbol{\Sigma}}
+\newcommand{\bGamma}{\boldsymbol{\Gamma}}
+
+\newcommand{\hatalpha}{\hat{\alpha}}
+\newcommand{\hatlambda}{\hat\lambda}
+
+\newcommand{\hatblambda}{\hat{\boldsymbol{\lambda}}}
+\newcommand{\hatbmu}{\hat{\boldsymbol{\mu}}}
+\newcommand{\hatbsigma}{\hat{\boldsymbol{\sigma}}}
+\newcommand{\hatbSigma}{\hat{\boldsymbol{\Sigma}}}
+\newcommand{\hatbD}{\hat{\mathbf{D}}}
+\newcommand{\hatbV}{\hat{\mathbf{V}}}
+\newcommand{\hatbv}{\hat{\mathbf{v}}}
+
+\newcommand{\tildebx}{\tilde{\mathbf{x}}}
+\newcommand{\tildebX}{\widetilde{\mathbf{X}}}
+\newcommand{\tildebD}{\widetilde{\mathbf{D}}}
+\newcommand{\tildebmu}{\tilde{\boldsymbol{\mu}}}
+\newcommand{\tildebsigma}{\tilde{\boldsymbol{\sigma}}}
+\newcommand{\tildelambda}{\tilde{\lambda}}
+\newcommand{\tildeblambda}{\tilde{\boldsymbol{\lambda}}}
+\newcommand{\tildebv}{\tilde{\mathbf{v}}}
+\newcommand{\tildebu}{\tilde{\mathbf{u}}}
+\newcommand{\tildebU}{\tilde{\mathbf{U}}}
+\newcommand{\tildebV}{\tilde{\mathbf{U}}}
+
+\newcommand{\barx}{\bar{\mathbf{x}}}
+\newcommand{\bary}{\bar{\mathbf{y}}}
+
+\newcommand{\bxi}{\boldsymbol{\xi}}
+\newcommand{\beps}{\boldsymbol{\varepsilon}}
+\newcommand{\hatB}{\hat{\mathbf{B}}}
+\newcommand{\diag}{\text{\normalfont{diag}}}
+\newcommand{\Col}{\text{\normalfont{Col}}}
+\newcommand{\argmax}{\text{\normalfont{argmax}}}
+\newcommand{\kl}{D_{\text{KL}}}
+\newcommand{\tr}{\text{tr}}
+\newcommand{\rank}{\text{rank}}
+\newcommand{\TM}{$T_{\text{M}}(p_0)$ }
+\newcommand{\TMmu}{$T_{\text{M}\mu}(p_0)$ }
+\newcommand{\TRP}{$T_{\text{RP}}(M)$ }
+\newcommand{\TPCA}{$T_{\text{PCA}}(M)$ }
+\newcommand{\TP}{$T_{\text{P}}(M)$ }
+\newcommand{\TPmu}{$T_{\text{P}\mu}(M)$ }
+\newcommand{\TRPmu}{$T_{\text{RP}\mu}(M)$ }
+\newcommand{\Pto}{\overset{P}{\to}}
+\newcommand{\Dto}{\overset{d}{\to}}
+\newcommand{\ASto}{\overset{a.s.}{\to}}
+
+\newcommand\numberthis{\addtocounter{equation}{1}\tag{\theequation}}
