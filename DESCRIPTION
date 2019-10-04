@@ -16,7 +16,9 @@ Imports:
     MASS (>= 7.3),
     ggplot2 (>= 3.2),
     gridExtra (>= 2.3),
-    doParallel (>= 1.0)
+    doParallel (>= 1.0),
+    RColorBrewer (>= 1.1),
+    assertthat (>= 0.2.0)
 Suggests: 
     testthat (>= 2.1.0)
 Remotes:

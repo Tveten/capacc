@@ -24,7 +24,7 @@ simulate_mvcapa <- function(setup = init_setup(10^3, 4), Sigma = diag(1, setup$p
   else beta <- NULL
 
   anomaly::capa.mv(sim_data, type = 'mean', beta = beta,
-                   max_seg_len = min(2000, max(100, 3 * setup$durations)))
+                   max_seg_len = min(1500, max(100, 2 * setup$durations)))
 }
 
 rK_hat <- function(n_sim = 1, setup = init_setup(10^3, 4), Sigma = diag(1, setup$p), a = 'default') {
@@ -53,12 +53,14 @@ rK_hat_for <- function(param_name, params, setup = init_setup(10^3, 4),
   get_a <- function(param_name, param) {
     if (param_name == 'a') return(param)
     else {
-      if (setup$proportions > 0) return(4)
-      else return(3)
+      if (setup$proportions > 0) return(3)
+      else return(2)
     }
   }
 
   valid_param_name()
+  print(c(param_name, params))
+  print(proc.time()[3])
 
   if (parallelise) {
     comp_cluster <- setup_parallel()
@@ -97,15 +99,16 @@ run_sim <- function(run_name, setup, n_sim = 10^3, parallelise = TRUE) {
   # WARNING: Assumes that 'full_K_hat_list' exists in the global environment.
   # If K > 0, remember to check min_duration().
   get_as <- function(prop) {
-    if(prop > 0) return(c('default', 2.5, 3, 3.5, 4))
-    else return(c('default', 2, 2.5, 3))
+    if(prop > 0) return(c('default', 2, 2.5, 3))
+    else return(c('default', 1, 1.5, 2))
   }
 
+  print(c(run_name, proc.time()[3]))
   K_hat <- setup
   K_hat$n_sim <- n_sim
 
   as <- get_as(setup$proportions)
-  correlation_params <- c(0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99)
+  correlation_params <- c(0.3, 0.45, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99)
   param_names = c('a', 'rho', 'phi')
   params = list(as, correlation_params, correlation_params)
   K_hat_dt_list <- Map(rK_hat_for, param_names, params,
@@ -119,16 +122,16 @@ run_sim <- function(run_name, setup, n_sim = 10^3, parallelise = TRUE) {
 run_all <- function() {
   # p = 4
   run_sim('n1e3p4prop0',  init_setup(n = 10^3, p = 4, proportions = 0))
-  run_sim('n1e4p4prop05', init_setup(n = 10^4, p = 4, proportions = 0.5, durations = 800))
+  run_sim('n1e4p4prop05', init_setup(n = 10^4, p = 4, proportions = 0.5, durations = 610))
 
   # p = 100
   run_sim('n1e3p100prop0',   init_setup(n = 10^3,     p = 100, proportions = 0))
-  run_sim('n3e3p100prop003', init_setup(n = 3 * 10^3, p = 100, proportions = 0.03, durations = 420))
+  run_sim('n3e3p100prop003', init_setup(n = 3 * 10^3, p = 100, proportions = 0.03,
+                                        durations = 280), n_sim = 100)
 }
 
 plot_K_hat <- function(K_hat_list, xlim = c(0, 7), ylim = c(0, n_sim)) {
   # K_hat_list: Output from run_sim
-
   get_title <- function(param_name) {
     # title <- paste0('P(K_hat = k) for different ', param_name)
     title <- 'P(K_hat = k)'
@@ -143,6 +146,11 @@ plot_K_hat <- function(K_hat_list, xlim = c(0, 7), ylim = c(0, n_sim)) {
     title
   }
 
+  get_color <- function(n, param_name) {
+    if (param_name == 'a') return(RColorBrewer::brewer.pal(2 * n, 'OrRd')[(n + 1):(2 * n)])
+    else return(rainbow(n))
+  }
+
   plot_K_hat_pmf <- function(param_name) {
     K_hat_dt <- K_hat_list$dt[param == param_name]
     K_hat_dt[K_hat > xlim[2], K_hat := xlim[2]]
@@ -150,7 +158,8 @@ plot_K_hat <- function(K_hat_list, xlim = c(0, 7), ylim = c(0, n_sim)) {
       ggplot2::geom_bar(alpha = 1, width = 0.7, position = ggplot2::position_dodge()) +
       ggplot2::ggtitle(get_title(param_name)) +
       ggplot2::labs(fill = param_name) +
-      ggplot2::coord_cartesian(xlim = xlim, ylim = ylim)
+      ggplot2::coord_cartesian(xlim = xlim, ylim = ylim) +
+      ggplot2::scale_fill_manual(values = get_color(length(unique(K_hat_dt$param_value)), param_name))
   }
 
   n_sim <- K_hat_list$n_sim

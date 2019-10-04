@@ -108,12 +108,13 @@ simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
     return(X)
 }
 
-#' - Start from location[j] + 1 to locations[j] + s[j] to be consistent with
-#' notation in paper.
-#' - Locations, durations and proportions that scale automatically with p and n.
-#' - Description of elements in capa.mv.class (object returned from capa.mv) or
-#'   how to access them in documentation of capa.mv.
-#' - Source of many false positives:
-#'     * Contaminated baseline estimate.
-#'     * Error in penalty? psi must have proportionality constant > 2 or > 3?
-#' - Possibility to simulate data with no anomalies.
+# - Start from location[j] + 1 to locations[j] + s[j] to be consistent with
+# notation in paper.
+# - Locations, durations and proportions that scale automatically with p and n.
+# - Description of elements in capa.mv.class (object returned from capa.mv) or
+#   how to access them in documentation of capa.mv.
+# - Source of many false positives:
+#     * Contaminated baseline estimate.
+#     * Error in penalty? psi must have proportionality constant > 2 or > 3?
+# - Possibility to simulate data with no anomalies.
+# - High-dim plot which also shows J?
