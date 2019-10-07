@@ -54,10 +54,6 @@ simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
     {
         stop("durations must all be > 0")
     }
-    if(!Reduce("&&",proportions > 0))
-    {
-        stop("proportion values  must all be > 0")
-    }
     if(!Reduce("&&",proportions <= 1))
     {
         stop("proportion values  must all be > 0")
@@ -96,15 +92,20 @@ simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
     {
         s=durations
     }
+
+
     X = MASS::mvrnorm(n, rep(0, p), Sigma)
-    for (j in 1:q)
-    {
-        for (i in 1:round(proportions[j]*p))
+    if (proportions > 0) {
+        for (j in 1:q)
         {
-            # X[i,locations[j]:(locations[j]+s[j]-1)] = X[i,locations[j]:(locations[j]+s[j]-1)]+mu;
-            X[locations[j]:(locations[j]+s[j]-1),i] = X[locations[j]:(locations[j]+s[j]-1),i]+mu;
+            for (i in 1:round(proportions[j]*p))
+            {
+                # X[i,locations[j]:(locations[j]+s[j]-1)] = X[i,locations[j]:(locations[j]+s[j]-1)]+mu;
+                X[locations[j]:(locations[j]+s[j]-1),i] = X[locations[j]:(locations[j]+s[j]-1),i]+mu;
+            }
         }
     }
+
     return(X)
 }
 

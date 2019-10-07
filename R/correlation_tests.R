@@ -3,7 +3,7 @@
 ### DONE: Make sure within detectability boundaries.
 
 init_setup <- function(n = 10^3, p = 4, proportions = 0, mu = 1,
-                       locations = n - durations - 1, durations = 0) {
+                       locations = n - durations - 1, durations = 20) {
   return(list('n'           = n,
               'p'           = p,
               'proportions' = proportions,
@@ -13,13 +13,9 @@ init_setup <- function(n = 10^3, p = 4, proportions = 0, mu = 1,
 }
 
 simulate_mvcapa <- function(setup = init_setup(10^3, 4), Sigma = diag(1, setup$p), a = 'default') {
-  if (setup$proportions > 0)
-    sim_data <- simulate_cor(n = setup$n, p = setup$p, mu = setup$mu, Sigma = Sigma,
-                             locations = setup$locations, durations = setup$durations,
-                             proportions = setup$proportions)
-  else {
-    sim_data <- MASS::mvrnorm(setup$n, rep(0, setup$p), Sigma)
-  }
+  sim_data <- simulate_cor(n = setup$n, p = setup$p, mu = setup$mu, Sigma = Sigma,
+                           locations = setup$locations, durations = setup$durations,
+                           proportions = setup$proportions)
   if (a != 'default') beta <- adjusted_penalty(a, n = setup$n, p = setup$p)
   else beta <- NULL
 
