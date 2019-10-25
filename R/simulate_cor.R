@@ -24,7 +24,8 @@
 #'
 #' @export
 simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
-                        locations=40,durations=20,proportions=0.1)
+                        locations=40,durations=20,proportions=0.1,
+                        change_type = 'adjacent')
 {
     if(length(n) > 1)
     {
@@ -93,14 +94,22 @@ simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
         s=durations
     }
 
+    get_affected_dims <- function(change_type, prop) {
+        if (change_type == 'adjacent')
+            return(1:round(prop * p))
+        if (change_type == 'scattered')
+            return(round(seq(2, p - 1, length.out = prop * p)))
+        if (change_type == 'randomised')
+            return(sample(1:p, prop * p))
+    }
 
     X = MASS::mvrnorm(n, rep(0, p), Sigma)
     if (proportions > 0) {
         for (j in 1:q)
         {
-            for (i in 1:round(proportions[j]*p))
+            affected_dims <- get_affected_dims(change_type, proportions[j])
+            for (i in affected_dims)
             {
-                # X[i,locations[j]:(locations[j]+s[j]-1)] = X[i,locations[j]:(locations[j]+s[j]-1)]+mu;
                 X[locations[j]:(locations[j]+s[j]-1),i] = X[locations[j]:(locations[j]+s[j]-1),i]+mu;
             }
         }

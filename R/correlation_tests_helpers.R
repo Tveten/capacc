@@ -8,6 +8,17 @@ adjusted_penalty <- function(a, n, p, C = 2) {
   diff(c(0, sum_beta))
 }
 
+penalty_func <- function(b, a, n, p, C = 2) {
+  penalty <- linear_penalty(b, 2, n, p)
+  beta_linear <- penalty$beta
+  k_star <- floor(penalty$k_star)
+  beta_const <- const_penalty(b, 2, n, p)
+  beta <- rep(0, p)
+  beta[1:k_star] <- 1:k_star * beta_linear
+  beta[(k_star + 1):p] <- beta_const
+  list('sum_beta' = beta, 'k_star' = k_star)
+}
+
 signal_strength <- function(mu, proportion, p, n, a) {
   psi <- a * log(n)
   k_star <- sqrt(p) * psi / log(p)

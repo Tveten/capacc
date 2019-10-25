@@ -3,13 +3,15 @@
 ### DONE: Make sure within detectability boundaries.
 
 init_setup <- function(n = 10^3, p = 4, proportions = 0, mu = 1,
-                       locations = n - durations - 1, durations = 20) {
+                       locations = n - durations - 1, durations = 20,
+                       change_type = 'adjacent') {
   return(list('n'           = n,
               'p'           = p,
               'proportions' = proportions,
               'mu'          = mu,
               'locations'   = locations,
-              'durations'   = durations))
+              'durations'   = durations,
+              'change_type' = change_type))
 }
 
 simulate_mvcapa <- function(setup = init_setup(10^3, 4), Sigma = diag(1, setup$p), a = 'default') {
