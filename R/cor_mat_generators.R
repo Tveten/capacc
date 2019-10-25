@@ -28,3 +28,12 @@ ar_precision_mat <- function(p, phi) {
 
   Sigma_inv / (1 - phi^2)
 }
+
+car_precision_mat <- function(p, band = 2, rho = 0.5, sigma = 1) {
+  W <- matrix(0, nrow = p, ncol = p)
+  W[off_diag_ind(c(1:band, -(1:band)), p)] <- 1
+  eigen_values_W <- eigen(W)$values
+  if (rho <= 1 / eigen_values_W[p])
+    stop(paste0('rho must be greater than 1 / smallest_eigen_value(W) = ', 1 / eigen_values_W[p]))
+  1 / sigma^2 * (diag(as.vector(W %*% rep(1, p))) - rho * W)
+}
