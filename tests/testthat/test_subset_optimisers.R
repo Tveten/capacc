@@ -9,19 +9,9 @@ test_optimise_AR1 <- function(n = 10, p = 5, phi = 0.5, prop = 0.2, mu = c(0, 1)
   X <- matrix(mu[1], nrow = n, ncol = round((1 - prop) * p))
   X <- cbind(X, matrix(mu[2], nrow = n, ncol = round(prop * p)))
   A <- ar_precision_mat(p, phi)
-  optim_subset_res <- optimise_subset_AR1(X, A)
+  optim_subset_res <- optimise_subset_AR1_SN(X, A)
   if (return_all) return(list('X' = X, 'A' = A, 'optim_subset_res' = optim_subset_res))
   else return(optim_subset_res)
-}
-
-test_penalised_savings <- function(n = 10, p = 5, phi = 0.5, prop = 0.2, mu = c(0, 1),
-                                   return_all = FALSE) {
-  X <- matrix(mu[1], nrow = n, ncol = round((1 - prop) * p))
-  X <- cbind(X, matrix(mu[2], nrow = n, ncol = round(prop * p)))
-  A <- ar_precision_mat(p, phi)
-  optim_S <- penalised_savings(X, A)
-  if (return_all) return(list('X' = X, 'A' = A, 'optim_S' = optim_S))
-  else return(optim_S)
 }
 
 expect_all_correct_subset_sizes <- function(J) {
@@ -89,8 +79,55 @@ test_that('J is argmax corresponding to max in B', {
   J <- res$optim_subset_res$J
   for (k in 1:p) {
     for (d in k:p) {
-      compare_savings <- c(normalised_savings(which(as.logical(J[, d, k])), res$X, res$A), B[d, k])
+      compare_savings <- c(normalised_savings(res$X, res$A, which(as.logical(J[, d, k]))), B[d, k])
       expect_equal(compare_savings[1], compare_savings[2])
+    }
+  }
+})
+
+compare_OP_BF <- function(method = 'ar', n = 100, p = 10, r = 2, rho = 0.9,
+                          prop = 0.8, regime = 'sparse', mu = 1, set_zero = 0,
+                          return_all = FALSE) {
+  A <- car_precision_mat(p, r, rho)
+  x <- simulate_cor(n, p, mu, solve(A), 1, n - 2, prop)
+  if (set_zero != 0) {
+    A[set_zero, set_zero - 1] <- 0
+    A[set_zero - 1, set_zero] <- 0
+  }
+  optim_BF <- penalised_savings_BF(x, n, A, regime)
+  if (method == 'ar') optim_CAR_OP <- penalised_savings_ar(x, n, A, regime)
+  if (method == 'car') optim_CAR_OP <- penalised_savings_car(x, n, A, regime)
+  if (return_all) return(list('x' = x, 'A' = A, 'BF' = optim_BF, 'OP' = optim_CAR_OP))
+  else return(list('BF' = optim_BF, 'OP' = optim_CAR_OP))
+}
+
+test_that('AR and CAR OP returns equally as brute force', {
+  n <- 100
+  p <- 10
+  r <- 1:4
+  set.seed(5)
+  rho <- c(-0.4, -0.2, 0.2, 0.5, 0.9)
+  prop <- c(0.2, 0.5, 0.8, 1)
+  regime <- 'sparse'
+  for (k in seq_along(r)) {
+    for (j in seq_along(prop)) {
+      for (i in seq_along(rho)) {
+        res_ar <- compare_OP_BF('ar', n, p, r[k], rho[i], prop[j], regime)
+        expect_equal(res_ar$OP$B_max, res_ar$BF$B_max)
+        expect_equal(res_ar$OP$J_max, res_ar$BF$J_max)
+
+        res_car <- compare_OP_BF('car', n, p, r[k], rho[i], prop[j], regime)
+        expect_equal(res_car$OP$B_max, res_car$BF$B_max)
+        expect_equal(res_car$OP$J_max, res_car$BF$J_max)
+
+        # res2 <- compare_penalised_savings_AR1(n, p, rho[i], prop[j], set_zero = 4)
+        # expect_equal(res2$OP$B_max, res2$SN$B_max)
+        # expect_equal(res2$OP$J_max, res2$SN$J_max)
+        #
+        # res3 <- compare_penalised_savings_AR1(n, p, rho[i], prop[j], set_zero = 2)
+        # expect_equal(res3$OP$B_max, res3$SN$B_max)
+        # expect_equal(res3$OP$J_max, res3$SN$J_max)
+      }
     }
   }
 })
