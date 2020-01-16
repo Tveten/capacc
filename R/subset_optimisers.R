@@ -1,3 +1,9 @@
+## usethis namespace: start
+#' @useDynLib mvcapaCor, .registration = TRUE
+#' @importFrom Rcpp sourceCpp
+## usethis namespace: end
+NULL
+
 ####
 #### Helper function. ----------------------------------------------------------
 ####
@@ -15,7 +21,8 @@ linear_penalty <- function(n, p, b = 1,  a = 2, C = 2) {
   a <- as.numeric(a)
   psi <- a * log(n)
   k_star <- (p + C * sqrt(p * psi)) / (2 * log(p))
-  list('beta' = b * (C * psi / k_star + C * log(p)), 'k_star' = k_star)
+  # list('beta' = b * (C * psi / k_star + C * log(p)), 'k_star' = k_star)
+  list('alpha' = b * C * psi, 'beta' = b * C * log(p), 'k_star' = k_star)
 }
 
 const_penalty <- function(n, p, b = 1, a = 2, C = 2) {
@@ -24,9 +31,36 @@ const_penalty <- function(n, p, b = 1, a = 2, C = 2) {
   b * (p + C * psi + C * sqrt(p * psi))
 }
 
+get_penalty <- function(penalty_regime, n, p, b = 1, a = 2) {
+  if (penalty_regime == 'sparse') {
+    penalty_obj <- linear_penalty(n, p, b = b, a = a)
+    beta <- penalty_obj$beta
+    alpha <- penalty_obj$alpha
+    k_star <- penalty_obj$k_star
+  } else if (penalty_regime == 'dense') {
+    beta <- 0
+    alpha <- const_penalty(n, p, b = b, a = a)
+    k_star <- p
+  }
+  list('alpha' = alpha, 'beta' = beta, 'k_star' = k_star)
+}
+
+combined_penalty_vec <- function(n, p, b = 1, a = 2) {
+  sparse_penalty <- get_penalty('sparse', n, p, b, a)
+  dense_penalty <- get_penalty('dense', n, p, b, a)
+  penalty_vec <- 1:p * sparse_penalty$beta + sparse_penalty$alpha
+  penalty_vec[penalty_vec > dense_penalty$alpha] <- dense_penalty$alpha
+  penalty_vec
+}
+
 get_Q <- function(x, A) {
   mean_x <- colMeans(x, na.rm = TRUE)  # Row vector
   t(t(mean_x)) %*% t(mean_x) * A
+}
+
+get_w <- function(x, A) {
+  mean_x <- colMeans(x, na.rm = TRUE)  # Row vector
+  diag(mean_x) %*% A %*% mean_x
 }
 
 get_neighbours_less_than <- function(i, sparse_mat) {
@@ -35,20 +69,45 @@ get_neighbours_less_than <- function(i, sparse_mat) {
 }
 
 band <- function(x) {
-  nnz_lower_diag <- rep(0, nrow(x) - 1)
+  distance_from_diagonal <- rep(0, nrow(x) - 1)
   for (i in 2:nrow(x)) {
-    nnz_lower_diag[i] <- sum(!is_zero(x[i, 1:(i - 1)]))
+    lower_nonzeros <- which(!is_zero(x[i, 1:(i - 1)]))
+    if (length(lower_nonzeros) > 0)
+      distance_from_diagonal[i] <- i - min(lower_nonzeros)
+    else
+      distance_from_diagonal[i] <- 0
   }
-  max(nnz_lower_diag)
+  max(distance_from_diagonal)
 }
 
-indicator_power_set <- function(size, as_list = FALSE) {
+band_from_list <- function(nbs_list) {
+  p <- length(nbs_list)
+  max(unlist(lapply(2:p, function(d) {
+    if (length(nbs_list[[d]]) >= 1) return(d - min(nbs_list[[d]]))
+    else return(0)
+  })))
+}
+
+indicator_power_set <- function(size, include_empty_set = TRUE, as_list = FALSE) {
+  if (size >= 1) {
+    set <- 1:size
+    ind_power_set <- vapply(2^(1:size - 1), function(k) {
+      rep(c(0, 1), each = k, times = 2^size / (2 * k))
+    }, numeric(2^size))
+    if (!include_empty_set) ind_power_set <- ind_power_set[-1, ]
+    if (as_list) ind_power_set <- split(ind_power_set, seq(nrow(ind_power_set)))
+    return(ind_power_set)
+  } else return(integer(0))
+}
+
+power_set <- function(size, include_empty_set = FALSE) {
   set <- 1:size
-  ind_power_set <- vapply(2^(1:size - 1), function(k) {
-    rep(c(0, 1), each = k, times = 2^size / (2 * k))
-  }, numeric(2^size))
-  if (as_list) ind_power_set <- split(ind_power_set, seq(nrow(ind_power_set)))
-  ind_power_set
+  p_set <- lapply(indicator_power_set(size, as_list = TRUE), function(u) {
+    set[as.logical(u)]
+  })
+  names(p_set) <- NULL
+  if (include_empty_set) return(p_set)
+  else return(p_set[-1])
 }
 
 subset_from_indicator <- function(u, set) {
@@ -65,7 +124,8 @@ subsets_from_indicators <- function(u, set) {
 extended_indicator_set <- function(d, nbs, n_col) {
   l_nbs <- length(nbs)
   u_mat <- indicator_power_set(l_nbs)
-  if (ncol(u_mat) == n_col) return(u_mat)
+  if (is.null(ncol(u_mat))) return(matrix(2, nrow = 1, ncol = n_col))
+  else if (ncol(u_mat) == n_col) return(u_mat)
   else {
     extended_u_mat <- matrix(2, ncol = n_col, nrow = nrow(u_mat))
     extended_u_mat[, d - nbs] <- u_mat
@@ -73,14 +133,16 @@ extended_indicator_set <- function(d, nbs, n_col) {
   }
 }
 
-expand_indicator <- function(u_root) {
+expand_indicator <- function(u_root, d, nbs) {
   if (sum(u_root == 2) == 0) return(u_root)
   else {
-    which_is_2 <- which(u_root == 2)
-    ind_power_set <- indicator_power_set(length(which_is_2))
+    expand_which = intersect(which(u_root == 2), c(1, d - nbs + 1))
+    # if (u_root[1] == 2 && !any(expand_which == 1))
+    #   expand_which <- c(1, expand_which)
+    ind_power_set <- indicator_power_set(length(expand_which))
     m <- nrow(ind_power_set)
     u_expanded <- matrix(rep(u_root, m), nrow = m, byrow = TRUE)
-    u_expanded[, which_is_2] <- ind_power_set
+    u_expanded[, expand_which] <- ind_power_set
     return(u_expanded)
   }
 }
@@ -99,23 +161,31 @@ which_rows_correspond <- function(u_mat_big, u_mat) {
 
   if(!is.matrix(u_mat)) u_mat <- matrix(u_mat, ncol = length(u_mat))
 
-  col2 <- which(u_mat[1, ] == 2)
-  u_mat_big2 <- u_mat_big[, - col2, drop = FALSE]
-  u_mat2 <- u_mat[, - col2, drop = FALSE]
-  n <- nrow(u_mat2)
-  m <- nrow(u_mat_big2)
-  which_mat <- matrix(0, nrow = n, ncol = 2 * log(m/n, base = 2))
-  for (j in 1:m) {
-    k <- n
-    candidates <- 1:k
-    for (i in ncol(u_mat2):1) {
-      if (u_mat_big2[j, i] == 0) candidates <- candidates[1:(k/2)]
-      else                       candidates <- candidates[(k/2 + 1):k]
-      k <- k/2
+  if (nrow(u_mat) == 1) {
+    m <- nrow(u_mat_big)
+    return(matrix(1:m, nrow = 1, ncol = m))
+  } else {
+    col2 <- which(u_mat[1, ] == 2)
+    u_mat_big2 <- u_mat_big[, - col2, drop = FALSE]
+    u_mat2 <- u_mat[, - col2, drop = FALSE]
+    n <- nrow(u_mat2)
+    m <- nrow(u_mat_big2)
+    # print(n)
+    # print(m)
+    # print(m / n)
+    which_mat <- matrix(0, nrow = n, ncol = m / n)
+    for (j in 1:m) {
+      k <- n
+      candidates <- 1:k
+      for (i in ncol(u_mat2):1) {
+        if (u_mat_big2[j, i] == 0) candidates <- candidates[1:(k/2)]
+        else                       candidates <- candidates[(k/2 + 1):k]
+        k <- k/2
+      }
+      which_mat[candidates, which.min(which_mat[candidates, ])] <- j
     }
-    which_mat[candidates, which.min(which_mat[candidates, ])] <- j
+    return(which_mat)
   }
-  which_mat
 }
 
 sort_indicators <- function(u_mat) {
@@ -124,34 +194,26 @@ sort_indicators <- function(u_mat) {
   }
   res <- matrix(2, nrow = nrow(u_mat), ncol = ncol(u_mat))
   which_col01 <- which(u_mat[1, ] != 2)
-  res[, which_col01] <- u_mat[, column_order(u_mat[, which_col01])]
+  u_mat01 <- u_mat[, which_col01]
+  res[, which_col01] <- u_mat01[, column_order(u_mat01)]
   res
 }
 
-get_penalty <- function(penalty_regime, n, p, b = 1, a = 2) {
-  if (penalty_regime == 'sparse') {
-    beta <- linear_penalty(n, p, b = b, a = a)$beta
-    alpha <- 0
-  } else if (penalty_regime == 'dense') {
-    beta <- 0
-    alpha <- const_penalty(n, p, b = b, a = a)
-  }
-  list('alpha' = alpha, 'beta' = beta)
-}
-
 remaining_neighbours_below <- function(d, nb_list, p) {
-  rev(intersect(1:(d - 1), unlist(nb_list[d:p])))
+  if (d <= 1) integer(0)
+  else if (d > p) stop('d must be between (or equal to) 1 and p.')
+  else return(rev(intersect(1:(d - 1), unlist(nb_list[d:p]))))
 }
 
-backtrack_J_max <- function(maxing_steps, B, lower_nbs) {
+backtrack_u_max <- function(maxing_steps, B, extended_nbs) {
   next_wmax <- function(d, d_prev, v) {
-    nbs <- remaining_neighbours_below(d, lower_nbs, p)
-    u_length <- length(nbs) + 1
+    nbs <- extended_nbs[[d]]
+    u_length <- d - min(nbs) + 1
     u_root <- c(v, rep(2, u_length - length(v)))
-
-    u_expanded <- expand_indicator(u_root)
+    u_expanded <- expand_indicator(u_root, d, nbs)
     u_max <- u_expanded[which.max(B[ind(u_expanded, d + 1)]), ]
-    v_next <- u_max[(d - d_prev + 1):u_length]
+    if (d - d_prev < u_length) v_next <- u_max[(d - d_prev + 1):u_length]
+    else v_next <- integer(0)
     return(list(u_max[1:(d - d_prev)], v_next))
   }
 
@@ -160,17 +222,32 @@ backtrack_J_max <- function(maxing_steps, B, lower_nbs) {
     u_wmax_vec <- do.call('c', u_list)
     if (!any(u_wmax_vec == 2)) return(u_wmax_vec)
     else {
-
+      u_vec <- u_list[[1]]
+      for (i in 2:length(u_list)) {
+        u_part <- u_list[[i]]
+        if (any(u_vec == 2)) {
+          which_2 <- which(u_vec == 2)
+          l_2 <- length(which_2)
+          u_vec[which_2] <- u_part[1:l_2]
+          u_vec <- c(u_vec, u_part[(l_2 + 1):length(u_part)])
+        } else {
+          u_vec <- c(u_vec, u_part)
+        }
+      }
+      return(u_vec)
     }
   }
 
   p <- length(maxing_steps)
   d_max <- which(maxing_steps)
-  ind <- init_ind(length(dim(B)) - 1)
+  # print(d_max)
+  ind <- init_indexing_func(length(dim(B)) - 1)
   v_next <- which.max(c(B[ind(0, p + 1)], B[ind(1, p + 1)])) - 1
   u_max_list <- list()
   for (i in length(d_max):2) {
+    # print(paste0('d_max = ', d_max[i]))
     res <- next_wmax(d_max[i], d_max[i - 1], v_next)
+    # print(res)
     v_next <- res[[2]]
     u_max_list[[i]] <- res[[1]]
   }
@@ -178,10 +255,10 @@ backtrack_J_max <- function(maxing_steps, B, lower_nbs) {
   combine(u_max_list)
 }
 
-init_ind <- function(n_col) {
+init_indexing_func <- function(n_col) {
   function(u, d) {
     if (!is.matrix(u)) u <- matrix(u, ncol = length(u))
-    if (any(u > 1 || u < 0)) stop('u must be 0-1-matrix or vector.')
+    if (any(u > 2 || u < 0)) stop('u must be 0-1-2-matrix or vector.')
     if (ncol(u) < n_col)
       u <- cbind(u, matrix(2, ncol = n_col - ncol(u), nrow = nrow(u)))
     cbind(rep(d, nrow(u)), u + 1)
@@ -191,12 +268,12 @@ init_ind <- function(n_col) {
 ####
 #### Penalized savings optimisers. ---------------------------------------------
 ####
-
-penalised_savings_car <- function(x, n_full, A, penalty_regime = 'sparse', b = 1) {
+penalised_savings_car_old <- function(x, n_full, A, penalty_regime = 'sparse', b = 1) {
   init_B <- function() {
-    B <- array(NA, dim = c(p + 1, rep(3, band_A + 1)))
+    B <- array(NA, dim = c(p + 1, rep(3, band_nbs + 1)))
     B[ind(0, 2)] <- 0
     B[ind(1, 2)] <- n * Q[1, 1] - beta
+    B[ind(2, 2)] <- max(B[ind(0, 2)], B[ind(1, 2)])
     # B[ind(c(0, 0), 2)] <- 0
     # B[ind(c(0, 1), 2)] <- 0
     # B[ind(c(1, 0), 2)] <- 0
@@ -225,17 +302,21 @@ penalised_savings_car <- function(x, n_full, A, penalty_regime = 'sparse', b = 1
 
   # Initialise Q, B and J and neibhbourshood structure.
   Q <- get_Q(x, A)
-  band_A <- band(A)
-  ind <- init_ind(band_A + 1)
+  # band_A <- band(A)
+  lower_nbs <- lapply(1:p, get_neighbours_less_than, sparse_mat = A)
+  all_next_nbs <- lapply(1:p, function(d) remaining_neighbours_below(d, lower_nbs, p))
+  band_nbs <- band_from_list(all_next_nbs)
+  ind <- init_indexing_func(band_nbs + 1)
   B <- init_B()
 
-  lower_nbs <- lapply(1:p, get_neighbours_less_than, sparse_mat = A)
   maxing_steps <- c(TRUE, rep(FALSE, p - 2), TRUE)
 
   for (d in 2:p) {
     # print(paste0('d = ', d))
-    nbs <- remaining_neighbours_below(d, lower_nbs, p)
-    u <- extended_indicator_set(d, nbs, band_A)
+    nbs <- all_next_nbs[[d]]
+    # print(nbs)
+    # print(band_nbs)
+    u <- extended_indicator_set(d, nbs, band_nbs)
     zero_u <- cbind(rep(0, nrow(u)), u)
     no_change_inds <- ind(zero_u, d + 1)
     one_u <- cbind(rep(1, nrow(u)), u)
@@ -246,27 +327,229 @@ penalised_savings_car <- function(x, n_full, A, penalty_regime = 'sparse', b = 1
     B[ind(1, d + 1)] <- max(B[change_inds])
     B[ind(0, d + 1)] <- max(B[ind(0, d)], B[ind(1, d)])
 
-    next_nbs <- remaining_neighbours_below(d + 1, lower_nbs, p)
-    if (length(next_nbs) <= length(nbs) && d < p) {
-      u_next <- extended_indicator_set(d + 1, next_nbs, band_A + 1)
-      u_extended <- sort_indicators(rbind(zero_u, one_u))
-      corresponding_rows <- which_rows_correspond(u_extended, u_next)
-      for (i in 1:nrow(u_next)) {
-        u_i <- u_next[i, , drop = FALSE]
-        u_corresponds <- u_extended[corresponding_rows[i, ], ]
-        B[ind(u_i, d + 1)] <- max(B[ind(u_corresponds, d + 1)])
+    if (d < p) {
+      next_nbs <- all_next_nbs[[d + 1]]
+      if (length(next_nbs) <= length(nbs)) {
+        u_next <- extended_indicator_set(d + 1, next_nbs, band_nbs + 1)
+        # print(u_next)
+        u_extended <- sort_indicators(rbind(zero_u, one_u))
+        # print(rbind(zero_u, one_u))
+        # print(u_extended)
+        corresponding_rows <- which_rows_correspond(u_extended, u_next)
+        # print(corresponding_rows)
+        for (i in 1:nrow(u_next)) {
+          u_i <- u_next[i, , drop = FALSE]
+          u_corresponds <- u_extended[corresponding_rows[i, ], ]
+          B[ind(u_i, d + 1)] <- max(B[ind(u_corresponds, d + 1)])
+        }
+        maxing_steps[d] <- TRUE
       }
-      maxing_steps[d] <- TRUE
     }
   }
 
   B_max <- max(B[ind(0, p + 1)], B[ind(1, p + 1)])
-  # J_max <-  J[p + 1, ]
-  if (penalty_regime == 'dense') B_max <- B_max - alpha
+  B_max <- B_max - alpha
 
-  J_max <- backtrack_J_max(maxing_steps, B, lower_nbs)
+  u_max <- backtrack_u_max(maxing_steps, B, lower_nbs)
 
-  list('B_max' = B_max, 'J_max' = J_max, 'B' = B, 'Q' = Q)
+  list('B_max' = B_max, 'u_max' = u_max, 'B' = B, 'Q' = Q)
+  # list('B_max' = B_max, 'B' = B, 'Q' = Q)
+}
+
+penalised_savings_car <- function(x, n_full, A, b = 1) {
+  init_B <- function(beta) {
+    B <- array(NA, dim = c(p + 1, rep(3, band_nbs + 1)))
+    B[ind(0, 2)] <- 0
+    B[ind(1, 2)] <- n * Q[1, 1] - beta
+    B[ind(2, 2)] <- max(B[ind(0, 2)], B[ind(1, 2)])
+    # B[ind(c(0, 0), 2)] <- 0
+    # B[ind(c(0, 1), 2)] <- 0
+    # B[ind(c(1, 0), 2)] <- 0
+    # B[ind(c(1, 1), 2)] <- n * Q[1, 1] - beta
+    B
+  }
+
+  get_potential_savings <- function(u, nbs) {
+    nbs_powerset <- subsets_from_indicators(u, nbs)
+    unlist(lapply(nbs_powerset, function(nb_subset) {
+      n * (Q[d, d] + 2 * sum(Q[d, nb_subset]))
+    }))
+  }
+
+  p <- ncol(x)
+  n <- nrow(x)
+
+  assert_cov_mat(A)
+  assert_equal_ncol(x, A)
+  # Restrict n to be greater than p?
+
+  # Initialise penalty.
+  sparse_penalty <- get_penalty('sparse', n_full, p, b)
+  dense_penalty <- get_penalty('dense', n_full, p, b)
+  beta <- list('s' = sparse_penalty$beta, 'd' = dense_penalty$beta)
+  alpha <- list('s' = sparse_penalty$alpha, 'd' = dense_penalty$alpha)
+
+  # Initialise Q, B and J and neibhbourshood structure.
+  Q <- get_Q(x, A)
+  # band_A <- band(A)
+  lower_nbs <- lapply(1:p, get_neighbours_less_than, sparse_mat = A)
+  all_next_nbs <- lapply(1:p, function(d) remaining_neighbours_below(d, lower_nbs, p))
+  band_nbs <- band_from_list(all_next_nbs)
+  ind <- init_indexing_func(band_nbs + 1)
+  B <- list('s' = init_B(beta$s), 'd' = init_B(beta$d))
+
+  maxing_steps <- c(TRUE, rep(FALSE, p - 2), TRUE)
+  for (d in 2:p) {
+    # print(paste0('d = ', d))
+    nbs <- all_next_nbs[[d]]
+    # print(nbs)
+    # print(band_nbs)
+    u <- extended_indicator_set(d, nbs, band_nbs)
+    zero_u <- cbind(rep(0, nrow(u)), u)
+    no_change_inds <- ind(zero_u, d + 1)
+    one_u <- cbind(rep(1, nrow(u)), u)
+    change_inds <- ind(one_u, d + 1)
+
+    potential_savings <- get_potential_savings(u, nbs)
+    for (i in c('s', 'd')) {
+      B[[i]][change_inds] <- B[[i]][ind(u, d)] + potential_savings - beta[[i]]
+      B[[i]][no_change_inds] <- B[[i]][ind(u, d)]
+      B[[i]][ind(1, d + 1)] <- max(B[[i]][change_inds])
+      B[[i]][ind(0, d + 1)] <- max(B[[i]][ind(0, d)], B[[i]][ind(1, d)])
+    }
+
+    if (d < p) {
+      next_nbs <- all_next_nbs[[d + 1]]
+      if (length(next_nbs) <= length(nbs)) {
+        u_next <- extended_indicator_set(d + 1, next_nbs, band_nbs + 1)
+        # print(u_next)
+        u_extended <- sort_indicators(rbind(zero_u, one_u))
+        # print(rbind(zero_u, one_u))
+        # print(u_extended)
+        corresponding_rows <- which_rows_correspond(u_extended, u_next)
+        # print(corresponding_rows)
+        for (i in 1:nrow(u_next)) {
+          u_i <- u_next[i, , drop = FALSE]
+          u_corresponds <- u_extended[corresponding_rows[i, ], ]
+          for (i in c('s', 'd')) {
+            B[[i]][ind(u_i, d + 1)] <- max(B[[i]][ind(u_corresponds, d + 1)])
+          }
+        }
+        maxing_steps[d] <- TRUE
+      }
+    }
+  }
+
+  B_max <- list()
+  for (i in c('s', 'd')) {
+    B_max[[i]] <- max(B[[i]][ind(0, p + 1)], B[[i]][ind(1, p + 1)]) - alpha[[i]]
+  }
+  B_max <- unlist(B_max)
+
+  s_or_d <- c('s', 'd')[which.max(B_max)]
+  u_max <- backtrack_u_max(maxing_steps, B[[s_or_d]], lower_nbs)
+  B_max <- max(B_max)
+
+  list('B_max' = B_max, 'u_max' = u_max, 'B' = B, 'Q' = Q)
+  # list('B_max' = B_max, 'B' = B, 'Q' = Q)
+}
+
+penalised_savings_car_aMLE <- function(x, n_full, precision_mat_obj, b = 1) {
+  init_B <- function(beta) {
+    B <- array(NA, dim = c(p + 1, rep(3, band_nbs + 1)))
+    B[ind(0, 2)] <- 0
+    B[ind(1, 2)] <- n * (2 * w[1] - Q[1, 1]) - beta
+    B[ind(2, 2)] <- max(B[ind(0, 2)], B[ind(1, 2)])
+    # B[ind(c(0, 0), 2)] <- 0
+    # B[ind(c(0, 1), 2)] <- 0
+    # B[ind(c(1, 0), 2)] <- 0
+    # B[ind(c(1, 1), 2)] <- n * Q[1, 1] - beta
+    B
+  }
+
+  get_potential_savings <- function(u, nbs) {
+    nbs_powerset <- subsets_from_indicators(u, nbs)
+    unlist(lapply(nbs_powerset, function(nb_subset) {
+      n * (2 * w[d] - Q[d, d] - 2 * sum(Q[d, nb_subset]))
+    }))
+  }
+
+  p <- ncol(x)
+  n <- nrow(x)
+  A <- precision_mat_obj$A
+  all_next_nbs <- precision_mat_obj$extended_nbs
+
+  assert_cov_mat(A)
+  assert_equal_ncol(x, A)
+  # Restrict n to be greater than p?
+
+  # Initialise penalty.
+  sparse_penalty <- get_penalty('sparse', n_full, p, b)
+  dense_penalty <- get_penalty('dense', n_full, p, b)
+  beta <- list('s' = sparse_penalty$beta, 'd' = dense_penalty$beta)
+  alpha <- list('s' = sparse_penalty$alpha, 'd' = dense_penalty$alpha)
+
+  # Initialise Q, B and J and neibhbourshood structure.
+  Q <- get_Q(x, A)
+  w <- get_w(x, A)
+  band_nbs <- band_from_list(all_next_nbs)
+  ind <- init_indexing_func(band_nbs + 1)
+  B <- list('s' = init_B(beta$s), 'd' = init_B(beta$d))
+
+  maxing_steps <- c(TRUE, rep(FALSE, p - 2), TRUE)
+  for (d in 2:p) {
+    # print(paste0('d = ', d))
+    nbs <- all_next_nbs[[d]]
+    # print(nbs)
+    # print(band_nbs)
+    u <- extended_indicator_set(d, nbs, band_nbs)
+    zero_u <- cbind(rep(0, nrow(u)), u)
+    no_change_inds <- ind(zero_u, d + 1)
+    one_u <- cbind(rep(1, nrow(u)), u)
+    change_inds <- ind(one_u, d + 1)
+
+    potential_savings <- get_potential_savings(u, nbs)
+    for (i in c('s', 'd')) {
+      B[[i]][change_inds] <- B[[i]][ind(u, d)] + potential_savings - beta[[i]]
+      B[[i]][no_change_inds] <- B[[i]][ind(u, d)]
+      B[[i]][ind(1, d + 1)] <- max(B[[i]][change_inds])
+      B[[i]][ind(0, d + 1)] <- max(B[[i]][ind(0, d)], B[[i]][ind(1, d)])
+    }
+
+    if (d < p) {
+      next_nbs <- all_next_nbs[[d + 1]]
+      if (length(next_nbs) <= length(nbs)) {
+        u_next <- extended_indicator_set(d + 1, next_nbs, band_nbs + 1)
+        # print(u_next)
+        u_extended <- sort_indicators(rbind(zero_u, one_u))
+        # print(rbind(zero_u, one_u))
+        # print(u_extended)
+        corresponding_rows <- which_rows_correspond(u_extended, u_next)
+        # print(corresponding_rows)
+        for (i in 1:nrow(u_next)) {
+          u_i <- u_next[i, , drop = FALSE]
+          u_corresponds <- u_extended[corresponding_rows[i, ], ]
+          for (i in c('s', 'd')) {
+            B[[i]][ind(u_i, d + 1)] <- max(B[[i]][ind(u_corresponds, d + 1)])
+          }
+        }
+        maxing_steps[d] <- TRUE
+      }
+    }
+  }
+
+  B_max <- list()
+  for (i in c('s', 'd')) {
+    B_max[[i]] <- max(B[[i]][ind(0, p + 1)], B[[i]][ind(1, p + 1)]) - alpha[[i]]
+  }
+  B_max <- unlist(B_max)
+
+  s_or_d <- c('s', 'd')[which.max(B_max)]
+  u_max <- backtrack_u_max(maxing_steps, B[[s_or_d]], all_next_nbs)
+  J_max <- (1:p)[as.logical(u_max)]
+  B_max <- max(B_max)
+
+  list('B_max' = B_max, 'u_max' = u_max, 'J_max' = J_max, 'B' = B, 'Q' = Q)
   # list('B_max' = B_max, 'B' = B, 'Q' = Q)
 }
 
@@ -304,7 +587,7 @@ penalised_savings_ar <- function(x, n_full, A, penalty_regime = 'sparse', b = 1)
   # Initialise Q, B and J and neibhbourshood structure.
   Q <- get_Q(x, A)
   band_A <- band(A)
-  ind <- init_ind(band_A + 1)
+  ind <- init_indexing_func(band_A + 1)
   B <- init_B()
   lower_nbs <- lapply(1:p, get_neighbours_less_than, sparse_mat = A)
   for (d in 2:p) {
@@ -325,17 +608,16 @@ penalised_savings_ar <- function(x, n_full, A, penalty_regime = 'sparse', b = 1)
     B[ind(u, d + 1)] <- pmax(B[ind(u0, d + 1)], B[ind(u1, d + 1)])
   }
 
-  B_max <- max(B[ind(0, p + 1)], B[ind(1, p + 1)])
-  if (penalty_regime == 'dense') B_max <- B_max - alpha
+  B_max <- max(B[ind(0, p + 1)], B[ind(1, p + 1)]) - alpha
   maxing_inds <- c(1, band_A + 1, (band_A + 2):p)
   maxing_steps <- rep(FALSE, p)
   maxing_steps[maxing_inds] <- TRUE
-  J_max <- backtrack_J_max(maxing_steps, B, lower_nbs)
+  u_max <- backtrack_u_max(maxing_steps, B, lower_nbs)
 
-  list('B_max' = B_max, 'J_max' = J_max, 'B' = B, 'Q' = Q)
+  list('B_max' = B_max, 'u_max' = u_max, 'B' = B, 'Q' = Q)
 }
 
-penalised_savings_BF <- function(x, n_full, A, penalty_regime = 'sparse', b = 1) {
+penalised_savings_BF_old <- function(x, n_full, A, penalty_regime = 'sparse', b = 1) {
   p <- ncol(x)
   n <- nrow(x)
 
@@ -350,28 +632,334 @@ penalised_savings_BF <- function(x, n_full, A, penalty_regime = 'sparse', b = 1)
 
   Q <- get_Q(x, A)
   u_mat <- indicator_power_set(p)
-  B <- rep(0, nrow(u_mat) + 1)
+  B <- rep(0, nrow(u_mat))
   for (i in 1:nrow(u_mat)) {
     u <- t(u_mat[i, ])
     B[i] <- n * u %*% Q %*% t(u) - sum(u) * beta
   }
 
-  B_max <- max(B)
-  if (penalty_regime == 'dense') B_max <- B_max - alpha
+  B_max <- max(B) - alpha
   B_which_max <- which.max(B)
-  J_max <- u_mat[B_which_max, ]
+  u_max <- u_mat[B_which_max, ]
 
-  list('B_max' = B_max, 'J_max' = J_max, 'B' = B, 'u' = u_mat)
+  list('B_max' = B_max, 'u_max' = u_max, 'B' = B, 'u' = u_mat)
+}
+
+penalised_savings_BF <- function(x, n_full, A, b = 1) {
+  p <- ncol(x)
+  n <- nrow(x)
+
+  assert_cov_mat(A)
+  assert_equal_ncol(x, A)
+  # Restrict n to be greater than p?
+
+  # Initialise penalty.
+  penalty_vec <- combined_penalty_vec(n_full, p, b)
+
+  Q <- get_Q(x, A)
+  u_mat <- indicator_power_set(p)[-1, ]
+  B <- rep(0, nrow(u_mat))
+  for (i in 1:nrow(u_mat)) {
+    u <- t(u_mat[i, ])
+    B[i] <- n * u %*% Q %*% t(u) - penalty_vec[sum(u)]
+  }
+
+  B_max <- max(B)
+  B_which_max <- which.max(B)
+  u_max <- u_mat[B_which_max, ]
+
+  list('B_max' = B_max, 'u_max' = u_max, 'B' = B, 'u' = u_mat)
+}
+
+mu_MLE <- function(A) {
+  function(mean_x, J) {
+    mean_x[J] + solve(A[J, J]) %*% A[J, -J] %*% mean_x[-J]
+  }
+}
+
+mu_aMLE <- function() {
+  function(mean_x, J) {
+    mean_x[J]
+  }
+}
+
+savings <- function(J, x, A, mu_est = mu_MLE(A)) {
+  n <- nrow(x)
+  mean_x <- colMeans(x, na.rm = TRUE)
+  mu_hat <- rep(0, length(mean_x))
+  mu_hat[J] <- mu_est(mean_x, J)
+  n * t(2 * mean_x - mu_hat) %*% A %*% mu_hat
+}
+
+savings_difference <- function(J, x, A) {
+  savings(J, x, A) - savings(J, x, A, mu_aMLE())
+}
+
+optim_penalised_savings_BF <- function(n_full, A, mu_est = mu_MLE(A), penalty = 'combined') {
+  assert_cov_mat(A)
+  # Restrict n to be greater than p?
+  set_penalty <- function(b, p, n_full) {
+    if (penalty == 'linear') {
+      penalty <- linear_penalty(n_full, p, b)
+      penalty_vec <- 1:p * penalty$beta + penalty$alpha
+    } else if (penalty == 'combined')
+      penalty_vec <- combined_penalty_vec(n_full, p, b)
+    else stop('Invalid penalty type.')
+    penalty_vec
+  }
+
+  function(x, b = 1) {
+    assert_equal_ncol(x, A)
+    p <- ncol(x)
+    n <- nrow(x)
+    P_J <- power_set(p)
+    penalty_vec <- set_penalty(b, p, n_full)
+    B <- rep(0, length(P_J))
+    for (i in seq_along(P_J)) {
+      J <- P_J[[i]]
+      B[i] <- savings(J, x, A, mu_est) - penalty_vec[length(J)]
+    }
+
+    B_max <- max(B)
+    B_which_max <- which.max(B)
+    J_max <- P_J[[B_which_max]]
+    u_max <- rep(0, p)
+    u_max[J_max] <- 1
+
+    list('B_max' = B_max, 'J_max' = rev(J_max), 'u_max' = u_max, 'B' = B)
+  }
+}
+
+optim_penalised_savings_c_old <- function(x, n_full, precision_mat_obj, b = 1, vec = FALSE) {
+  optim_func <- function(penalty, vec) {
+    if (vec) return(optimise_savings_vec(Q, w, penalty, precision_mat_obj$extended_nbs))
+    else return(optimise_savings(Q, w, penalty, precision_mat_obj$extended_nbs))
+  }
+
+  n <- nrow(x)
+  p <- ncol(x)
+  Q <- n * get_Q(x, precision_mat_obj$A)
+  w <- n * get_w(x, precision_mat_obj$A)
+
+  penalty_regimes <- c('sparse', 'dense')
+  res <- lapply(penalty_regimes, function(regime) {
+    penalty <- get_penalty(regime, n_full, p, b)
+    optim_func(penalty, vec)
+  })
+  both_B_max <- lapply(res, function(res_i) res_i$B_max)
+  res[[which.max(both_B_max)]]
+}
+
+optim_penalised_savings_c <- function(x, n_full, precision_mat_obj, b = 1, vec = TRUE) {
+  optim_func <- function(penalty, vec) {
+    if (vec) return(optimise_savings_vec(Q, w, penalty, precision_mat_obj$extended_nbs))
+    else return(optimise_savings(Q, w, penalty, precision_mat_obj$extended_nbs))
+  }
+
+  n <- nrow(x)
+  p <- ncol(x)
+  Q <- n * get_Q(x, precision_mat_obj$A)
+  w <- n * get_w(x, precision_mat_obj$A)
+
+  sparse_penalty <- get_penalty('sparse', n_full, p, b)
+  sparse_res <- optim_func(sparse_penalty, vec)
+  dense_penalty <- get_penalty('dense', n_full, p, b)
+  dense_B_max <- savings(1:p, x, precision_mat_obj$A) - dense_penalty$alpha
+  dense_res <- list('B_max' = dense_B_max, 'J_max' = p:1)
+  if (sparse_res$k_min > sparse_penalty$k_star) return(dense_res)
+  else {
+    savings_diff <- savings_difference(sparse_res$J_max, x, precision_mat_obj$A)
+    sparse_res$B_max <- sparse_res$B_max + savings_diff
+    if (sparse_res$B_max >= dense_B_max) return(sparse_res)
+    else return(dense_res)
+  }
+}
+
+optim_penalised_savings_c_test <- function(n = 50, p = 5, r = 2, rho = 0.9,
+                                           prop = 0.1, mu = 1) {
+  n_full <- 1000
+  A <- car_precision_mat(banded_neighbours(4, p), rho)
+  # A <- car_precision_mat(lattice_neighbours(p), rho)
+  lower_nbs <- lapply(1:p, get_neighbours_less_than, sparse_mat = A)
+  extended_nbs <- lapply(1:p, function(d) remaining_neighbours_below(d, lower_nbs, p))
+  precision_mat_obj <- list('A' = A, 'extended_nbs' = extended_nbs)
+  x <- simulate_cor(n, p, mu, solve(A), 1, n - 2, prop)
+  C_res <- optim_penalised_savings_c(x, n_full, precision_mat_obj)
+  print('C++')
+  print(C_res)
+  R_res <- penalised_savings_car_aMLE(x, n_full, precision_mat_obj)
+  print('R')
+  print(list(R_res$B_max, R_res$J_max))
+
+  # microbenchmark::microbenchmark(optim_penalised_savings_c(x, n_full, precision_mat_obj),
+  #                                optim_penalised_savings_c(x, n_full, precision_mat_obj, vec = FALSE),
+  #                                penalised_savings_car_aMLE(x, n_full, precision_mat_obj))
+}
+
+time_test <- function(n = 50, p = 7, r = 2, rho = 0.9,
+                      prop = 0.1, mu = 1) {
+  n_full <- 1000
+  set.seed(306)
+  A <- car_precision_mat(lattice_neighbours(p), rho)
+  x <- simulate_cor(n, p, mu, solve(A), 1, n - 2, prop)
+  Q <- n * get_Q(x, A)
+  w <- n * get_w(x, A)
+  lower_nbs <- lapply(1:p, get_neighbours_less_than, sparse_mat = A)
+  all_next_nbs <- lapply(1:p, function(d) remaining_neighbours_below(d, lower_nbs, p))
+  penalty <- get_penalty('sparse', n_full, p)
+  microbenchmark::microbenchmark(test_grow_tree(Q, w, penalty, all_next_nbs),
+                                 times = 1000)
+}
+
+penalised_savings_iid <- function(n_full, A) {
+
+  function(x_subset, b = 1) {
+    n <- nrow(x_subset)
+    p <- ncol(x_subset)
+
+    # Initialise penalty.
+    # penalty <- get_penalty(penalty_regime, n_full, p, b)
+    # beta <- penalty$beta
+    # alpha <- penalty$alpha
+    penalty_vec <- combined_penalty_vec(n_full, p, b)
+
+    mean_x2 <- colMeans(x_subset, na.rm = TRUE)^2
+    order_mean_x2 <- order(mean_x2, decreasing = TRUE)
+    sorted_mean_x2 <- mean_x2[order_mean_x2]
+    # savings_k <- cumsum(n * sorted_mean_x2 - 1:p * beta) - alpha
+    savings_k <- cumsum(n * sorted_mean_x2) - penalty_vec
+    optimal_savings <- max(savings_k)
+
+    optimal_k <- which.max(savings_k)
+    optimal_J <- order_mean_x2[1:optimal_k]
+    optimal_J_indicator <- rep(0, p)
+    optimal_J_indicator[optimal_J] <- 1
+
+    return(list('k_max' = optimal_k, 'u_max' = optimal_J_indicator,
+                'B_max' = optimal_savings))
+  }
 }
 
 ####
 #### Testing functions ------------------------------------------
 ####
+init_setup_MLE <- function(proportions = 0.3, mu = 0.7, n = 100, p = 8,
+                           locations = n - durations - 1, durations = 10,
+                           change_type = 'adjacent') {
+  return(list('n'           = n,
+              'p'           = p,
+              'proportions' = proportions,
+              'mu'          = mu,
+              'locations'   = locations,
+              'durations'   = durations,
+              'change_type' = change_type))
+}
 
-compare_OP_BF <- function(method = 'ar', n = 100, p = 10, r = 2, rho = 0.9,
+MLE_compare_dt <- function(n = 12, p = 10, r = 2, rho = 0.9, prop = 0.3, mu = 1) {
+  n_full <- 1000
+  A <- car_precision_mat(banded_neighbours(r, p), rho)
+  x <- simulate_cor(n, p, mu, solve(A), 1, n - 2, prop)
+  print(round(A, 2))
+  print(round(solve(A), 2))
+  print(eigen(A, symmetric = TRUE)$values)
+  mean_x <- colMeans(x)
+  methods <- c('MLE', 'aMLE')
+  res_list <- lapply(methods, function(method) {
+    if (method == 'MLE') mu_func <- mu_MLE(A)
+    if (method == 'aMLE') mu_func <- mu_aMLE()
+    res <- optim_penalised_savings_BF(n_full, A, mu_est = mu_func)(x)
+    res_mat <- cbind(res$B, 1:length(res$B),
+                     indicator_power_set(p, include_empty_set = FALSE))
+    res_dt <- as.data.table(res_mat)
+    colnames(res_dt) <- c('savings', 'set_ind', paste0('u_', 1:p))
+    res_dt$method <- method
+    res_dt
+  })
+  res_dt <- do.call('rbind', res_list)
+  u_max <- unlist(res_dt[which.max(savings)][, 3:(3 + p - 1)])
+  J_max <- (1:p)[as.logical(u_max)]
+  print(round(mean_x, 4))
+  print(as.vector(mu_MLE(A)(mean_x, J_max)))
+  print(solve(A[J_max, J_max]))
+  u_max_aMLE <- unlist(res_dt[method == 'aMLE'][which.max(savings)][, 3:(3 + p - 1)])
+  J_max_aMLE <- (1:p)[as.logical(u_max_aMLE)]
+  W <- solve(A[J_max, J_max]) %*% A[J_max, -J_max]
+  aMLE_bound(mean_x, J_max, J_max_aMLE, A, W, n)
+  # print(rowSums(W))
+  res_dt
+}
+
+aMLE_bound <- function(mean_x, J_hat, J_hat_aMLE, A, W, n) {
+  p <- length(mean_x)
+  print(W)
+  W_extended <- matrix(0, nrow = p, ncol = p)
+  W_extended[J_hat, -J_hat] <- W
+  # sigma_max <- svd(A %*% W_extended)$d[1]
+  lambda_max <- eigen(A %*% W_extended + t(A %*% W_extended))$values[1]
+  squared_norm_nonchange_mean_x <- sum(mean_x[-J_hat]^2)
+  # print(paste0('sigma_max = ', sigma_max))
+  print(paste0('lambda_max = ', lambda_max))
+  print(paste0('Squared euclidean length of x(-J_hat) = ', squared_norm_nonchange_mean_x))
+  savings_bound <- n * lambda_max * squared_norm_nonchange_mean_x
+  print(paste0('Savings bound = ', savings_bound))
+  savings_bound
+}
+
+MLE_compare <- function(n = 12, p = 10, rho = 0.9, prop = 0.3, mu = 1, r = 2) {
+  compare_dt <- MLE_compare_dt(n = n, p = p, r = r, rho = rho, prop = prop, mu = mu)
+  compare_dt[, 'diff_MLE_aMLE' := .SD[method == 'MLE']$savings - .SD[method == 'aMLE']$savings, set_ind]
+  compare_dt <- compare_dt[order(set_ind), , ]
+  show(ggplot2::qplot(diff_MLE_aMLE, data = compare_dt, geom = 'histogram'))
+  # print(compare_dt)
+  max_dt <- compare_dt[, .SD[which.max(savings)], method]
+  max_diff <- max_dt[method == 'MLE']$savings - max_dt[method == 'aMLE']$savings
+  print(paste0('MLE_max - aMLE_max: ', max_diff))
+  # sum_aMLE_greater <- sum(compare_dt$diff_MLE_aMLE < 0)
+  # print(paste0('Times aMLE >= MLE: ', sum_aMLE_greater))
+  return(max_dt)
+}
+
+test_MLE_greater <- function(n_sim = 50) {
+  p <- c(4, 7, 10)
+  rho <- c(-0.3, 0.99)
+  prop <- c(0.1, 0.3, 0.5, 0.8)
+  mu <- c(0.2, 0.5, 1)
+  r <- c(1:5)
+  param_combs <- expand.grid(p, rho, prop, mu, r)
+  colnames(param_combs) <- c('p', 'rho', 'prop', 'mu', 'r')
+  res <- rep(0, nrow(param_combs))
+  for (i in 1:nrow(param_combs)) {
+    print(c(i, nrow(param_combs)))
+    curr_params <- param_combs[i, ]
+    print(curr_params)
+    sub_res <- rep(0, n_sim)
+    for (j in 1:n_sim) {
+      sub_res[j] <- MLE_compare(4, curr_params$p, curr_params$rho, curr_params$prop, curr_params$mu, curr_params$r)
+    }
+    res[i] <- sum(sub_res)
+  }
+  # Result: 0.
+  sum(res)
+}
+
+compare_BF_MLE <- function(n = 100, p = 6, r = 2, rho = 0.9, prop = 0.5, mu = 1) {
+  A <- car_precision_mat(banded_neighbours(r, p), rho)
+  x <- simulate_cor(n, p, mu, solve(A), 1, n - 2, prop)
+  print(colMeans(x))
+  res <- lapply(c(mu_MLE(A), mu_aMLE()), function(mu_func) {
+    res <- optim_penalised_savings_BF(n, A, mu_est = mu_func)(x)
+    c(res$B_max, res$u_max)
+  })
+  res <- as.data.frame(do.call('rbind', res))
+  colnames(res) <- c('B_max', paste0('u_', 1:p))
+  res <- cbind(data.frame('method' = c('MLE', 'aMLE')), res)
+  res
+}
+
+compare_OP_BF2 <- function(method = 'ar', n = 100, p = 10, r = 2, rho = 0.9,
                           prop = 0.8, regime = 'sparse', mu = 1, set_zero = 0,
                           return_all = FALSE) {
-  A <- car_precision_mat(p, r, rho)
+  A <- car_precision_mat(banded_neighbours(p, r), rho)
   x <- simulate_cor(n, p, mu, solve(A), 1, n - 2, prop)
   if (set_zero != 0) {
     A[set_zero, set_zero - 1] <- 0
@@ -381,9 +969,8 @@ compare_OP_BF <- function(method = 'ar', n = 100, p = 10, r = 2, rho = 0.9,
   if (method == 'ar') optim_CAR_OP <- penalised_savings_ar(x, n, A, regime)
   if (method == 'car') optim_CAR_OP <- penalised_savings_car(x, n, A, regime)
   if (return_all) return(list('x' = x, 'A' = A, 'BF' = optim_BF, 'OP' = optim_CAR_OP))
-  else return(list('BF' = optim_BF$J_max, 'OP' = optim_CAR_OP$J_max))
+  else return(list('BF' = optim_BF$u_max, 'OP' = optim_CAR_OP$u_max))
 }
-
 
 compare_many_times <- function(method = 'ar', p = 10, r = 1, rho = 0.9, prop = 0.8) {
   compare_res <- lapply(1:100, function(i) {
@@ -397,57 +984,25 @@ compare_many_times <- function(method = 'ar', p = 10, r = 1, rho = 0.9, prop = 0
   list('method' = method, 'max_diff' = max(abs(diff)), 'n_equal' = n_equal)
 }
 
-B_compare <- function(method = 'ar', p = 10, r = 2, rho = 0.9, prop = 0.8) {
-  ind <- function(u, d) {
-    if (any(u > 1 || u < 0)) stop('u must be 0-1-vector.')
-    if (length(u) < band_A + 1) u <- c(u, rep(2, band_A + 1 - length(u)))
-
-    matrix(c(d, u + 1), ncol = band_A + 1 + length(d))
-  }
-
-  set.seed(1)
-  res <- compare_OP_BF(method, p = p, r = r, rho = rho, prop = prop, return_all = TRUE)
-  B_BF <- res$BF$B
-  u <- res$BF$u
-  B_OP <- res$OP$B
-  B_mat <- matrix(0, nrow = nrow(u), ncol = 2)
-  # print(B_OP)
-  dim_B <- dim(B_OP)
-
-  print(c(res$BF$B_max, res$OP$B_max))
-  print(res$BF$J_max)
-  print(res$OP$J_max)
-  for (i in 1:dim_B[1])
-
-  u_OP <- function(B_OP) {
-
-  }
-
-  B_OP_corresponding_to <- function(u) {
-
-  }
+B_compare <- function() {
+  n <- 100
+  p <- 10
+  r <- 1:4
+  set.seed(5)
+  rho <- c(-0.35, -0.2, 0.2, 0.5, 0.9)
+  prop <- c(0.2, 0.5, 0.8, 1)
+  regime <- 'dense'
+  j <- 4
+  i <- 5
+  k <- 26
+  set.seed(k)
+  A <- cuthill_mckee(car_precision_mat(list('random', p), rho[i]))
+  x <- simulate_cor(n, p, 1, solve(A), 1, n - 2, prop[j])
+  res_bf <- penalised_savings_BF(x, n, A, regime)
+  res_car <- penalised_savings_car(x, n, A, regime)
+  print(res_bf$B_max - res_car$B_max)
 }
 
-# test_that('CAR OP returns equally as brute force', {
-#   n <- 100
-#   p <- 10
-#   r <- 1:4
-#   set.seed(5)
-#   rho <- c(-0.4, -0.2, 0.2, 0.5, 0.9)
-#   prop <- c(0.2, 0.5, 0.8, 1)
-#   res_B <- array(0, dim = c(length(rho), length(prop), length(r)))
-#   res_J <- array(FALSE, dim = c(length(rho), length(prop), length(r)))
-#   res <- list()
-#   for (k in seq_along(r)) {
-#     for (j in seq_along(prop)) {
-#       for (i in seq_along(rho)) {
-#         res <- compare_penalised_savings_AR(n, p, r[k], rho[i], prop[j])
-#         expect_equal(res$OP$B_max, res$BF$B_max)
-#         expect_equal(res$OP$J_max, res$BF$J_max)
-#       }
-#     }
-#   }
-# })
 ####
 #### Old functions -------------------------------------------------------------
 ####
@@ -484,25 +1039,9 @@ penalised_savings_ar1 <- function(x_subset, n, A, b = 1) {
   if (optimal_k <= k_star) optimal_J <- optimal_subset_res$J[, p, optimal_k]
   else optimal_J <- rep(1, p)
 
-  list('k_max' = optimal_k, 'J_max' = optimal_J, 'B_max' = optimal_savings,
+  list('k_max' = optimal_k, 'u_max' = optimal_J, 'B_max' = optimal_savings,
        'S_obj' = optimal_subset_res$S, 'B0' = optimal_subset_res$B0,
        'B1' = optimal_subset_res$B1)
-}
-
-penalised_savings_iid <- function(x_subset, n, A = diag(1, ncol(x_subset)), b = 1) {
-  n_subset <- nrow(x_subset)
-  p <- ncol(x_subset)
-  beta <- b * adjusted_penalty(2, n, p)
-
-  mean_x2 <- colMeans(x_subset, na.rm = TRUE)^2
-  order_mean_x2 <- order(mean_x2, decreasing = TRUE)
-  sorted_mean_x2 <- mean_x2[order_mean_x2]
-  savings_k <- cumsum(n_subset * sorted_mean_x2 - beta)
-  optimal_savings <- max(savings_k)
-  optimal_k <- which.max(savings_k)
-  optimal_J <- order_mean_x2[1:optimal_k]
-
-  return(list('k_max' = optimal_k, 'J_max' = optimal_J, 'S_max' = optimal_savings))
 }
 
 #' @param x A data matrix with p columns and n = (e - s) rows.
@@ -621,13 +1160,13 @@ penalised_savings_ar1_OP <- function(x, n_full, A, b = 1) {
 
   if (d < p + 2 || sum(J[p + 1, ]) > k_star) {
     B_max <- dense_savings(x, n_full, A, b)
-    J_max <- rep(1, p)
+    u_max <- rep(1, p)
   } else {
     B_max <- max(B0[p + 1], B1[p + 1], na.rm = TRUE)
-    J_max <- J[p + 1, ]
+    u_max <- J[p + 1, ]
   }
 
-  list('B_max' = B_max, 'J_max' = J_max,
+  list('B_max' = B_max, 'u_max' = u_max,
        'B0' = B0, 'B1' = B1, 'J1' = J1, 'J' = J, 'S' = S)
 }
 
@@ -682,13 +1221,13 @@ penalised_savings_ar1_NB1 <- function(x, n_full, A, b = 1) {
 
   if (d < p + 1 || sum(J[p + 1, ]) > k_star) {
     B_max <- dense_savings(x, n_full, A, b)
-    J_max <- rep(1, p)
+    u_max <- rep(1, p)
   } else {
     B_max <- max(B0[p + 1], B1[p + 1], na.rm = TRUE)
-    J_max <- J[p + 1, ]
+    u_max <- J[p + 1, ]
   }
 
-  list('B_max' = B_max, 'J_max' = J_max,
+  list('B_max' = B_max, 'u_max' = u_max,
        'B0' = B0, 'B1' = B1, 'J1' = J1, 'J' = J, 'Q' = Q)
 }
 
@@ -764,11 +1303,11 @@ penalised_savings_ar1_NB2 <- function(x, n_full, A, b = 1) {
 
   if (d < p + 1 || sum(J[ind(0, c(p + 1, 1:p))]) > k_star) {
     B_max <- dense_savings(x, n_full, A, b)
-    J_max <- rep(1, p)
+    u_max <- rep(1, p)
   } else {
     B_max <- max(B[ind(0, p + 1)], B[ind(1, p + 1)], na.rm = TRUE)
-    J_max <- J[ind(0, c(p + 1, 1:p))]
+    u_max <- J[ind(0, c(p + 1, 1:p))]
   }
 
-  list('B_max' = B_max, 'J_max' = J_max, 'B' = B, 'J' = J, 'Q' = Q)
+  list('B_max' = B_max, 'u_max' = u_max, 'B' = B, 'J' = J, 'Q' = Q)
 }
