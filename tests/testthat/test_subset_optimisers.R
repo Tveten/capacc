@@ -91,12 +91,12 @@ test_savings_MLE <- function(mu_est = mu_MLE(A)) {
   x <- simulate_cor(p = p, Sigma = solve(A))
   J <- 1:3
   unlist(lapply(lapply(1:6, function(i) 1:i), function(J) {
-    as.numeric(savings(nrow(x), J, x, A, mu_est))
+    as.numeric(savings(J, x, A, mu_est))
   }))
 }
 
 test_that('MLE savings always increases as more components are added in affected subset', {
-  for (i in 1:100) expect_true(all(diff(test_savings_MLE()) > 0))
+  for (i in 1:100) expect_true(all(diff(test_savings_MLE()) >= 0))
 })
 
 # compare_OP_BF_old <- function(method = 'ar', n = 100, p = 10, r = 2, rho = 0.9,
@@ -185,8 +185,8 @@ compare_OP_BF <- function(n = 50, p = 5, r = 2, rho = 0.9,
   x <- simulate_cor(n, p, mu, solve(A), 1, n - 2, prop)
   n_full <- 1000
   OP_res <- optim_penalised_savings_c(x, n_full, precision_mat_obj)
-  BF_res <- optim_penalised_savings_BF(n_full, precision_mat_obj$A, mu_aMLE())(x)
-  BF_res$B_max <- BF_res$B_max + savings_difference(BF_res$J_max, x, precision_mat_obj$A)
+  BF_res <- optim_penalised_savings_BF(n_full, precision_mat_obj$A, mu_est = mu_aMLE(),
+                                       penalty = 'linear', adjusted = TRUE)(x)
   list('BF' = list('B_max' = BF_res$B_max, 'J_max' = BF_res$J_max),
        'OP' = list('B_max' = OP_res$B_max, 'J_max' = OP_res$J_max))
 }
@@ -202,8 +202,8 @@ test_that('OP C++ implementation returns equally as brute force in R', {
     for (j in seq_along(prop)) {
       for (i in seq_along(rho)) {
         res <- compare_OP_BF(n, p, r[k], rho[i], prop[j], 'banded')
-        # expect_equal(res$OP$B_max, res$BF$B_max)
-        # expect_equal(res$OP$J_max, res$BF$J_max)
+        expect_equal(res$OP$B_max, res$BF$B_max)
+        expect_equal(res$OP$J_max, res$BF$J_max)
       }
     }
   }
@@ -213,8 +213,8 @@ test_that('OP C++ implementation returns equally as brute force in R', {
         set.seed(k)
         res <- compare_OP_BF(n, p, rho = rho[i], prop = prop[j],
                              cor_mat_type = 'random')
-        # expect_equal(res$OP$B_max, res$BF$B_max)
-        # expect_equal(res$OP$J_max, res$BF$J_max)
+        expect_equal(res$OP$B_max, res$BF$B_max)
+        expect_equal(res$OP$J_max, res$BF$J_max)
       }
     }
   }

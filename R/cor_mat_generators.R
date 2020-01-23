@@ -192,9 +192,12 @@ cuthill_mckee <- function(x, reverse = FALSE, return_all = FALSE) {
     i <- i + 1
   }
   if (reverse) R <- rev(R)
-
-  if (return_all) return(list('x' = x[R, R], 'order' = R, 'reverse' = reverse))
-  else return(x[R, R])
+  reordered_x <- x[R, R]
+  if (return_all) return(list('x'       = reordered_x,
+                              'order'   = R,
+                              'reverse' = reverse,
+                              'band'    = band(reordered_x)))
+  else return(reordered_x)
 }
 
 compare_CM_alg <- function(p = 50, n_sim = 100) {
@@ -208,12 +211,13 @@ compare_CM_alg <- function(p = 50, n_sim = 100) {
 
   res <- matrix(0, ncol = 2, nrow = n_sim)
   for (i in 1:n_sim) {
-    A <- radjacency_mat(p, max_nbs = 5)
+    A <- radjacency_mat(p, max_nbs = 10)
     A_CM <- cuthill_mckee(A)
     A_reverse_CM <- cuthill_mckee(A, reverse = TRUE)
     res[i, 1] <- n_computations(A_CM)
     res[i, 2] <- n_computations(A_reverse_CM)
   }
   list('mean_computations' = res,
-       'prop_CM_best'       = sum(apply(res, 1, function(x) x[1] < x[2])) / n_sim)
+       'prop_CM_best'      = sum(apply(res, 1, function(x) x[1] < x[2])) / n_sim,
+       'bands'             = c(band(A), band(A_CM), band(A_reverse_CM)))
 }

@@ -41,20 +41,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// optimise_savings_old
-Rcpp::List optimise_savings_old(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
-RcppExport SEXP _mvcapaCor_optimise_savings_old(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type Q(QSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type b(bSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type penalty_components(penalty_componentsSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type extended_nbs_list(extended_nbs_listSEXP);
-    rcpp_result_gen = Rcpp::wrap(optimise_savings_old(Q, b, penalty_components, extended_nbs_list));
-    return rcpp_result_gen;
-END_RCPP
-}
 // optimise_savings_vec
 Rcpp::List optimise_savings_vec(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
 RcppExport SEXP _mvcapaCor_optimise_savings_vec(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
@@ -67,33 +53,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const Rcpp::List& >::type extended_nbs_list(extended_nbs_listSEXP);
     rcpp_result_gen = Rcpp::wrap(optimise_savings_vec(Q, b, penalty_components, extended_nbs_list));
     return rcpp_result_gen;
-END_RCPP
-}
-// optimise_savings_vec_old
-Rcpp::List optimise_savings_vec_old(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
-RcppExport SEXP _mvcapaCor_optimise_savings_vec_old(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type Q(QSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type b(bSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type penalty_components(penalty_componentsSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type extended_nbs_list(extended_nbs_listSEXP);
-    rcpp_result_gen = Rcpp::wrap(optimise_savings_vec_old(Q, b, penalty_components, extended_nbs_list));
-    return rcpp_result_gen;
-END_RCPP
-}
-// test_grow_tree
-void test_grow_tree(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
-RcppExport SEXP _mvcapaCor_test_grow_tree(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type Q(QSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type b(bSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type penalty_components(penalty_componentsSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type extended_nbs_list(extended_nbs_listSEXP);
-    test_grow_tree(Q, b, penalty_components, extended_nbs_list);
-    return R_NilValue;
 END_RCPP
 }
 // list_test
@@ -166,15 +125,53 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// optimise_savings_vec_old
+Rcpp::List optimise_savings_vec_old(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
+RcppExport SEXP _mvcapaCor_optimise_savings_vec_old(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type penalty_components(penalty_componentsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type extended_nbs_list(extended_nbs_listSEXP);
+    rcpp_result_gen = Rcpp::wrap(optimise_savings_vec_old(Q, b, penalty_components, extended_nbs_list));
+    return rcpp_result_gen;
+END_RCPP
+}
+// test_grow_tree
+void test_grow_tree(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
+RcppExport SEXP _mvcapaCor_test_grow_tree(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type penalty_components(penalty_componentsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type extended_nbs_list(extended_nbs_listSEXP);
+    test_grow_tree(Q, b, penalty_components, extended_nbs_list);
+    return R_NilValue;
+END_RCPP
+}
+// optimise_savings_old
+Rcpp::List optimise_savings_old(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
+RcppExport SEXP _mvcapaCor_optimise_savings_old(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type penalty_components(penalty_componentsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type extended_nbs_list(extended_nbs_listSEXP);
+    rcpp_result_gen = Rcpp::wrap(optimise_savings_old(Q, b, penalty_components, extended_nbs_list));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_mvcapaCor_hash_map_test", (DL_FUNC) &_mvcapaCor_hash_map_test, 0},
     {"_mvcapaCor_string_subset", (DL_FUNC) &_mvcapaCor_string_subset, 2},
     {"_mvcapaCor_optimise_savings", (DL_FUNC) &_mvcapaCor_optimise_savings, 4},
-    {"_mvcapaCor_optimise_savings_old", (DL_FUNC) &_mvcapaCor_optimise_savings_old, 4},
     {"_mvcapaCor_optimise_savings_vec", (DL_FUNC) &_mvcapaCor_optimise_savings_vec, 4},
-    {"_mvcapaCor_optimise_savings_vec_old", (DL_FUNC) &_mvcapaCor_optimise_savings_vec_old, 4},
-    {"_mvcapaCor_test_grow_tree", (DL_FUNC) &_mvcapaCor_test_grow_tree, 4},
     {"_mvcapaCor_list_test", (DL_FUNC) &_mvcapaCor_list_test, 1},
     {"_mvcapaCor_seq_int", (DL_FUNC) &_mvcapaCor_seq_int, 2},
     {"_mvcapaCor_test_map", (DL_FUNC) &_mvcapaCor_test_map, 0},
@@ -182,6 +179,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mvcapaCor_which_max_test", (DL_FUNC) &_mvcapaCor_which_max_test, 0},
     {"_mvcapaCor_test_rev_vec", (DL_FUNC) &_mvcapaCor_test_rev_vec, 0},
     {"_mvcapaCor_test_accu", (DL_FUNC) &_mvcapaCor_test_accu, 0},
+    {"_mvcapaCor_optimise_savings_vec_old", (DL_FUNC) &_mvcapaCor_optimise_savings_vec_old, 4},
+    {"_mvcapaCor_test_grow_tree", (DL_FUNC) &_mvcapaCor_test_grow_tree, 4},
+    {"_mvcapaCor_optimise_savings_old", (DL_FUNC) &_mvcapaCor_optimise_savings_old, 4},
     {NULL, NULL, 0}
 };
 

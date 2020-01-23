@@ -21,7 +21,8 @@ Imports:
     assertthat (>= 0.2.1),
     tidyverse (>= 1.3.0),
     ggpubr (>= 0.2.4),
-    Rcpp (>= 1.0.3)
+    Rcpp (>= 1.0.3),
+    huge (>= 1.3.4)
 Suggests: 
     testthat (>= 2.1.0)
 Remotes:

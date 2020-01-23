@@ -57,11 +57,7 @@ simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
     }
     if(!Reduce("&&",proportions <= 1))
     {
-        stop("proportion values  must all be > 0")
-    }
-    if(!Reduce("&&",proportions <= 1))
-    {
-        stop("proportion values  must all be > 0")
+        stop("proportion values  must all be <= 1")
     }
     if(length(proportions) != 1 && length(proportions) != length(locations))
     {

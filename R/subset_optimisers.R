@@ -673,7 +673,7 @@ penalised_savings_BF <- function(x, n_full, A, b = 1) {
 
 mu_MLE <- function(A) {
   function(mean_x, J) {
-    mean_x[J] + solve(A[J, J]) %*% A[J, -J] %*% mean_x[-J]
+    mean_x[J] + solve(A[J, J, drop = FALSE]) %*% A[J, -J, drop = FALSE] %*% mean_x[-J]
   }
 }
 
@@ -692,13 +692,15 @@ savings <- function(J, x, A, mu_est = mu_MLE(A)) {
 }
 
 savings_difference <- function(J, x, A) {
-  savings(J, x, A) - savings(J, x, A, mu_aMLE())
+  if (length(J) > 0) return(savings(J, x, A) - savings(J, x, A, mu_aMLE()))
+  else return(0)
 }
 
-optim_penalised_savings_BF <- function(n_full, A, mu_est = mu_MLE(A), penalty = 'combined') {
+optim_penalised_savings_BF <- function(n_full, A, mu_est = mu_aMLE(),
+                                       penalty = 'linear', adjusted = TRUE) {
   assert_cov_mat(A)
   # Restrict n to be greater than p?
-  set_penalty <- function(b, p, n_full) {
+  set_penalty <- function(b, p, n_full, penalty) {
     if (penalty == 'linear') {
       penalty <- linear_penalty(n_full, p, b)
       penalty_vec <- 1:p * penalty$beta + penalty$alpha
@@ -713,20 +715,32 @@ optim_penalised_savings_BF <- function(n_full, A, mu_est = mu_MLE(A), penalty = 
     p <- ncol(x)
     n <- nrow(x)
     P_J <- power_set(p)
-    penalty_vec <- set_penalty(b, p, n_full)
+    penalty_vec <- set_penalty(b, p, n_full, penalty)
     B <- rep(0, length(P_J))
     for (i in seq_along(P_J)) {
       J <- P_J[[i]]
       B[i] <- savings(J, x, A, mu_est) - penalty_vec[length(J)]
     }
 
-    B_max <- max(B)
-    B_which_max <- which.max(B)
-    J_max <- P_J[[B_which_max]]
-    u_max <- rep(0, p)
-    u_max[J_max] <- 1
-
-    list('B_max' = B_max, 'J_max' = rev(J_max), 'u_max' = u_max, 'B' = B)
+    if (adjusted) {
+      dense_B_max <- savings(1:p, x, A) - const_penalty(n_full, p, b)
+      sparse_J_max <- P_J[[which.max(B)]]
+      sparse_B_max <- max(B) + savings_difference(sparse_J_max, x, A)
+      if (dense_B_max > sparse_B_max)
+        return(list('B_max' = dense_B_max, 'J_max' = p:1, 'u_max' = rep(1, p), 'B' = B))
+      else {
+        u_max <- rep(0, p)
+        u_max[sparse_J_max] <- 1
+        return(list('B_max' = sparse_B_max, 'J_max' = rev(sparse_J_max), 'u_max' = u_max, 'B' = B))
+      }
+    } else {
+      B_max <- max(B)
+      B_which_max <- which.max(B)
+      J_max <- P_J[[B_which_max]]
+      u_max <- rep(0, p)
+      u_max[J_max] <- 1
+      return(list('B_max' = B_max, 'J_max' = rev(J_max), 'u_max' = u_max, 'B' = B))
+    }
   }
 }
 
@@ -750,8 +764,9 @@ optim_penalised_savings_c_old <- function(x, n_full, precision_mat_obj, b = 1, v
   res[[which.max(both_B_max)]]
 }
 
-optim_penalised_savings_c <- function(x, n_full, precision_mat_obj, b = 1, vec = TRUE) {
+optim_penalised_savings_c <- function(x, n_full, precision_mat_obj, b = 1, vec = TRUE, old = FALSE) {
   optim_func <- function(penalty, vec) {
+    if (old) return(optimise_savings_old(Q, w, penalty, precision_mat_obj$extended_nbs))
     if (vec) return(optimise_savings_vec(Q, w, penalty, precision_mat_obj$extended_nbs))
     else return(optimise_savings(Q, w, penalty, precision_mat_obj$extended_nbs))
   }

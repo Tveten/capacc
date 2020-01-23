@@ -13,20 +13,8 @@ optimise_savings <- function(Q, b, penalty_components, extended_nbs_list) {
     .Call(`_mvcapaCor_optimise_savings`, Q, b, penalty_components, extended_nbs_list)
 }
 
-optimise_savings_old <- function(Q, b, penalty_components, extended_nbs_list) {
-    .Call(`_mvcapaCor_optimise_savings_old`, Q, b, penalty_components, extended_nbs_list)
-}
-
 optimise_savings_vec <- function(Q, b, penalty_components, extended_nbs_list) {
     .Call(`_mvcapaCor_optimise_savings_vec`, Q, b, penalty_components, extended_nbs_list)
-}
-
-optimise_savings_vec_old <- function(Q, b, penalty_components, extended_nbs_list) {
-    .Call(`_mvcapaCor_optimise_savings_vec_old`, Q, b, penalty_components, extended_nbs_list)
-}
-
-test_grow_tree <- function(Q, b, penalty_components, extended_nbs_list) {
-    invisible(.Call(`_mvcapaCor_test_grow_tree`, Q, b, penalty_components, extended_nbs_list))
 }
 
 list_test <- function(L) {
@@ -55,5 +43,17 @@ test_rev_vec <- function() {
 
 test_accu <- function() {
     .Call(`_mvcapaCor_test_accu`)
+}
+
+optimise_savings_vec_old <- function(Q, b, penalty_components, extended_nbs_list) {
+    .Call(`_mvcapaCor_optimise_savings_vec_old`, Q, b, penalty_components, extended_nbs_list)
+}
+
+test_grow_tree <- function(Q, b, penalty_components, extended_nbs_list) {
+    invisible(.Call(`_mvcapaCor_test_grow_tree`, Q, b, penalty_components, extended_nbs_list))
+}
+
+optimise_savings_old <- function(Q, b, penalty_components, extended_nbs_list) {
+    .Call(`_mvcapaCor_optimise_savings_old`, Q, b, penalty_components, extended_nbs_list)
 }
 
