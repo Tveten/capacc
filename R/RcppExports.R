@@ -5,16 +5,12 @@ hash_map_test <- function() {
     invisible(.Call(`_mvcapaCor_hash_map_test`))
 }
 
-string_subset <- function(x, binary_string) {
-    .Call(`_mvcapaCor_string_subset`, x, binary_string)
-}
-
 optimise_savings <- function(Q, b, penalty_components, extended_nbs_list) {
     .Call(`_mvcapaCor_optimise_savings`, Q, b, penalty_components, extended_nbs_list)
 }
 
-optimise_savings_vec <- function(Q, b, penalty_components, extended_nbs_list) {
-    .Call(`_mvcapaCor_optimise_savings_vec`, Q, b, penalty_components, extended_nbs_list)
+optimise_savings_list <- function(Q, b, penalty_components, extended_nbs_list) {
+    .Call(`_mvcapaCor_optimise_savings_list`, Q, b, penalty_components, extended_nbs_list)
 }
 
 list_test <- function(L) {

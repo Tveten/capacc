@@ -15,18 +15,6 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
-// string_subset
-arma::uvec string_subset(const std::vector<int>& x, const std::string& binary_string);
-RcppExport SEXP _mvcapaCor_string_subset(SEXP xSEXP, SEXP binary_stringSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const std::vector<int>& >::type x(xSEXP);
-    Rcpp::traits::input_parameter< const std::string& >::type binary_string(binary_stringSEXP);
-    rcpp_result_gen = Rcpp::wrap(string_subset(x, binary_string));
-    return rcpp_result_gen;
-END_RCPP
-}
 // optimise_savings
 Rcpp::List optimise_savings(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
 RcppExport SEXP _mvcapaCor_optimise_savings(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
@@ -41,9 +29,9 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// optimise_savings_vec
-Rcpp::List optimise_savings_vec(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
-RcppExport SEXP _mvcapaCor_optimise_savings_vec(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
+// optimise_savings_list
+Rcpp::List optimise_savings_list(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
+RcppExport SEXP _mvcapaCor_optimise_savings_list(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -51,7 +39,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type b(bSEXP);
     Rcpp::traits::input_parameter< const Rcpp::List& >::type penalty_components(penalty_componentsSEXP);
     Rcpp::traits::input_parameter< const Rcpp::List& >::type extended_nbs_list(extended_nbs_listSEXP);
-    rcpp_result_gen = Rcpp::wrap(optimise_savings_vec(Q, b, penalty_components, extended_nbs_list));
+    rcpp_result_gen = Rcpp::wrap(optimise_savings_list(Q, b, penalty_components, extended_nbs_list));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -169,9 +157,8 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_mvcapaCor_hash_map_test", (DL_FUNC) &_mvcapaCor_hash_map_test, 0},
-    {"_mvcapaCor_string_subset", (DL_FUNC) &_mvcapaCor_string_subset, 2},
     {"_mvcapaCor_optimise_savings", (DL_FUNC) &_mvcapaCor_optimise_savings, 4},
-    {"_mvcapaCor_optimise_savings_vec", (DL_FUNC) &_mvcapaCor_optimise_savings_vec, 4},
+    {"_mvcapaCor_optimise_savings_list", (DL_FUNC) &_mvcapaCor_optimise_savings_list, 4},
     {"_mvcapaCor_list_test", (DL_FUNC) &_mvcapaCor_list_test, 1},
     {"_mvcapaCor_seq_int", (DL_FUNC) &_mvcapaCor_seq_int, 2},
     {"_mvcapaCor_test_map", (DL_FUNC) &_mvcapaCor_test_map, 0},

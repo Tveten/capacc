@@ -100,11 +100,11 @@ std::string get_position_at_levels(const std::vector<int>& levels,
   return position;
 }
 
-void print_node_positions(const node_ptr_list& node_list) {
-  int curr_level = node_list.front()->level;
+void print_node_positions(const node_ptr_vec& node_vec) {
+  int curr_level = node_vec[0]->level;
   std::vector<int> check_levels = seq_int_reverse(1, curr_level);
 
-  for(auto& curr_node : node_list) {
+  for(auto& curr_node : node_vec) {
     std::string position_str = get_position_at_levels(check_levels, curr_node);
     std::cout << curr_node->value << " : " << position_str << std::endl;
   }
@@ -120,8 +120,6 @@ void print_uvector(const arma::uvec& vec) {
     std::cout << vec(i);
 }
 
-
-// [[Rcpp::export]]
 arma::uvec string_subset(const std::vector<int>& x, const std::string& binary_string) {
   arma::uvec subset_x = arma::zeros<arma::uvec>(x.size());
   int i = 0;
@@ -153,7 +151,6 @@ void add_right_child(const node_ptr& parent, const double& value) {
   parent->right_child->value = value;
 }
 
-// double right_child_penalised_savings(const node_ptr& parent, BQP& curr_BQP) {
 double right_child_penalised_savings(const node_ptr& parent,
                                      const int& d,
                                      const std::vector<int>& nbs,
@@ -164,6 +161,145 @@ double right_child_penalised_savings(const node_ptr& parent,
   double sum_Q_interactions = arma::accu(Q_d.elem(get_position_vec(nbs, parent) - 1));
   double additional_savings = d_const_term - 2.0 * sum_Q_interactions;
   return parent->value + additional_savings - beta;
+}
+
+node_ptr_vec grow_tree(const int& d, const node_ptr_vec& parents, BQP& curr_BQP) {
+  // Visitor that builds tree by splitting leaf nodes in node_list in a binary fashion.
+  arma::vec Q_d = curr_BQP.Q.col(d - 1);
+  double d_const_term = 2.0 * curr_BQP.b(d - 1) - Q_d(d - 1);
+  std::vector<int> nbs = curr_BQP.extended_nbs_map[d - 1];
+  double beta = curr_BQP.penalty_components["beta"];
+  node_ptr_vec children(2 * parents.size(), nullptr);
+  int i = 0;
+  for(auto& parent : parents) {
+    add_left_child(parent);
+    add_right_child(parent, right_child_penalised_savings(parent, d, nbs, d_const_term, Q_d, beta));
+    children[i] = parent->left_child;
+    children[i + 1] = parent->right_child;
+    i += 2;
+  }
+  return children;
+}
+
+node_ptr which_node_max(const node_ptr_vec& node_vec) {
+  node_ptr max_node = node_vec[0];
+  for (int i = 1; i < node_vec.size(); i ++) {
+    if (node_vec[i]->value > max_node->value) max_node = node_vec[i];
+  }
+  return max_node;
+}
+
+node_ptr which_node_max(const node_ptr_list& node_list) {
+  node_ptr max_node = node_list.front();
+  for(auto& curr_node : node_list) {
+    if (curr_node->value > max_node->value) max_node = curr_node;
+  }
+  return max_node;
+}
+
+node_ptr_vec select_parents(const int& d, const node_ptr_vec& leaf_vec,
+                             umap_int_vint& extended_nbs_map) {
+  // Visitor that selects which leaves in L that will become parent nodes.
+  std::vector<int> curr_nbs = extended_nbs_map[d - 1];
+  std::vector<int> prev_nbs = extended_nbs_map[d - 2];
+  if (curr_nbs.size() > prev_nbs.size()) {
+    return leaf_vec;
+  }
+  else {
+    umap_str_nodelist grouped_leaves;
+    for(auto& curr_leaf : leaf_vec) {
+      std::string key = get_position_at_levels(curr_nbs, curr_leaf);
+      grouped_leaves[key].push_back(curr_leaf);
+    }
+    node_ptr_vec parents(grouped_leaves.size(), nullptr);
+    int i = 0;
+    for (auto& leaf_group : grouped_leaves) {
+      parents[i] = which_node_max(leaf_group.second);
+      i++;
+    }
+    return parents;
+  }
+}
+
+node_ptr init_tree() {
+  node_ptr root(new node);
+  root->parent = root->left_child = root->right_child = nullptr;
+  root->level = 0;
+  root->n_variables_included = 0;
+  root->value = 0;
+  return root;
+}
+
+node_ptr_vec init_leaf_vec(const node_ptr& root) {
+  node_ptr_vec leaf_vec{root};
+  return leaf_vec;
+}
+
+int min_variables_included(const node_ptr_vec& node_vec) {
+  int min_var = node_vec[0]->n_variables_included;
+  for (int i = 1; i < node_vec.size(); i ++) {
+    if (node_vec[i]->n_variables_included < min_var)
+      min_var = node_vec[i]->n_variables_included;
+  }
+  return min_var;
+}
+
+// [[Rcpp::export]]
+Rcpp::List optimise_savings(const arma::mat& Q,
+                            const arma::vec& b,
+                            const Rcpp::List& penalty_components,
+                            const Rcpp::List& extended_nbs_list) {
+
+  // Later: Create M from Q.
+  int p = Q.n_rows;
+  BQP curr_BQP(Q, b, penalty_components, extended_nbs_list);
+  int k_star = penalty_components["k_star"];
+  node_ptr root = init_tree();
+  node_ptr_vec leaf_vec = init_leaf_vec(root);
+  leaf_vec = grow_tree(1, leaf_vec, curr_BQP);
+  int min_n_variables_included = 0;
+  int d = 2;
+  while (d <= p && min_n_variables_included < k_star) {
+    leaf_vec = select_parents(d, leaf_vec, curr_BQP.extended_nbs_map);
+    min_n_variables_included = min_variables_included(leaf_vec);
+    leaf_vec = grow_tree(d, leaf_vec, curr_BQP);
+    d++;
+  }
+
+  node_ptr max_node = which_node_max(leaf_vec);
+  std::vector<int> all_levels = seq_int_reverse(1, d - 1);
+  arma::uvec J_max_uvec = get_position_vec(all_levels, max_node);
+  std::vector<int> J_max = arma::conv_to<std::vector<int>>::from(J_max_uvec);
+  // double alpha = penalty_components["alpha"];
+  // if (J_max.size() == 0) {
+  //   std::cout << "Discarding 0-vector" << std::endl;
+  //   double beta = penalty_components["beta"];
+  //   max_node->value = - alpha - 2.0 * p * beta;
+  //   node_ptr max_node = which_node_max(leaf_vec);
+  //   arma::uvec J_max_uvec = get_position_vec(all_levels, max_node);
+  //   std::vector<int> J_max = arma::conv_to<std::vector<int>>::from(J_max_uvec);
+  // }
+  double alpha = penalty_components["alpha"];
+  double B_max = max_node->value - alpha;
+
+  Rcpp::List results_list = List::create(_["B_max"] = B_max,
+                                         _["J_max"] = J_max,
+                                         _["k_min"] = min_n_variables_included);
+  return results_list;
+}
+
+//////////////
+////////////// List version ----------------------------------------------------
+//////////////
+
+void print_node_positions(const node_ptr_list& node_list) {
+  int curr_level = node_list.front()->level;
+  std::vector<int> check_levels = seq_int_reverse(1, curr_level);
+
+  for(auto& curr_node : node_list) {
+    std::string position_str = get_position_at_levels(check_levels, curr_node);
+    std::cout << curr_node->value << " : " << position_str << std::endl;
+  }
 }
 
 node_ptr_list grow_tree(const int& d, const node_ptr_list& parents, BQP& curr_BQP) {
@@ -180,14 +316,6 @@ node_ptr_list grow_tree(const int& d, const node_ptr_list& parents, BQP& curr_BQ
     children.push_back(parent->right_child);
   }
   return children;
-}
-
-node_ptr which_node_max(const node_ptr_list& node_list) {
-  node_ptr max_node = node_list.front();
-  for(auto& curr_node : node_list) {
-    if (curr_node->value > max_node->value) max_node = curr_node;
-  }
-  return max_node;
 }
 
 node_ptr_list select_parents(const int& d, const node_ptr_list& leaf_list,
@@ -210,15 +338,6 @@ node_ptr_list select_parents(const int& d, const node_ptr_list& leaf_list,
   return parents;
 }
 
-node_ptr init_tree() {
-  node_ptr root(new node);
-  root->parent = root->left_child = root->right_child = nullptr;
-  root->level = 0;
-  root->n_variables_included = 0;
-  root->value = 0;
-  return root;
-}
-
 node_ptr_list init_leaf_list(const node_ptr& root) {
   node_ptr_list leaf_list;
   leaf_list.push_back(root);
@@ -235,10 +354,10 @@ int min_variables_included(const node_ptr_list& node_list) {
 }
 
 // [[Rcpp::export]]
-Rcpp::List optimise_savings(const arma::mat& Q,
-                            const arma::vec& b,
-                            const Rcpp::List& penalty_components,
-                            const Rcpp::List& extended_nbs_list) {
+Rcpp::List optimise_savings_list(const arma::mat& Q,
+                                 const arma::vec& b,
+                                 const Rcpp::List& penalty_components,
+                                 const Rcpp::List& extended_nbs_list) {
 
   // Later: Create M from Q.
   int p = Q.n_rows;
@@ -269,117 +388,10 @@ Rcpp::List optimise_savings(const arma::mat& Q,
   return results_list;
 }
 
-////////////// Vector ----------------------------------------------------------
-void print_node_positions(const node_ptr_vec& node_vec) {
-  int curr_level = node_vec[0]->level;
-  std::vector<int> check_levels = seq_int_reverse(1, curr_level);
 
-  for(auto& curr_node : node_vec) {
-    std::string position_str = get_position_at_levels(check_levels, curr_node);
-    std::cout << curr_node->value << " : " << position_str << std::endl;
-  }
-}
-
-node_ptr_vec grow_tree(const int& d, const node_ptr_vec& parents, BQP& curr_BQP) {
-  // Visitor that builds tree by splitting leaf nodes in node_list in a binary fashion.
-  arma::vec Q_d = curr_BQP.Q.col(d - 1);
-  double d_const_term = 2.0 * curr_BQP.b(d - 1) - Q_d(d - 1);
-  std::vector<int> nbs = curr_BQP.extended_nbs_map[d - 1];
-  double beta = curr_BQP.penalty_components["beta"];
-  node_ptr_vec children(2 * parents.size(), nullptr);
-  int i = 0;
-  for(auto& parent : parents) {
-    add_left_child(parent);
-    add_right_child(parent, right_child_penalised_savings(parent, d, nbs, d_const_term, Q_d, beta));
-    children[i] = parent->left_child;
-    children[i + 1] = parent->right_child;
-    i += 2;
-  }
-  return children;
-}
-
-node_ptr which_node_max(const node_ptr_vec& node_vec) {
-  node_ptr max_node = node_vec[0];
-  for (int i = 1; i < node_vec.size(); i ++) {
-    if (node_vec[i]->value > max_node->value) max_node = node_vec[i];
-  }
-  return max_node;
-}
-
-node_ptr_vec select_parents(const int& d, const node_ptr_vec& leaf_vec,
-                             umap_int_vint& extended_nbs_map) {
-  // Visitor that selects which leaves in L that will become parent nodes.
-  std::vector<int> curr_nbs = extended_nbs_map[d - 1];
-  std::vector<int> prev_nbs = extended_nbs_map[d - 2];
-  if (curr_nbs.size() > prev_nbs.size()) {
-    return leaf_vec;
-  }
-  else {
-    umap_str_nodelist grouped_leaves;
-    for(auto& curr_leaf : leaf_vec) {
-      std::string key = get_position_at_levels(curr_nbs, curr_leaf);
-      grouped_leaves[key].push_back(curr_leaf);
-    }
-    node_ptr_vec parents(grouped_leaves.size(), nullptr);
-    int i = 0;
-    for (auto& leaf_group : grouped_leaves) {
-      parents[i] = which_node_max(leaf_group.second);
-      i++;
-    }
-    return parents;
-  }
-}
-
-node_ptr_vec init_leaf_vec(const node_ptr& root) {
-  node_ptr_vec leaf_vec{root};
-  return leaf_vec;
-}
-
-int min_variables_included(const node_ptr_vec& node_vec) {
-  int min_var = node_vec[0]->n_variables_included;
-  for (int i = 1; i < node_vec.size(); i ++) {
-    if (node_vec[i]->n_variables_included < min_var)
-      min_var = node_vec[i]->n_variables_included;
-  }
-  return min_var;
-}
-
-// [[Rcpp::export]]
-Rcpp::List optimise_savings_vec(const arma::mat& Q,
-                                const arma::vec& b,
-                                const Rcpp::List& penalty_components,
-                                const Rcpp::List& extended_nbs_list) {
-
-  // Later: Create M from Q.
-  int p = Q.n_rows;
-  BQP curr_BQP(Q, b, penalty_components, extended_nbs_list);
-  int k_star = penalty_components["k_star"];
-  node_ptr root = init_tree();
-  node_ptr_vec leaf_vec = init_leaf_vec(root);
-  leaf_vec = grow_tree(1, leaf_vec, curr_BQP);
-  int min_n_variables_included = 0;
-  int d = 2;
-  while (d <= p && min_n_variables_included < k_star) {
-    leaf_vec = select_parents(d, leaf_vec, curr_BQP.extended_nbs_map);
-    min_n_variables_included = min_variables_included(leaf_vec);
-    leaf_vec = grow_tree(d, leaf_vec, curr_BQP);
-    d++;
-  }
-
-  node_ptr max_node = which_node_max(leaf_vec);
-  std::vector<int> all_levels = seq_int_reverse(1, d - 1);
-  arma::uvec J_max_uvec = get_position_vec(all_levels, max_node);
-  std::vector<int> J_max = arma::conv_to<std::vector<int>>::from(J_max_uvec);
-  double alpha = penalty_components["alpha"];
-  double B_max = max_node->value - alpha;
-
-  Rcpp::List results_list = List::create(_["B_max"] = B_max,
-                                         _["J_max"] = J_max,
-                                         _["k_min"] = min_n_variables_included);
-  return results_list;
-}
-
-// Old -------------------------------------------------------------------------
+//////////////
+////////////// Old stuff -------------------------------------------------------
+//////////////
 void add_left_child_test(const std::shared_ptr<node>& parent, const double& val) {
   parent->left_child = std::shared_ptr<node>(new node);
   parent->left_child->parent = parent;

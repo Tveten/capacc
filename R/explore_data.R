@@ -60,7 +60,7 @@ sub_temp_data <- function(temp_data, country, city = 'all', month = 'all', from_
     unlist(extract_nested_element(2, strsplit(date, '-')))
   }
 
-  sub_data <- temp_data[Country == country]
+  sub_data <- temp_data[vapply(Country, function(x) any(x == country), logical(1))]
   if (city != 'all') sub_data <- sub_data[City == city]
   sub_data <- sub_data[get_year(dt) >= from_year]
   if (month != 'all') sub_data <- sub_data[get_month(dt) == month]
@@ -101,12 +101,6 @@ noteworthy_temp_plots <- function() {
   }
 }
 
-temp_data_matrix <- function(temp_data) {
-  wide_temp_data <- reshape::reshape(temp_data, direction = 'wide', timevar = 'CityCountry',
-                                     idvar = 'dt', v.names = 'AverageTemperature')
-
-}
-
 avg_temp_cols <- function(wide_temp_data) {
   split_col_names <- strsplit(names(wide_temp_data), '[.]')
   first_elems <- unlist(extract_nested_element(1, split_col_names))
@@ -117,7 +111,7 @@ avg_temp_cols <- function(wide_temp_data) {
 }
 
 mvcapa_cor_temp <- function(temp_data, country = 'Norway', city = 'all', month = '01', from_year = 1770,
-                            lambda_min_ratio = 0.1, b = 1, min_seg_len = 3, max_seg_len = 100) {
+                            lambda_min_ratio = 0.1, b = 1, min_seg_len = 3, max_seg_len = 50) {
   # Anomalies detected:
   #   - Switzerland august anomaly.
 

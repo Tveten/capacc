@@ -30,7 +30,8 @@ robust_cov_mat <- function(x) {
 
 
 mvcapa_cor <- function(x, precision_mat = 'automatic', lambda_min_ratio = 0.1, b = 1,
-                       min_seg_len = 1, max_seg_len = nrow(x) / 3) {
+                       min_seg_len = 1, max_seg_len = nrow(x) / 3, prune = TRUE) {
+  # TODO: Restrict min_seg_len and max_seg_len
   # Robustly normalise x
   n <- nrow(x)
   p <- ncol(x)
@@ -56,51 +57,72 @@ mvcapa_cor <- function(x, precision_mat = 'automatic', lambda_min_ratio = 0.1, b
     stop(paste0('The band of the precision matrix is too high for computation: ', band_precision_mat))
   precision_mat_obj <- init_precision_mat(precision_mat)
 
-  x <- rbind(rep(0, p), x)  # So the index m is always means m - 1.
+  x <- rbind(rep(0, p), x)  # So the index m always means m - 1.
 
   # Initialising the DP for the optimal cost.
   C <- rep(0, n + 1)
   S <- matrix(0, nrow = n + 1, ncol = n + 1)
-  J <- list()
+  J_max <- list()
+  S_point <- rep(0, n + 1)
+  J_point <- list()
   anom <- matrix(0, nrow = n + 1, ncol = 2)
+  prune_t <- rep(0, n + 1)
 
   # Running OP
   for (m in (min_seg_len + 1):(n + 1)) {
     if (m %% 10 == 0) print(paste0(round(100 * m/(n + 1), 2), '% complete.'))
-    # print(m)
-    J[[m]] <- list()
-    # TODO: Restrict min_seg_len and max_seg_len
-    max_ind <- max(m - min_seg_len - max_seg_len + 1, 1):(m - min_seg_len)
-    for (t in max_ind) {
+    ## Collective anomalies:
+    ts <- max(m - min_seg_len - max_seg_len + 1, 1):(m - min_seg_len)
+    ts <- setdiff(ts, unique(prune_t))
+    J_m <- list()
+    for (t in ts) {
       optim_savings_obj <- optim_penalised_savings_c(x[(t + 1):m, , drop = FALSE],
-                                                     n, precision_mat_obj)
-      # optim_savings_obj$J_max
-      # J[[m]][[t]] <- optim_savings_obj$J_max
-      J[[m]][[t]] <- precision_mat_order[optim_savings_obj$J_max]  # To refer to the original variates.
+                                                     n, precision_mat_obj, b = b)
+      J_m[[t]] <- precision_mat_order[optim_savings_obj$J_max]  # To refer to the original variates.
       S[m, t] <- optim_savings_obj$B_max
     }
-    C0 <- C[m - 1]
-    C1s <- C[max_ind] + S[m, max_ind]
+    C1s <- C[ts] + S[m, ts]
     C1_max <- max(C1s)
-    t_max <- max_ind[which.max(C1s)]
-    C[m] <- max(C0, C1_max)
+    t_max <- ts[which.max(C1s)]
+    J_max[[m]] <- J_m[[t_max]]
+
+    ## Point anomalies:
+    optim_savings_obj <- optim_penalised_savings_c(x[m, , drop = FALSE],
+                                                   n, precision_mat_obj, b = b)
+    J_point[[m]] <- precision_mat_order[optim_savings_obj$J_max]  # To refer to the original variates.
+    S_point[m] <- optim_savings_obj$B_max
+    C2 <- C[m - 1] + S_point[m]
+
+    C0 <- C[m - 1]
+    C[m] <- max(C0, C1_max, C2)
+
+    if (prune) {
+      max_penalty <- get_penalty('dense', n, p, b)$alpha
+      t_to_prune <- ts[C0 >= C1s + max_penalty]
+      if (length(t_to_prune) > 0) print(t_to_prune)
+      prune_t[t_to_prune] <- t_to_prune
+    }
 
     # anomaly_type == 0: Previous cost is maximal. Points one time-step back.
     # anomaly_type == 1: Current cost for a collective anomaly is maximal. Points to the maximising time-step.
     # anomaly_type == 2: Current cost for a point anomaly is maximal. Points to the current time-step.
-    anomaly_type <- which.max(c(C0, C1_max)) - 1
+    anomaly_type <- which.max(c(C0, C1_max, C2)) - 1
     if (anomaly_type == 0) {
       anom[m, ] <- c(m - 1, anomaly_type)
     } else if (anomaly_type == 1) {
-      anom[m, ] <- c(t_max + 1, anomaly_type)
+      anom[m, ] <- c(t_max, anomaly_type)
+    } else if (anomaly_type == 2) {
+      anom[m, ] <- c(m - 1, anomaly_type)
     }
   }
-  return(list('x' = x[, order(precision_mat_order)],
-              'S' = S,
-              'J' = J,
-              'C' = C,
-              'A' = precision_mat,
-              'anom' = anom))
+  return(list('x'       = x[-1, order(precision_mat_order)],
+              'S'       = S,
+              'J'       = J_max,
+              'S_point' = S_point,
+              'J_point' = J_point,
+              'C'       = C,
+              'A'       = precision_mat,
+              'anom'    = anom))
 }
 
 init_precision_mat <- function(precision_mat) {
@@ -151,7 +173,9 @@ init_data_setup <- function(n = 200, p = 4, proportions = sqrt(p)/p, mu = 1,
 }
 
 simulate_mvcapa_cor <- function(setup = init_data_setup(), b = 1,
-                                min_seg_len = 5, max_seg_len = round(nrow(sim_data) / 3)) {
+                                min_seg_len = 5, max_seg_len = round(nrow(sim_data) / 3),
+                                lambda_min_ratio = 0.1, prune = TRUE) {
+  set.seed(5)
   sim_data <- simulate_cor(n           = setup$n,
                            p           = setup$p,
                            mu          = setup$mu,
@@ -163,29 +187,33 @@ simulate_mvcapa_cor <- function(setup = init_data_setup(), b = 1,
   print(setup$Sigma_inv)
   res <- mvcapa_cor(sim_data,
                     # setup$precision_mat_obj,
-                    b           = b,
-                    min_seg_len = min_seg_len,
-                    max_seg_len = max_seg_len)
+                    lambda_min_ratio = lambda_min_ratio,
+                    b                = b,
+                    min_seg_len      = min_seg_len,
+                    max_seg_len      = max_seg_len,
+                    prune            = prune)
   res
 }
 
 collective_anomalies <- function(mvcapa_cor_res) {
-
   anom_list <- list()
   m <- nrow(mvcapa_cor_res$anom)
+  # Indices m correspond to m - 1 in the data.
   while (m >= 1) {
     if (mvcapa_cor_res$anom[m, 2] == 0) m <- mvcapa_cor_res$anom[m, 1]
     else if (mvcapa_cor_res$anom[m, 2] == 1) {
-      end <- m
+      end <- m - 1
       start <- mvcapa_cor_res$anom[m, 1]
-      J <- mvcapa_cor_res$J[[end]][[start - 1]]
+      J <- mvcapa_cor_res$J[[m]]
       means <- colMeans(mvcapa_cor_res$x[start:end, J, drop = FALSE])
-      m <- start - 1
       anom_df <- data.frame('start'       = rep(start, length(J)),
                             'end'         = rep(end, length(J)),
                             'variate'     = J,
                             'mean_change' = means)
       anom_list[[length(anom_list) + 1]] <- anom_df
+      m <- start
+    } else if (mvcapa_cor_res$anom[m, 2] == 2) {
+      m <- mvcapa_cor_res$anom[m, 1]
     }
   }
   if (length(anom_list) == 0)
@@ -194,6 +222,34 @@ collective_anomalies <- function(mvcapa_cor_res) {
     anom_df <- do.call('rbind', anom_list)
     anom_dt <- data.table::as.data.table(anom_df)
     anom_dt <- anom_dt[order(start)][, .SD[order(variate)], by = start]
+    return(as.data.frame(anom_dt))
+  }
+}
+
+point_anomalies <- function(mvcapa_cor_res) {
+  anom_list <- list()
+  m <- nrow(mvcapa_cor_res$anom)
+  while (m >= 1) {
+    # if (mvcapa_cor_res$anom[m, 2] == 0) m <- mvcapa_cor_res$anom[m, 1]
+    # else if (mvcapa_cor_res$anom[m, 2] == 1) {
+    #   m <- mvcapa_cor_res$anom[m, 1]
+    # } else if (mvcapa_cor_res$anom[m, 2] == 2) {
+    if (mvcapa_cor_res$anom[m, 2] == 2) {
+      J_point <- mvcapa_cor_res$J_point[[m]]
+      anom_df <- data.frame('location' = rep(m - 1, length(J_point)),
+                            'variate'  = J_point,
+                            'strength' = mvcapa_cor_res$x[m - 1, J_point])
+      anom_list[[length(anom_list) + 1]] <- anom_df
+      # m <- mvcapa_cor_res$anom[m, 1]
+    }
+    m <- mvcapa_cor_res$anom[m, 1]
+  }
+  if (length(anom_list) == 0)
+      return(data.frame('location' = NA, 'variate' = NA, 'strength' = NA))
+  else {
+    anom_df <- do.call('rbind', anom_list)
+    anom_dt <- data.table::as.data.table(anom_df)
+    anom_dt <- anom_dt[order(location)][, .SD[order(variate)], by = location]
     return(as.data.frame(anom_dt))
   }
 }
@@ -241,15 +297,18 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
         #                                 fill = "blue", alpha = 0.5)
     }
     # out<-out+facet_grid(variable~.,scales="free_y")
+
     # highlight the point anomalies
-    # TODO: Add point anomalies.
-    # p_anoms<-point_anomalies(object)
-    # p_anoms<-p_anoms[p_anoms$variate %in% subset,]
-    # if(!any(is.na(p_anoms)) & nrow(p_anoms) > 0)
-    #     {
-    #         p_anoms_data_df<-Reduce(rbind,Map(function(a,b) data_df[data_df$variable==names[a] & data_df$x==b,],p_anoms$variate,p_anoms$location))
-    #         out<-out+geom_point(data=p_anoms_data_df,colour="red", size=1.5)
-    # }
+    p_anoms <- point_anomalies(object)
+    p_anoms <- p_anoms[p_anoms$variate %in% subset,]
+    if(!any(is.na(p_anoms)) & nrow(p_anoms) > 0)
+        {
+            p_anoms_data_df <- Reduce(rbind, Map(function(a,b) {
+                    data_df[data_df$variable == names[a] & data_df$x == b, ]
+                }, p_anoms$variate, p_anoms$location)
+            )
+            out <- out + ggplot2::geom_point(data = p_anoms_data_df, colour = "red", size = 1.5)
+    }
 
     out <- out + ggplot2::facet_grid(factor(variable, levels = rev(names)) ~ .,
                                      scales = "free_y")

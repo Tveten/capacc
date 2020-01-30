@@ -185,8 +185,9 @@ compare_OP_BF <- function(n = 50, p = 5, r = 2, rho = 0.9,
   x <- simulate_cor(n, p, mu, solve(A), 1, n - 2, prop)
   n_full <- 1000
   OP_res <- optim_penalised_savings_c(x, n_full, precision_mat_obj)
-  BF_res <- optim_penalised_savings_BF(n_full, precision_mat_obj$A, mu_est = mu_aMLE(),
-                                       penalty = 'linear', adjusted = TRUE)(x)
+  # BF_res <- optim_penalised_savings_BF(n_full, precision_mat_obj$A, mu_est = mu_aMLE(),
+  #                                      penalty = 'linear', adjusted = TRUE)(x)
+  BF_res <- optim_penalised_savings_BF(n_full, precision_mat_obj$A)(x)
   list('BF' = list('B_max' = BF_res$B_max, 'J_max' = BF_res$J_max),
        'OP' = list('B_max' = OP_res$B_max, 'J_max' = OP_res$J_max))
 }
@@ -195,13 +196,15 @@ test_that('OP C++ implementation returns equally as brute force in R', {
   n <- 100
   p <- 10
   r <- 1:4
-  set.seed(5)
+  prop <- c(0, 0.2, 0.5, 0.8, 1)
   rho <- c(-0.35, -0.2, 0.2, 0.5, 0.9)
-  prop <- c(0.2, 0.5, 0.8, 1)
+  set.seed(5)
   for (k in seq_along(r)) {
     for (j in seq_along(prop)) {
       for (i in seq_along(rho)) {
+        # print(c(k, j, i))
         res <- compare_OP_BF(n, p, r[k], rho[i], prop[j], 'banded')
+        # print(res)
         expect_equal(res$OP$B_max, res$BF$B_max)
         expect_equal(res$OP$J_max, res$BF$J_max)
       }
