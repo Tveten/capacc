@@ -2,19 +2,59 @@
 # DONE: Create function for running simulation study with different a.
 ### DONE: Make sure within detectability boundaries.
 
-init_setup <- function(n = 10^3, p = 4, proportions = 0, mu = 1,
-                       locations = n - durations - 1, durations = 20,
-                       change_type = 'adjacent') {
-  return(list('n'           = n,
-              'p'           = p,
-              'proportions' = proportions,
-              'mu'          = mu,
-              'locations'   = locations,
-              'durations'   = durations,
-              'change_type' = change_type))
+# init_setup <- function(n = 10^3, p = 4, proportions = 0, mu = 1,
+#                        locations = n - durations - 1, durations = 20,
+#                        change_type = 'adjacent') {
+#   return(list('n'           = n,
+#               'p'           = p,
+#               'proportions' = proportions,
+#               'mu'          = mu,
+#               'locations'   = locations,
+#               'durations'   = durations,
+#               'change_type' = change_type))
+# }
+
+adjusted_penalty <- function(a, n, p, C = 2) {
+  a <- as.numeric(a)
+  psi <- a * log(n)
+  # k_star <- sqrt(p) * psi / log(p)
+  k_star <- (p + C * sqrt(p * psi)) / (2 * log(p))
+  sum_beta <- C * psi + C * 1:p * log(p)
+  sum_beta[1:p > k_star] <- p + C * psi + C * sqrt(p * psi)
+  diff(c(0, sum_beta))
 }
 
-simulate_mvcapa <- function(setup = init_setup(10^3, 4), Sigma = diag(1, setup$p), a = 'default') {
+penalty_func <- function(b, a, n, p, C = 2) {
+  penalty <- linear_penalty(b, 2, n, p)
+  beta_linear <- penalty$beta
+  k_star <- floor(penalty$k_star)
+  beta_const <- const_penalty(b, 2, n, p)
+  beta <- rep(0, p)
+  beta[1:k_star] <- 1:k_star * beta_linear
+  beta[(k_star + 1):p] <- beta_const
+  list('sum_beta' = beta, 'k_star' = k_star)
+}
+
+signal_strength2 <- function(mu, proportion, p, n, a) {
+  psi <- a * log(n)
+  k_star <- sqrt(p) * psi / log(p)
+  size_J <- round(proportion * p)
+  squared_norm_mu <- mu^2 * size_J
+
+  if(size_J <= k_star) return(squared_norm_mu / (log(p) + psi / size_J))
+  if(size_J > k_star) return(squared_norm_mu / (sqrt(p * psi) / size_J + psi / size_J))
+}
+
+min_duration <- function(a = 4, n = 10^4, p = 4, proportion = 0.5, mu = 1, C = 2) {
+  delta_squared <- signal_strength2(mu, proportion, p, n, a)
+  40 * C / delta_squared
+}
+
+
+
+
+
+simulate_mvcapa_iid <- function(setup = init_setup(10^3, 4), Sigma = diag(1, setup$p), a = 'default') {
   sim_data <- simulate_cor(n = setup$n, p = setup$p, mu = setup$mu, Sigma = Sigma,
                            locations = setup$locations, durations = setup$durations,
                            proportions = setup$proportions)

@@ -6,169 +6,140 @@
 
 using namespace Rcpp;
 
-// hash_map_test
-void hash_map_test();
-RcppExport SEXP _mvcapaCor_hash_map_test() {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    hash_map_test();
-    return R_NilValue;
-END_RCPP
-}
-// optimise_savings
-Rcpp::List optimise_savings(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
-RcppExport SEXP _mvcapaCor_optimise_savings(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
+// optimise_mvnormal_saving
+Rcpp::List optimise_mvnormal_saving(const arma::mat& x, const arma::sp_mat& Q, const std::vector<std::vector<int>>& nbs, const std::vector<std::vector<int>>& extended_nbs, const double& alpha_dense, const double& beta, const double& alpha_sparse);
+RcppExport SEXP _mvcapaCor_optimise_mvnormal_saving(SEXP xSEXP, SEXP QSEXP, SEXP nbsSEXP, SEXP extended_nbsSEXP, SEXP alpha_denseSEXP, SEXP betaSEXP, SEXP alpha_sparseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type Q(QSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type b(bSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type penalty_components(penalty_componentsSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type extended_nbs_list(extended_nbs_listSEXP);
-    rcpp_result_gen = Rcpp::wrap(optimise_savings(Q, b, penalty_components, extended_nbs_list));
+    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const arma::sp_mat& >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< const std::vector<std::vector<int>>& >::type nbs(nbsSEXP);
+    Rcpp::traits::input_parameter< const std::vector<std::vector<int>>& >::type extended_nbs(extended_nbsSEXP);
+    Rcpp::traits::input_parameter< const double& >::type alpha_dense(alpha_denseSEXP);
+    Rcpp::traits::input_parameter< const double& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type alpha_sparse(alpha_sparseSEXP);
+    rcpp_result_gen = Rcpp::wrap(optimise_mvnormal_saving(x, Q, nbs, extended_nbs, alpha_dense, beta, alpha_sparse));
     return rcpp_result_gen;
 END_RCPP
 }
-// optimise_savings_list
-Rcpp::List optimise_savings_list(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
-RcppExport SEXP _mvcapaCor_optimise_savings_list(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
+// dense_mvnormal_savings
+double dense_mvnormal_savings(const arma::mat& mean_x, const arma::sp_mat& Q, const double& n);
+RcppExport SEXP _mvcapaCor_dense_mvnormal_savings(SEXP mean_xSEXP, SEXP QSEXP, SEXP nSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type Q(QSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type b(bSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type penalty_components(penalty_componentsSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type extended_nbs_list(extended_nbs_listSEXP);
-    rcpp_result_gen = Rcpp::wrap(optimise_savings_list(Q, b, penalty_components, extended_nbs_list));
+    Rcpp::traits::input_parameter< const arma::mat& >::type mean_x(mean_xSEXP);
+    Rcpp::traits::input_parameter< const arma::sp_mat& >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< const double& >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(dense_mvnormal_savings(mean_x, Q, n));
     return rcpp_result_gen;
 END_RCPP
 }
-// list_test
-void list_test(Rcpp::List L);
-RcppExport SEXP _mvcapaCor_list_test(SEXP LSEXP) {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::List >::type L(LSEXP);
-    list_test(L);
-    return R_NilValue;
-END_RCPP
-}
-// seq_int
-std::vector<int> seq_int(const int& start, const int& end);
-RcppExport SEXP _mvcapaCor_seq_int(SEXP startSEXP, SEXP endSEXP) {
+// main1
+int main1();
+RcppExport SEXP _mvcapaCor_main1() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const int& >::type start(startSEXP);
-    Rcpp::traits::input_parameter< const int& >::type end(endSEXP);
-    rcpp_result_gen = Rcpp::wrap(seq_int(start, end));
+    rcpp_result_gen = Rcpp::wrap(main1());
     return rcpp_result_gen;
 END_RCPP
 }
-// test_map
-std::unordered_map<std::string, double> test_map();
-RcppExport SEXP _mvcapaCor_test_map() {
+// main2
+int main2();
+RcppExport SEXP _mvcapaCor_main2() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(test_map());
+    rcpp_result_gen = Rcpp::wrap(main2());
     return rcpp_result_gen;
 END_RCPP
 }
-// test_ubt
-void test_ubt(const int& n_levels);
-RcppExport SEXP _mvcapaCor_test_ubt(SEXP n_levelsSEXP) {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const int& >::type n_levels(n_levelsSEXP);
-    test_ubt(n_levels);
-    return R_NilValue;
-END_RCPP
-}
-// which_max_test
-void which_max_test();
-RcppExport SEXP _mvcapaCor_which_max_test() {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    which_max_test();
-    return R_NilValue;
-END_RCPP
-}
-// test_rev_vec
-void test_rev_vec();
-RcppExport SEXP _mvcapaCor_test_rev_vec() {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    test_rev_vec();
-    return R_NilValue;
-END_RCPP
-}
-// test_accu
-double test_accu();
-RcppExport SEXP _mvcapaCor_test_accu() {
+// mvcapa_cor
+Rcpp::DataFrame mvcapa_cor(const arma::mat& x, const arma::sp_mat& Q, const double& b, const double& b_point, const int& min_seg_len, const int& max_seg_len);
+RcppExport SEXP _mvcapaCor_mvcapa_cor(SEXP xSEXP, SEXP QSEXP, SEXP bSEXP, SEXP b_pointSEXP, SEXP min_seg_lenSEXP, SEXP max_seg_lenSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(test_accu());
+    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const arma::sp_mat& >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< const double& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const double& >::type b_point(b_pointSEXP);
+    Rcpp::traits::input_parameter< const int& >::type min_seg_len(min_seg_lenSEXP);
+    Rcpp::traits::input_parameter< const int& >::type max_seg_len(max_seg_lenSEXP);
+    rcpp_result_gen = Rcpp::wrap(mvcapa_cor(x, Q, b, b_point, min_seg_len, max_seg_len));
     return rcpp_result_gen;
 END_RCPP
 }
-// optimise_savings_vec_old
-Rcpp::List optimise_savings_vec_old(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
-RcppExport SEXP _mvcapaCor_optimise_savings_vec_old(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
+// lower_nbs
+std::vector<std::vector<int>> lower_nbs(const arma::sp_mat& A);
+RcppExport SEXP _mvcapaCor_lower_nbs(SEXP ASEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type Q(QSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type b(bSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type penalty_components(penalty_componentsSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type extended_nbs_list(extended_nbs_listSEXP);
-    rcpp_result_gen = Rcpp::wrap(optimise_savings_vec_old(Q, b, penalty_components, extended_nbs_list));
+    Rcpp::traits::input_parameter< const arma::sp_mat& >::type A(ASEXP);
+    rcpp_result_gen = Rcpp::wrap(lower_nbs(A));
     return rcpp_result_gen;
 END_RCPP
 }
-// test_grow_tree
-void test_grow_tree(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
-RcppExport SEXP _mvcapaCor_test_grow_tree(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type Q(QSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type b(bSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type penalty_components(penalty_componentsSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type extended_nbs_list(extended_nbs_listSEXP);
-    test_grow_tree(Q, b, penalty_components, extended_nbs_list);
-    return R_NilValue;
-END_RCPP
-}
-// optimise_savings_old
-Rcpp::List optimise_savings_old(const arma::mat& Q, const arma::vec& b, const Rcpp::List& penalty_components, const Rcpp::List& extended_nbs_list);
-RcppExport SEXP _mvcapaCor_optimise_savings_old(SEXP QSEXP, SEXP bSEXP, SEXP penalty_componentsSEXP, SEXP extended_nbs_listSEXP) {
+// extended_lower_nbs
+std::vector<std::vector<int>> extended_lower_nbs(std::vector<std::vector<int>> nbs);
+RcppExport SEXP _mvcapaCor_extended_lower_nbs(SEXP nbsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type Q(QSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type b(bSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type penalty_components(penalty_componentsSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::List& >::type extended_nbs_list(extended_nbs_listSEXP);
-    rcpp_result_gen = Rcpp::wrap(optimise_savings_old(Q, b, penalty_components, extended_nbs_list));
+    Rcpp::traits::input_parameter< std::vector<std::vector<int>> >::type nbs(nbsSEXP);
+    rcpp_result_gen = Rcpp::wrap(extended_lower_nbs(nbs));
+    return rcpp_result_gen;
+END_RCPP
+}
+// test_precision_copy
+void test_precision_copy(arma::sp_mat& A);
+RcppExport SEXP _mvcapaCor_test_precision_copy(SEXP ASEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::sp_mat& >::type A(ASEXP);
+    test_precision_copy(A);
+    return R_NilValue;
+END_RCPP
+}
+// test_precision_move
+void test_precision_move(arma::sp_mat& A);
+RcppExport SEXP _mvcapaCor_test_precision_move(SEXP ASEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::sp_mat& >::type A(ASEXP);
+    test_precision_move(A);
+    return R_NilValue;
+END_RCPP
+}
+// single_mvnormal_changepoint
+Rcpp::List single_mvnormal_changepoint(const arma::mat& x, const arma::sp_mat& Q, const double& b, const int& min_seg_len);
+RcppExport SEXP _mvcapaCor_single_mvnormal_changepoint(SEXP xSEXP, SEXP QSEXP, SEXP bSEXP, SEXP min_seg_lenSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const arma::sp_mat& >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< const double& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const int& >::type min_seg_len(min_seg_lenSEXP);
+    rcpp_result_gen = Rcpp::wrap(single_mvnormal_changepoint(x, Q, b, min_seg_len));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_mvcapaCor_hash_map_test", (DL_FUNC) &_mvcapaCor_hash_map_test, 0},
-    {"_mvcapaCor_optimise_savings", (DL_FUNC) &_mvcapaCor_optimise_savings, 4},
-    {"_mvcapaCor_optimise_savings_list", (DL_FUNC) &_mvcapaCor_optimise_savings_list, 4},
-    {"_mvcapaCor_list_test", (DL_FUNC) &_mvcapaCor_list_test, 1},
-    {"_mvcapaCor_seq_int", (DL_FUNC) &_mvcapaCor_seq_int, 2},
-    {"_mvcapaCor_test_map", (DL_FUNC) &_mvcapaCor_test_map, 0},
-    {"_mvcapaCor_test_ubt", (DL_FUNC) &_mvcapaCor_test_ubt, 1},
-    {"_mvcapaCor_which_max_test", (DL_FUNC) &_mvcapaCor_which_max_test, 0},
-    {"_mvcapaCor_test_rev_vec", (DL_FUNC) &_mvcapaCor_test_rev_vec, 0},
-    {"_mvcapaCor_test_accu", (DL_FUNC) &_mvcapaCor_test_accu, 0},
-    {"_mvcapaCor_optimise_savings_vec_old", (DL_FUNC) &_mvcapaCor_optimise_savings_vec_old, 4},
-    {"_mvcapaCor_test_grow_tree", (DL_FUNC) &_mvcapaCor_test_grow_tree, 4},
-    {"_mvcapaCor_optimise_savings_old", (DL_FUNC) &_mvcapaCor_optimise_savings_old, 4},
+    {"_mvcapaCor_optimise_mvnormal_saving", (DL_FUNC) &_mvcapaCor_optimise_mvnormal_saving, 7},
+    {"_mvcapaCor_dense_mvnormal_savings", (DL_FUNC) &_mvcapaCor_dense_mvnormal_savings, 3},
+    {"_mvcapaCor_main1", (DL_FUNC) &_mvcapaCor_main1, 0},
+    {"_mvcapaCor_main2", (DL_FUNC) &_mvcapaCor_main2, 0},
+    {"_mvcapaCor_mvcapa_cor", (DL_FUNC) &_mvcapaCor_mvcapa_cor, 6},
+    {"_mvcapaCor_lower_nbs", (DL_FUNC) &_mvcapaCor_lower_nbs, 1},
+    {"_mvcapaCor_extended_lower_nbs", (DL_FUNC) &_mvcapaCor_extended_lower_nbs, 1},
+    {"_mvcapaCor_test_precision_copy", (DL_FUNC) &_mvcapaCor_test_precision_copy, 1},
+    {"_mvcapaCor_test_precision_move", (DL_FUNC) &_mvcapaCor_test_precision_move, 1},
+    {"_mvcapaCor_single_mvnormal_changepoint", (DL_FUNC) &_mvcapaCor_single_mvnormal_changepoint, 4},
     {NULL, NULL, 0}
 };
 

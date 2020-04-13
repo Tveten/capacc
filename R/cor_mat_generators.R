@@ -18,7 +18,7 @@ constant_cor_mat <- function(p, rho) {
   Sigma
 }
 
-ar_precision_mat <- function(p, phi) {
+ar_precision_mat <- function(p, phi, sparse = TRUE) {
   Sigma_inv <- matrix(0, nrow = p, ncol = p)
   diag(Sigma_inv) <- 1 + phi^2
   diag(Sigma_inv)[c(1, p)] <- 1
@@ -26,48 +26,36 @@ ar_precision_mat <- function(p, phi) {
   delta <- row(Sigma_inv) - col(Sigma_inv)
   Sigma_inv[off_diag_ind(c(-1, 1), p)] <- -phi
 
-  Sigma_inv / (1 - phi^2)
+  Sigma_inv <- Sigma_inv / (1 - phi^2)
+  if (sparse) return(Matrix::Matrix(Sigma_inv, sparse = TRUE))
+  else return(Sigma_inv)
 }
 
-car_precision_mat <- function(nbs = list('random', 10), rho = 0.5, sigma = 1,
-                              min_nbs = 1, max_nbs = 3, standardised = TRUE) {
-  if (nbs[[1]][1] == 'random') {
-    p <- nbs[[2]]
-    W <- radjacency_mat(p, min_nbs, max_nbs)
-  } else {
-    p <- length(nbs)
-    W <- adjacency_mat(nbs)
-  }
+car_precision_mat <- function(nbs = banded_neighbours(2, 10), rho = 0.5, sigma = 1,
+                              min_nbs = 1, max_nbs = 3, standardised = TRUE, sparse = TRUE) {
+  p <- length(nbs)
+  W <- adjacency_mat(nbs, sparse)
   eigen_values_W <- eigen(W)$values
   if (rho <= 1 / eigen_values_W[p]) {
     min_rho <- 1 / eigen_values_W[p]
     warning(paste0('rho has been altered to 1 / smallest_eigen_value(W) = ', min_rho))
     rho <- min_rho + sqrt(.Machine$double.eps)
   }
+
   Sigma_inv <- 1 / sigma^2 * (diag(as.vector(W %*% rep(1, p))) - rho * W)
-  if (standardised) return(standardise_precision_mat(Sigma_inv))
+  if (standardised) Sigma_inv <- standardise_precision_mat(Sigma_inv)
+  if (sparse) return(Matrix::Matrix(Sigma_inv, sparse = TRUE))
   else return(Sigma_inv)
 }
 
-car_precision_mat2 <- function(nbs, m = 1, rho = 0.5, sigma = 1) {
-  p <- length(nbs)
-  W <- adjacency_mat(nbs)
-  rowsum_W <- rowSums(W)
-  W_pluss <- W / rowsum_W
-  M_pluss_inv <- diag(rowsum_W)
-  eigen_values_W <- eigen(W)$values
-  if (rho <= 1 / eigen_values_W[p])
-    stop(paste0('rho must be greater than 1 / smallest_eigen_value(W) = ', 1 / eigen_values_W[p]))
-  1 / sigma^2 * M_pluss_inv %*% (diag(1, p) - rho * W_pluss)
-}
-
-adjacency_mat <- function(nbs_list) {
+adjacency_mat <- function(nbs_list, sparse = TRUE) {
   p <- length(nbs_list)
   adj_mat <- do.call('rbind', lapply(nbs_list, indicator, p = p))
   if (!isSymmetric(adj_mat)) {
     adj_mat <- symmetric_from_lower_tri(adj_mat)
   }
-  adj_mat
+  if (sparse) return(Matrix::Matrix(adj_mat, sparse = TRUE))
+  else return(adj_mat)
 }
 
 symmetric_from_lower_tri <- function(x_tri) {
@@ -98,12 +86,21 @@ number_neighbours <- function(n_vec_lower) {
   nbs
 }
 
-random_neighbours_banded <- function(p, min_nbs = 1, max_nbs = 3) {
-  max_nbs <- min(max_nbs, p - 1)
-  min_nbs <- min(max_nbs, max(1, min_nbs))
+# random_neighbours_banded <- function(p, min_nbs = 1, max_nbs = 3) {
+#   max_nbs <- min(max_nbs, p - 1)
+#   min_nbs <- min(max_nbs, max(1, min_nbs))
+#
+#   n_nbs <- vapply(1:(p - 1), function(i) sample(min_nbs:max_nbs, 1), numeric(1))
+#   number_neighbours(n_nbs)
+# }
 
-  n_nbs <- vapply(1:(p - 1), function(i) sample(min_nbs:max_nbs, 1), numeric(1))
-  number_neighbours(n_nbs)
+random_neighbours <- function(p, min_nbs = 1, max_nbs = 3) {
+  adj_mat <- radjacency_mat(p, min_nbs, max_nbs)
+  nbs <- list()
+  for (i in 1:p) {
+    nbs[[i]] <- which(adj_mat[i, ] != 0)
+  }
+  nbs
 }
 
 lattice_neighbours <- function(p) {
@@ -163,6 +160,55 @@ standardise_precision_mat <- function(Sigma_inv) {
   Sigma <- solve(Sigma_inv)
   D <- diag(sqrt(diag(Sigma)))
   D %*% Sigma_inv %*% D
+}
+
+rcor_mat <- function(d, k0 = d, alphad = 1) {
+  # K0: Sparsity level, number of correlated dimensions.
+
+  if (k0 == 0) return(diag(rep(1, d)))
+
+  Sigma <- effrcor::rcorrmatrix(k0, alphad = alphad)
+  if (k0 != d) {
+    identity_mat <- diag(rep(1, d - k0))
+    zero_mat <- matrix(0, ncol = d - k0, nrow = k0)
+    Sigma <- cbind(Sigma, zero_mat)
+    Sigma <- rbind(Sigma, cbind(t(zero_mat), identity_mat))
+  }
+  structure(Sigma, 'which_dims_cor' = 1:k0)
+}
+
+block_precision_mat <- function(p, m, within_block_type = "banded",
+                                rho = 0.7, band = 2, alphad = 1, sigma = 1,
+                                standardised = TRUE, sparse = TRUE) {
+  block_Q <- function(k) {
+    if (within_block_type == "lattice")
+      return(car_precision_mat(lattice_neighbours(k), rho = rho,
+                               standardised = FALSE, sparse = FALSE))
+    else if (within_block_type == "banded")
+      return(car_precision_mat(banded_neighbours(band, k), rho = rho,
+                               standardised = FALSE, sparse = FALSE))
+    else if (within_block_type == "random")
+      return(solve(rcor_mat(k, alphad = alphad)))
+  }
+
+  if (length(m) == 1 && m < p) {
+    remainder <- p %% m
+    m <- rep(m, p %/% m)
+    if (remainder > 0) m <- c(m, remainder)
+  }
+
+  Q <- diag(1, p)
+  s <- cumsum(m)
+  Q[1:s[1], 1:s[1]] <- block_Q(m[1])
+  if (length(m) > 1) {
+    for (i in 2:length(m)) {
+      if (m[i] > 1)
+        Q[(s[i - 1] + 1):s[i], (s[i - 1] + 1):s[i]] <- block_Q(m[i])
+    }
+  }
+  if (standardised) Q <- standardise_precision_mat(Q)
+  if (sparse) return(Matrix::Matrix(Q, sparse = TRUE))
+  else return(Q)
 }
 
 #' Cuthill McKee (CM) algorithm

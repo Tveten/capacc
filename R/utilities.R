@@ -40,3 +40,43 @@ indicator <- function(J, p) {
   x[J] <- 1
   x
 }
+
+inds_from_intervals <- function(starts, ends, n) {
+  if (length(starts) != length(ends)) stop("starts and ends must be of the same length")
+  n_intervals <- length(starts)
+  inds <- rep(FALSE, n)
+  if (is.na(starts) && length(starts) == 1) return(inds)
+  else {
+    interval_inds <- do.call("c", lapply(1:n_intervals, function(i) {
+      if (!is.na(starts[i]) && !is.na(ends[i]))
+        return(starts[i]:ends[i])
+      else return(integer(0))
+    }))
+    inds[interval_inds] <- TRUE
+    return(inds)
+  }
+}
+
+print_iterations <- function(f) {
+  i <- 1
+  function(...) {
+    print(paste0("Iteration ", i))
+    i <<- i + 1
+    f(...)
+  }
+}
+
+print_progress <- function(f, end) {
+  i <- 1
+  function(...) {
+    print(paste0("Progress: ", round(i / end, 3) * 100, "%."))
+    i <<- i + 1
+    f(...)
+  }
+}
+
+adjacent_dist <- function(x) {
+  do.call("c", lapply(2:nrow(x), function(i) {
+    as.numeric(dist(x[(i - 1):i, ]))
+  }))
+}

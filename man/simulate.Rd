@@ -5,9 +5,19 @@
 \alias{simulate_cor}
 \title{A function for generating simulated multivariate data}
 \usage{
-simulate_cor(n = 100, p = 10, mu = 1, Sigma = diag(1, p),
-  locations = 40, durations = 20, proportions = 0.1,
-  change_type = "adjacent")
+simulate_cor(
+  n = 100,
+  p = 10,
+  mu = 1,
+  Sigma = diag(1, p),
+  locations = 40,
+  durations = 20,
+  proportions = 0.1,
+  change_type = "adjacent",
+  point_locations = NA,
+  point_proportions = NA,
+  point_mu = NA
+)
 }
 \arguments{
 \item{n}{The number of observations. The default is \code{n=100}.}

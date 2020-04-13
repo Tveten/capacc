@@ -1,63 +1,63 @@
-BIC_precision_mat <- function(A, S, n, rho) {
-  nnz <- sum(A[lower.tri(A, diag = TRUE)] != 0)
-  - log(det(A)) + sum(diag(A %*% S)) + log(n) / n * nnz
+#### C++ helpers #####
+
+collective_anomalies <- function(mvcapa_cor_res) {
+
+  if (nrow(mvcapa_cor_res$anoms) == 0)
+    return(data.frame('start' = NA, 'end' = NA, 'variate' = NA, 'mean_change' = NA))
+  else {
+    res_dt <- as.data.table(mvcapa_cor_res$anoms)
+    res_dt <- res_dt[start != end]
+    names(res_dt)[4] <- "mean_change"
+    return(res_dt)
+  }
 }
 
-select_precision_mat <- function(glasso_res, S, n) {
-  BIC_per_lambda <- unlist(lapply(1:length(glasso_res$lambda), function(i) {
-    BIC_precision_mat(glasso_res$icov[[i]], S, n, glasso_res$lambda[i])
-  }))
-  glasso_res$icov[[which.min(BIC_per_lambda)]]
-}
-
-estimate_sparse_precision_mat <- function(x, lambda_min_ratio = 0.1, nlambda = 10,
-                                          robust = TRUE, standardise = TRUE) {
-  if (standardise) x <- anomaly::robustscale(x)
-  if (robust) S <- robust_cov_mat(x)
-  else        S <- var(x)
-  glasso_res <- huge::huge(S, lambda.min.ratio = lambda_min_ratio,
-                           nlambda = nlambda, method = 'glasso')
-  select_precision_mat(glasso_res, S, nrow(x))
-}
-
-robust_cov_mat <- function(x) {
-  p <- ncol(x)
-  n <- nrow(x)
-  scores_x <- apply(x, 2, function(x_i) qnorm(rank(x_i)/(n + 1)))
-  mad_x <- diag(apply(x, 2, mad))
-  mad_x %*% cor(scores_x) %*% mad_x
+point_anomalies <- function(mvcapa_cor_res) {
+  if (nrow(mvcapa_cor_res$anoms) == 0)
+    return(data.frame('location' = NA, 'variate' = NA, 'strength' = NA))
+  else {
+    res_dt <- as.data.table(mvcapa_cor_res$anoms)
+    res_dt <- res_dt[start == end][, 2:4]
+    names(res_dt)[c(1, 3)] <- c("location", "strength")
+    return(res_dt)
+  }
 }
 
 
-mvcapa_cor <- function(x, precision_mat = 'automatic', lambda_min_ratio = 0.1, b = 1,
-                       min_seg_len = 1, max_seg_len = nrow(x) / 3, prune = TRUE) {
+
+#### R functions #####
+
+init_precision_mat <- function(precision_mat, tol = sqrt(.Machine$double.eps)) {
+  p <- ncol(precision_mat)
+  precision_mat[abs(precision_mat) <= tol] <- 0
+  lower_nbs <- lower_nbs(precision_mat)
+  extended_nbs <- extended_lower_nbs(lower_nbs)
+  # lower_nbs <- lapply(1:p, get_neighbours_less_than, sparse_mat = precision_mat)
+  # extended_nbs <- lapply(1:p, function(d) remaining_neighbours_below(d, lower_nbs, p))
+  list('Q' = precision_mat, 'nbs' = lower_nbs, 'extended_nbs' = extended_nbs)
+}
+
+mvcapa_corR <- function(x, Q, b = 1,
+                        min_seg_len = 3, max_seg_len = round(nrow(x) / 3),
+                        prune = TRUE, print_progress = FALSE) {
   # TODO: Restrict min_seg_len and max_seg_len
   # Robustly normalise x
   n <- nrow(x)
   p <- ncol(x)
-  x <- anomaly::robustscale(x)
-  if (precision_mat == 'automatic')
-    precision_mat <- estimate_sparse_precision_mat(x, lambda_min_ratio, standardise = FALSE)
-  precision_mat_order <- 1:p
-  band_precision_mat <- band(precision_mat)
-  reordered_precision_mat <- cuthill_mckee(precision_mat, return_all = TRUE)
-  if (reordered_precision_mat$band < band_precision_mat) {
-    # print('Reordering')
-    precision_mat <- reordered_precision_mat$x
-    precision_mat_order <- reordered_precision_mat$order
-    band_precision_mat <- reordered_precision_mat$band
-    x <- x[, precision_mat_order]
-  }
-  print('Estimated precision matrix:')
-  print(precision_mat)
-  print(paste0('Band = ', band(precision_mat)))
-  if (band_precision_mat > 15)
-    warning(paste0('Computation will be slow because the band of the precision matrix is ', band_precision_mat))
-  if (band_precision_mat >= 20)
-    stop(paste0('The band of the precision matrix is too high for computation: ', band_precision_mat))
-  precision_mat_obj <- init_precision_mat(precision_mat)
+  # x <- anomaly::robustscale(x)
+  # TODO: Implement standardisation based on Q.
+  # Now: Assumes x and Q are standardised before input.
+  # precision_mat <- estimate_precision_mat(x, adj_model)
+  if (!any(class(Q) == "dsCMatrix")) Q <- Matrix::Matrix(Q, sparse = TRUE)
+  Q_obj <- init_precision_mat(Q)
+  # Q_order <- 1:p
 
   x <- rbind(rep(0, p), x)  # So the index m always means m - 1.
+
+  # Setting up penalties
+  penalty_names <- c("sparse", "dense", "point")
+  penalty <- lapply(penalty_names, get_penalty, n = n, p = p, b = b)
+  names(penalty) <- penalty_names
 
   # Initialising the DP for the optimal cost.
   C <- rep(0, n + 1)
@@ -70,16 +70,23 @@ mvcapa_cor <- function(x, precision_mat = 'automatic', lambda_min_ratio = 0.1, b
 
   # Running OP
   for (m in (min_seg_len + 1):(n + 1)) {
-    if (m %% 10 == 0) print(paste0(round(100 * m/(n + 1), 2), '% complete.'))
+    if (print_progress)
+      if (m %% 10 == 0) print(paste0(round(100 * m/(n + 1), 2), '% complete.'))
     ## Collective anomalies:
     ts <- max(m - min_seg_len - max_seg_len + 1, 1):(m - min_seg_len)
     ts <- setdiff(ts, unique(prune_t))
     J_m <- list()
     for (t in ts) {
-      optim_savings_obj <- optim_penalised_savings_c(x[(t + 1):m, , drop = FALSE],
-                                                     n, precision_mat_obj, b = b)
-      J_m[[t]] <- precision_mat_order[optim_savings_obj$J_max]  # To refer to the original variates.
-      S[m, t] <- optim_savings_obj$B_max
+      saving <- optimise_mvnormal_saving(x[(t + 1):m, , drop = FALSE], Q,
+                                         Q_obj$nbs,
+                                         Q_obj$extended_nbs,
+                                         penalty$dense$alpha,
+                                         penalty$sparse$beta,
+                                         penalty$sparse$alpha)
+
+      # J_m[[t]] <- Q_order[saving$J_max]  # To refer to the original variates.
+      J_m[[t]] <- saving$J_max
+      S[m, t] <- saving$S_max
     }
     C1s <- C[ts] + S[m, ts]
     C1_max <- max(C1s)
@@ -87,19 +94,24 @@ mvcapa_cor <- function(x, precision_mat = 'automatic', lambda_min_ratio = 0.1, b
     J_max[[m]] <- J_m[[t_max]]
 
     ## Point anomalies:
-    optim_savings_obj <- optim_penalised_savings_c(x[m, , drop = FALSE],
-                                                   n, precision_mat_obj, b = b)
-    J_point[[m]] <- precision_mat_order[optim_savings_obj$J_max]  # To refer to the original variates.
-    S_point[m] <- optim_savings_obj$B_max
+    point_saving <- optimise_mvnormal_saving(x[m, , drop = FALSE], Q,
+                                             Q_obj$nbs,
+                                             Q_obj$extended_nbs,
+                                             Inf,
+                                             penalty$point$beta,
+                                             penalty$point$alpha)
+    # J_point[[m]] <- Q_order[point_saving$J_max]  # To refer to the original variates.
+    J_point[[m]] <- point_saving$J_max
+    S_point[m] <- point_saving$S_max
     C2 <- C[m - 1] + S_point[m]
 
     C0 <- C[m - 1]
     C[m] <- max(C0, C1_max, C2)
 
     if (prune) {
-      max_penalty <- get_penalty('dense', n, p, b)$alpha
-      t_to_prune <- ts[C0 >= C1s + max_penalty]
-      if (length(t_to_prune) > 0) print(t_to_prune)
+      t_to_prune <- ts[C0 >= C1s + penalty$dense$alpha]
+      # print("Prune:")
+      # print(t_to_prune)
       prune_t[t_to_prune] <- t_to_prune
     }
 
@@ -115,87 +127,18 @@ mvcapa_cor <- function(x, precision_mat = 'automatic', lambda_min_ratio = 0.1, b
       anom[m, ] <- c(m - 1, anomaly_type)
     }
   }
-  return(list('x'       = x[-1, order(precision_mat_order)],
+  # return(list('x'       = x[-1, order(Q_order)],
+  return(list('x'       = x[-1, ],
               'S'       = S,
               'J'       = J_max,
               'S_point' = S_point,
               'J_point' = J_point,
               'C'       = C,
-              'A'       = precision_mat,
+              'Q'       = Q,
               'anom'    = anom))
 }
 
-init_precision_mat <- function(precision_mat) {
-  p <- ncol(precision_mat)
-  lower_nbs <- lapply(1:p, get_neighbours_less_than, sparse_mat = precision_mat)
-  extended_nbs <- lapply(1:p, function(d) remaining_neighbours_below(d, lower_nbs, p))
-  list('A' = precision_mat, 'extended_nbs' = extended_nbs)
-}
-
-init_data_setup <- function(n = 200, p = 4, proportions = sqrt(p)/p, mu = 1,
-                            locations = n - durations - 1, durations = 10,
-                            change_type = 'adjacent', cor_mat_type = 'lattice',
-                            rho = 0.8, band = 2, min_nbs = 1, max_nbs = 3) {
-  get_Sigma <- function(cor_mat_type) {
-    if (cor_mat_type == 'iid') {
-      return(list('mat'     = diag(1, p),
-                  'inverse' = diag(1, p)))
-    } else if (cor_mat_type == 'ar1') {
-      return(list('mat'     = ar_cor_mat(p, rho),
-                  'inverse' = ar_precision_mat(p, rho)))
-    } else if (cor_mat_type == 'lattice') {
-      precision_mat <- car_precision_mat(lattice_neighbours(p), rho)
-      return(list('mat'     = solve(precision_mat),
-                  'inverse' = precision_mat))
-    } else if (cor_mat_type == 'banded') {
-      precision_mat <- car_precision_mat(banded_neighbours(band, p), rho)
-      return(list('mat'     = solve(precision_mat),
-                  'inverse' = precision_mat))
-    } else if (cor_mat_type == 'random') {
-      precision_mat <- car_precision_mat(list('random', p), rho,
-                                         min_nbs = min_nbs, max_nbs = max_nbs)
-      return(list('mat'     = solve(precision_mat),
-                  'inverse' = precision_mat))
-    }
-  }
-
-  Sigma_obj <- get_Sigma(cor_mat_type)
-  list('n'                 = n,
-       'p'                 = p,
-       'mu'                = mu,
-       'Sigma'             = Sigma_obj$mat,
-       'Sigma_inv'         = Sigma_obj$inverse,
-       'locations'         = locations,
-       'durations'         = durations,
-       'proportions'       = proportions,
-       'change_type'       = change_type,
-       'precision_mat_obj' = init_precision_mat(Sigma_obj$inverse))
-}
-
-simulate_mvcapa_cor <- function(setup = init_data_setup(), b = 1,
-                                min_seg_len = 5, max_seg_len = round(nrow(sim_data) / 3),
-                                lambda_min_ratio = 0.1, prune = TRUE) {
-  set.seed(5)
-  sim_data <- simulate_cor(n           = setup$n,
-                           p           = setup$p,
-                           mu          = setup$mu,
-                           Sigma       = setup$Sigma,
-                           locations   = setup$locations,
-                           durations   = setup$durations,
-                           proportions = setup$proportions,
-                           change_type = setup$change_type)
-  print(setup$Sigma_inv)
-  res <- mvcapa_cor(sim_data,
-                    # setup$precision_mat_obj,
-                    lambda_min_ratio = lambda_min_ratio,
-                    b                = b,
-                    min_seg_len      = min_seg_len,
-                    max_seg_len      = max_seg_len,
-                    prune            = prune)
-  res
-}
-
-collective_anomalies <- function(mvcapa_cor_res) {
+collective_anomaliesR <- function(mvcapa_cor_res) {
   anom_list <- list()
   m <- nrow(mvcapa_cor_res$anom)
   # Indices m correspond to m - 1 in the data.
@@ -226,7 +169,7 @@ collective_anomalies <- function(mvcapa_cor_res) {
   }
 }
 
-point_anomalies <- function(mvcapa_cor_res) {
+point_anomaliesR <- function(mvcapa_cor_res) {
   anom_list <- list()
   m <- nrow(mvcapa_cor_res$anom)
   while (m >= 1) {
@@ -253,157 +196,3 @@ point_anomalies <- function(mvcapa_cor_res) {
     return(as.data.frame(anom_dt))
   }
 }
-
-capa_line_plot <- function(object, epoch = dim(object$x)[1],
-                           subset = 1:ncol(object$x), variate_names = TRUE) {
-    # creating null entries for ggplot global variables so as to pass CRAN checks
-    x <- value <- ymin <- ymax <- x1 <- x2 <- y1 <- y2 <- x1 <- x2 <- y1 <- y2 <- NULL
-    data_df <- as.data.frame(object$x)
-    names <- paste("y", 1:ncol(object$x), sep = "")
-    colnames(data_df) <- names
-    data_df <- as.data.frame(data_df[, subset, drop = FALSE])
-    n <- nrow(data_df)
-    p <- ncol(data_df)
-    data_df <- cbind(data.frame("x" = 1:n), data_df)
-    data_df <- reshape2::melt(data_df, id = "x")
-    out <- ggplot2::ggplot(data = data_df)
-    out <- out + ggplot2::aes(x = x, y = value)
-    out <- out + ggplot2::geom_point()
-    # highlight the collective anomalies
-    c_anoms <- collective_anomalies(object)
-    c_anoms <- c_anoms[c_anoms$variate %in% subset, ]
-    if(!any(is.na(c_anoms)) & nrow(c_anoms) > 0)
-    {
-        c_anoms_data_df <- c_anoms[, 1:3]
-        names(c_anoms_data_df) <- c(names(c_anoms_data_df)[1:2], "variable")
-        c_anoms_data_df$variable <- names[c_anoms_data_df$variable]
-        c_anoms_data_df$ymin <- -Inf
-        c_anoms_data_df$ymax <- Inf
-        out <- out + ggplot2::geom_rect(data = c_anoms_data_df,
-                                       inherit.aes = FALSE,
-                                       mapping = ggplot2::aes(xmin = start,
-                                                              xmax = end,
-                                                              ymin = ymin,
-                                                              ymax = ymax),
-                                       fill = "blue", alpha=0.4)
-        # c_anoms_data_df$start <- c_anoms_data_df$start + c_anoms$start.lag
-        # c_anoms_data_df$end<-c_anoms_data_df$end-c_anoms$end.lag
-        # out <- out + ggplot2::geom_rect(data = c_anoms_data_df,
-        #                                 inherit.aes = FALSE,
-        #                                 mapping = ggplot2::aes(xmin = start,
-        #                                                        xmax = end,
-        #                                                        ymin = ymin,
-        #                                                        ymax = ymax),
-        #                                 fill = "blue", alpha = 0.5)
-    }
-    # out<-out+facet_grid(variable~.,scales="free_y")
-
-    # highlight the point anomalies
-    p_anoms <- point_anomalies(object)
-    p_anoms <- p_anoms[p_anoms$variate %in% subset,]
-    if(!any(is.na(p_anoms)) & nrow(p_anoms) > 0)
-        {
-            p_anoms_data_df <- Reduce(rbind, Map(function(a,b) {
-                    data_df[data_df$variable == names[a] & data_df$x == b, ]
-                }, p_anoms$variate, p_anoms$location)
-            )
-            out <- out + ggplot2::geom_point(data = p_anoms_data_df, colour = "red", size = 1.5)
-    }
-
-    out <- out + ggplot2::facet_grid(factor(variable, levels = rev(names)) ~ .,
-                                     scales = "free_y")
-    # grey out the data after epoch
-    if(epoch != nrow(object$x))
-    {
-	      d <- data.frame(variable = names[subset], x1 = epoch, x2 = n,
-	                    y1 = -Inf, y2 = Inf)
-        out <- out + geom_rect(data = d, inherit.aes = FALSE,
-                               mapping = aes(xmin = x1, xmax = x2,
-                                             ymin = y1, ymax = y2),
-                               fill = "yellow", alpha = 0.2)
-    }
-    if(variate_names == FALSE)
-    {
-        out <- out + theme(strip.text.y = element_blank())
-    }
-    # change background
-    out <- out + ggplot2::theme(
-                                # Hide panel borders and remove grid lines
-                                panel.border = ggplot2::element_blank(),
-                                panel.grid.major = ggplot2::element_blank(),
-                                panel.grid.minor = ggplot2::element_blank(),
-                                # Change axis line
-                                axis.line = ggplot2::element_line(colour = "black")
-                              )
-    return(out)
-}
-
-capa_tile_plot <- function(object, variate_names = FALSE,
-                           epoch = dim(object$x)[1], subset = 1:ncol(object$x)) {
-    # nulling out variables used in ggplot to get the package past CRAN checks
-    x1 <- y1 <- x2 <- y2 <- variable <- value <- NULL
-    df <- as.data.frame(object$x)
-    df <- as.data.frame(df[, subset, drop = FALSE])
-    # normalise data
-    for(i in 1:ncol(df))
-    {
-        df[, i] <- (df[, i] - min(df[, i])) / (max(df[, i]) - min(df[, i]))
-    }
-    n <- data.frame("n" = seq(1, nrow(df)))
-    molten.data <- reshape2::melt(cbind(n, df), id = "n")
-    out <- ggplot2::ggplot(molten.data, ggplot2::aes(n, variable))
-    out <- out + ggplot2::geom_tile(ggplot2::aes(fill = value))
-    # get any collective anomalies
-    c_anoms <- collective_anomalies(object)
-    c_anoms <- c_anoms[c_anoms$variate %in% subset, ]
-    c_anoms <- unique(c_anoms[, 1:2])
-    if(!any(is.na(c_anoms)) & nrow(c_anoms) > 0)
-    {
-        ymin <- 0
-        ymax <- ncol(df)
-        out <- out + ggplot2::annotate("rect", xmin = c_anoms$start,
-                                       xmax = c_anoms$end, ymin = ymin,
-                                       ymax = ymax + 1, alpha = 0.0,
-                                       color = "red", fill = "yellow")
-    }
-    if(epoch != nrow(object$x))
-    {
-        d <- data.frame(x1 = epoch, x2 = nrow(object$x), y1 = -Inf, y2 = Inf)
-        out <- out + ggplot2:::geom_rect(data = d, inherit.aes = FALSE,
-                                         mapping = ggplot2::aes(xmin = x1,
-                                                                xmax = x2,
-                                                                ymin = y1,
-                                                                ymax = y2),
-                                         fill = "yellow", alpha=0.2)
-    }
-    if(variate_names == FALSE)
-    {
-        out <- out + ggplot2::theme(axis.text.y = ggplot2::element_blank(),
-                                    axis.title = ggplot2::element_blank())
-    }
-    out <- out + ggplot2::theme(
-                                # Hide panel borders and remove grid lines
-                                panel.border = ggplot2::element_blank(),
-                                panel.grid.major = ggplot2::element_blank(),
-                                panel.grid.minor = ggplot2::element_blank(),
-                                # Change axis line
-                                axis.line = ggplot2::element_line(colour = "black")
-                                )
-    return(out)
-}
-
-plot_capa <- function(object, epoch = dim(object$x)[1],
-                      subset = 1:ncol(object$x), variate_names = TRUE) {
-  if (length(subset) <= 20)
-    return(capa_line_plot(object, epoch, subset, variate_names))
-  else
-    return(capa_tile_plot(object, variate_names, epoch, subset))
-}
-
-
-
-
-
-
-
-
