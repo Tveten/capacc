@@ -1,7 +1,7 @@
 ####
 #### Single anomaly
 ####
-mvcapa_1anom <- function(x, A, b = 1, l = 5, M = nrow(x), cost_type = 'ar1') {
+mvcapa_1anom2 <- function(x, A, b = 1, l = 5, M = nrow(x), cost_type = 'ar1') {
   get_savings_func <- function(cost_type) {
     if (cost_type == 'iid') return(penalised_savings_iid)
     if (cost_type == 'ar1') return(penalised_savings_ar1)
@@ -30,7 +30,7 @@ mvcapa_1anom <- function(x, A, b = 1, l = 5, M = nrow(x), cost_type = 'ar1') {
   list('max' = max(C), 'max_s' = max_s, 'J_seq' = J, 'S_obj_seq' = S)
 }
 
-simulate_mvcapa_1anom <- function(setup = init_setup(200, 10, proportions = 0.3),
+simulate_mvcapa_1anom2 <- function(setup = init_setup(200, 10, proportions = 0),
                                   cost_type = 'ar1', phi = 0.5, cor_mat_type = 'ar1',
                                   b = 1, l = 5, M = nrow(sim_data)) {
   get_Sigma <- function(cor_mat_type) {
@@ -46,7 +46,7 @@ simulate_mvcapa_1anom <- function(setup = init_setup(200, 10, proportions = 0.3)
   sim_data <- simulate_cor(n = setup$n, p = setup$p, mu = setup$mu, Sigma = Sigma$mat,
                            locations = setup$locations, durations = setup$durations,
                            proportions = setup$proportions, change_type = setup$change_type)
-  mvcapa_1anom(sim_data, Sigma$inverse, b, l, M, cost_type)
+  mvcapa_1anom2(sim_data, Sigma$inverse, b, l, M, cost_type)
 }
 
 test_conditions <- function() {
@@ -95,7 +95,7 @@ test_conditions <- function() {
   sum(res[, 3])
 }
 
-p_false <- function(cost_type, setup = init_setup(200, 10), cor_mat_type = 'ar1',
+p_false2 <- function(cost_type, setup = init_setup(200, 10), cor_mat_type = 'ar1',
                     phi = 0.5, n_sim = 100) {
   get_bs <- function(cost_type, phi) {
     if (cost_type == 'iid' || abs(phi) <= 0.5) return(seq(0.1, 2.5, 0.1))
@@ -139,12 +139,12 @@ p_false <- function(cost_type, setup = init_setup(200, 10), cor_mat_type = 'ar1'
                                   'phi' = rep(phi, n_b), 'n_sim' = rep(n_sim, n_b))))
 }
 
-get_p_false_file_name <- function(n, p, sign_phi) {
+get_p_false_file_name2 <- function(n, p, sign_phi) {
   if (sign_phi == 1) return(paste0('p_false_results_positive_n', n, 'p', p, '.RData'))
   if (sign_phi == -1) return(paste0('p_false_results_negative_n', n, 'p', p, '.RData'))
 }
 
-run_and_save_p_false_dt <- function(n = 200, p = 10, n_sim = 500, sign_phi = 1) {
+run_and_save_p_false_dt2 <- function(n = 200, p = 10, n_sim = 500, sign_phi = 1) {
   cost_types <- c('iid', 'ar1')
   phis <- sign_phi * c(0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99)
 
@@ -163,8 +163,8 @@ run_and_save_p_false_dt <- function(n = 200, p = 10, n_sim = 500, sign_phi = 1) 
   save(p_false_dt, file = file_name)
 }
 
-get_penalty_scales <- function(alpha, n, p, sign_phi = 1) {
-  file_name <- get_p_false_file_name(n, p, sign_phi)
+get_penalty_scales2 <- function(alpha, n, p, sign_phi = 1) {
+  file_name <- get_p_false_file_name2(n, p, sign_phi)
   load(file_name)
   bs <- p_false_dt[, b[which.min(abs(p_false - alpha))], by = .(cost_type, phi)]
   names(bs)[3] <- 'b'
@@ -174,7 +174,7 @@ get_penalty_scales <- function(alpha, n, p, sign_phi = 1) {
   bs
 }
 
-run_1anom_test <- function(setup = init_setup(200, 10, 0.3, 1, durations = 20,
+run_1anom_test2 <- function(setup = init_setup(200, 10, 0.3, 1, durations = 20,
                                               change_type = 'adjacent'),
                            sign_phi = 1, alpha = 0.05, n_sim = 100) {
 
@@ -218,14 +218,14 @@ run_1anom_test <- function(setup = init_setup(200, 10, 0.3, 1, durations = 20,
   penalty_dt
 }
 
-get_res_1anom_file_name <- function(n, p, change_type, sign_phi) {
+get_res_1anom_file_name2 <- function(n, p, change_type, sign_phi) {
   if (sign_phi == 1)
     return(paste0('res_1anom_', change_type, '_positive_n', 200, 'p', 10, '.RData'))
   if (sign_phi == -1)
     return(paste0('res_1anom_', change_type, '_negative_n', 200, 'p', 10, '.RData'))
 }
 
-run_all_1anom_tests <- function(change_type = 'adjacent', sign_phi = 1, n_sim = 500) {
+run_all_1anom_tests2 <- function(change_type = 'adjacent', sign_phi = 1, n_sim = 500) {
   props <- c(0.1, 0.3, 0.6)
   mean_changes <- c(0.25, 0.5, 0.75, 1, 1.25)
   print(change_type)
@@ -243,7 +243,7 @@ run_all_1anom_tests <- function(change_type = 'adjacent', sign_phi = 1, n_sim = 
   anom_res
 }
 
-plot_1anom_res <- function(change_type = 'adjacent', sign_phi = 1, proportion = 0.1) {
+plot_1anom_res2 <- function(change_type = 'adjacent', sign_phi = 1, proportion = 0.1) {
   file_name <- get_res_1anom_file_name(200, 10, change_type, sign_phi)
   load(file_name)
   curr_res_dt <- anom_res[prop == proportion & mu > 0]
@@ -255,7 +255,7 @@ plot_1anom_res <- function(change_type = 'adjacent', sign_phi = 1, proportion = 
     ggplot2::ggtitle(paste0(change_type, ', prop = ', proportion))
 }
 
-plot_1anom_diff <- function(change_type = 'adjacent', sign_phi = 1, proportion = 0.1) {
+plot_1anom_diff2 <- function(change_type = 'adjacent', sign_phi = 1, proportion = 0.1) {
   file_name <- get_res_1anom_file_name(200, 10, change_type, sign_phi)
   load(file_name)
   curr_res_dt <- anom_res[prop == proportion & mu > 0]
@@ -269,7 +269,7 @@ plot_1anom_diff <- function(change_type = 'adjacent', sign_phi = 1, proportion =
     ggplot2::coord_cartesian(ylim = c(-0.2, 1))
 }
 
-group_plot_1anom <- function(plot_func = plot_1anom_diff, sign_phi = 1) {
+group_plot_1anom2 <- function(plot_func = plot_1anom_diff, sign_phi = 1) {
   proportions <- c(0.1, 0.3, 0.6)
   change_type <- c('adjacent', 'scattered')
 
@@ -279,51 +279,4 @@ group_plot_1anom <- function(plot_func = plot_1anom_diff, sign_phi = 1) {
   plots <- c(plots[[1]], plots[[2]])
   gridExtra::grid.arrange(gridExtra::arrangeGrob(grobs = plots, nrow = length(change_type)))
 
-}
-
-####
-#### Multiple anomalies
-####
-mvcapa_ar1 <- function(x, A, b = 1, l = 1, max_seg_len = nrow(x)) {
-  # Robustly normalise x
-  n <- nrow(x)
-  p <- ncol(x)
-  x <- anomaly::robustscale(x)
-
-  # Initialising the DP for the optimal cost.
-  C <- rep(0, n + 1)
-  S <- matrix(0, nrow = n + 1, ncol = n)
-  anom <- matrix(0, nrow = n + 1, ncol = 2)
-
-  # Running OP
-  for (m in (l + 1):(n + 1)) {
-    print(m)
-
-    # TODO: Restrict min_seg_len and max_seg_len
-    max_ind <- max(m - (l - 1) - max_seg_len, 1):(m - l)
-    for (t in max_ind) {
-      S[m, t] <- penalised_savings(x[t:(m - 1), , drop = FALSE], n, A, b)$B_max
-    }
-    C0 <- C[m - 1]
-    C1_max <- max(C[max_ind] + S[m, max_ind])
-    t_max <- max_ind[which.max(C[max_ind] + S[m, max_ind])]
-    C[m] <- max(C0, C1_max)
-
-    anomaly_type <- which.max(c(C0, C1_max)) - 1
-    if (anomaly_type == 0) {
-      anom[m, ] <- c(m - 1, anomaly_type)
-    } else if (anomaly_type == 1) {
-      anom[m, ] <- c(t_max, anomaly_type)
-    }
-  }
-  return(list('S' = S, 'C' = C, 'anom' = anom))
-}
-
-simulate_mvcapa_ar1 <- function(phi, setup = init_setup(300, 4), b = 1, l = 1, M = nrow(sim_data)) {
-  Sigma <- ar_cor_mat(setup$p, phi)
-  sim_data <- simulate_cor(n = setup$n, p = setup$p, mu = setup$mu, Sigma = Sigma,
-                           locations = setup$locations, durations = setup$durations,
-                           proportions = setup$proportions)
-  A <- ar_precision_mat(setup$p, phi)
-  mvcapa_ar1(sim_data, A, b = b, l = l, max_seg_len = M)
 }

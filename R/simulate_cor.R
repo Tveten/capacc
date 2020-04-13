@@ -25,17 +25,14 @@
 #' @export
 simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
                         locations=40,durations=20,proportions=0.1,
-                        change_type = 'adjacent')
+                        change_type = 'adjacent',
+                        point_locations = NA, point_proportions = NA, point_mu = NA)
 {
     if(length(n) > 1)
     {
         stop("n must be a scalar")
     }
     if(length(p) > 1)
-    {
-        stop("p must be a scalar")
-    }
-    if(length(mu) > 1)
     {
         stop("p must be a scalar")
     }
@@ -67,6 +64,10 @@ simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
     {
         stop("durations must be a scalar or a vector the same size as locations")
     }
+    if(length(mu) != 1 && length(mu) != length(locations))
+    {
+        stop("mu must be a scalar or a vector the same size as locations")
+    }
     if(length(durations) == 1)
     {
         durations<-rep(durations,length(locations))
@@ -75,9 +76,13 @@ simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
     {
         proportions<-rep(proportions,length(locations))
     }
-    if(!Reduce("&",locations+durations < n))
+    if(length(mu) == 1)
     {
-        stop("locations+durations must be < n")
+        mu<-rep(mu,length(locations))
+    }
+    if(!Reduce("&",locations+durations <= n))
+    {
+        stop("locations+durations must be <= n")
     }
 
     q = length(proportions);
@@ -106,8 +111,14 @@ simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
             affected_dims <- get_affected_dims(change_type, proportions[j])
             for (i in affected_dims)
             {
-                X[locations[j]:(locations[j]+s[j]-1),i] = X[locations[j]:(locations[j]+s[j]-1),i]+mu;
+                X[locations[j]:(locations[j]+s[j]-1),i] = X[locations[j]:(locations[j]+s[j]-1),i]+mu[j];
             }
+        }
+    }
+    if (!is.na(point_locations)) {
+        for (j in 1:length(point_locations)) {
+            affected_dims <- get_affected_dims(change_type, point_proportions[j])
+            X[point_locations[j], affected_dims] <- X[point_locations[j], affected_dims] + point_mu[j]
         }
     }
 
