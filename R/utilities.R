@@ -80,3 +80,7 @@ adjacent_dist <- function(x) {
     as.numeric(dist(x[(i - 1):i, ]))
   }))
 }
+
+is_equal <- function(x_vec, y) {
+  vapply(x_vec, function(x) isTRUE(all.equal(x, y)), logical(1))
+}

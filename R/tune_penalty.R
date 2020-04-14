@@ -9,12 +9,14 @@ tuning_params <- function(alpha = 0.05, tol = 0.02, max_iter = 50,
        "tuning_n_sim"    = n_sim)
 }
 
+#' @export
 tune_penalty <- function(data = init_data(mu = 0), params = mvcapa_params(),
                          tuning = tuning_params(), seed = NA) {
 
   add_setup_info <- function(res) {
     res <- cbind(res,
-                 as.data.table(data[!grepl("Sigma", names(data))]),
+                 as.data.table(data[!(grepl("Sigma", names(data)) |
+                                        names(data) == "changing_vars")]),
                  as.data.table(params[names(params) != "b"]),
                  as.data.table(tuning[names(tuning) != "init_b"]))
     res$seed <-  seed
@@ -41,7 +43,7 @@ tune_penalty <- function(data = init_data(mu = 0), params = mvcapa_params(),
   if (!is.na(seed)) set.seed(seed)
   data$mu <- 0
   message(paste0("Tuning ", params$cost,  " penalty for n = ", data$n, ", p = ", data$p,
-                 ", cor_mat_type = ", data$cor_mat_type,
+                 ", precision type = ", data$precision_type,
                  ", band = ", data$band,
                  " and rho = ", data$rho))
   res <- do.call('rbind', Map(fp_rate, tuning$init_b))
@@ -84,15 +86,15 @@ get_tuned_penalty <- function(data = init_data(mu = 0), params = mvcapa_params()
 #' @export
 tune_many <- function(n = 100, p = 10, band = 2) {
   init_b <- c(0.5, 1, 4)
-  cor_mat_types <- c("banded", "block_banded", "lattice")
+  precision_types <- c("banded", "block_banded", "lattice")
   costs <- c("iid", "cor")
-  rhos = c(-0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99)
-  lapply(cor_mat_types, function(cor_mat_type) {
+  rhos = c(0.5, 0.7, 0.8, 0.9, 0.95, 0.99)
+  lapply(precision_types, function(precision_type) {
     lapply(rhos, function(rho) {
       lapply(costs, function(cost) {
-        if (cor_mat_type == "block_banded") m <- p - 1
+        if (precision_type == "block_banded") m <- p - 1
         else m <- p
-        data <- init_data(n = n, p = p, cor_mat_type = cor_mat_type,
+        data <- init_data(n = n, p = p, precision_type = precision_type,
                           band = band, rho = rho, block_size = m)
         get_tuned_penalty(data, mvcapa_params(cost), tuning_params(init_b = init_b))
       })
