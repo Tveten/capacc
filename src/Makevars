@@ -5,3 +5,4 @@ CXX_STD = CXX14
 PKG_CPPFLAGS =  -I../inst/include/
 CXXFLAGS = -fopenmp
 CXX14FLAGS = -fopenmp
+CXX14 = -fopenmp
