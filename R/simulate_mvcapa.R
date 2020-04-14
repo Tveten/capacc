@@ -1,11 +1,10 @@
 #' @export
-init_data <- function(n = 200, p = 10, proportions = sqrt(p)/p, mu = 1,
-                            locations = n - durations - 1, durations = 10,
-                            change_type = 'adjacent', point_locations = NA,
-                            point_proportions = NA, point_mu = NA,
-                            precision_type = 'banded', rho = 0.8, band = 2,
-                            block_size = p,
-                            min_nbs = 1, max_nbs = 3) {
+init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p, mu = 1,
+                      locations = n - durations - 1, durations = 10,
+                      change_type = 'adjacent', changing_vars = NA,
+                      point_locations = NA, point_proportions = NA,
+                      point_mu = NA, precision_type = 'banded', rho = 0.8,
+                      band = 2, block_size = p, min_nbs = 1, max_nbs = 3) {
   get_Sigma <- function(precision_type) {
     if (precision_type == 'iid') {
       return(list('mat'     = diag(1, p),
@@ -43,6 +42,7 @@ init_data <- function(n = 200, p = 10, proportions = sqrt(p)/p, mu = 1,
        'durations'         = durations,
        'proportions'       = proportions,
        'change_type'       = change_type,
+       'changing_vars'     = changing_vars,
        'point_locations'   = point_locations,
        'point_proportions' = point_proportions,
        'point_mu'          = point_mu)
@@ -79,6 +79,7 @@ simulate_mvcapa <- function(data = init_data(), params = mvcapa_params(),
                     durations         = data$durations,
                     proportions       = data$proportions,
                     change_type       = data$change_type,
+                    changing_vars     = data$changing_vars,
                     point_locations   = data$point_locations,
                     point_proportions = data$point_proportions,
                     point_mu          = data$point_mu)

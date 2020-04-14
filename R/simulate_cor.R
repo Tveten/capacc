@@ -25,7 +25,7 @@
 #' @export
 simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
                         locations=40,durations=20,proportions=0.1,
-                        change_type = 'adjacent',
+                        change_type = 'adjacent', changing_vars = NA,
                         point_locations = NA, point_proportions = NA, point_mu = NA)
 {
     if(length(n) > 1)
@@ -96,11 +96,15 @@ simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
     }
 
     get_affected_dims <- function(change_type, prop) {
-        if (change_type == 'adjacent')
+        if (change_type == "custom") {
+            if (is.na(changing_vars))
+                stop("If change_type is 'custom', you must provide a changing_vars vector")
+            return(changing_vars)
+        } else if (change_type == 'adjacent')
             return(1:round(prop * p))
-        if (change_type == 'scattered')
+        else if (change_type == 'scattered')
             return(round(seq(2, p - 1, length.out = prop * p)))
-        if (change_type == 'randomised')
+        else if (change_type == 'randomised')
             return(sample(1:p, prop * p))
     }
 
