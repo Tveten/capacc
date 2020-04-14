@@ -4,6 +4,7 @@
 
 #include <boost/circular_buffer.hpp>
 #include <vector>
+#include <limits>
 
 namespace ostats
 {
