@@ -10,6 +10,7 @@
 #include <RcppArmadillo.h>
 #include <memory>
 #include <list>
+#include <limits>
 // #include <iostream>
 #include <algorithm>
 #include <boost/functional/hash.hpp>

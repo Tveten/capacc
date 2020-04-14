@@ -5,6 +5,7 @@
 #include "moments.h"
 #include "penalty.h"
 #include <cmath>
+#include <limits>
 #ifdef PARALLEL_COST_VECTOR
 #include "omp.h"
 #endif

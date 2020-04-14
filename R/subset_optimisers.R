@@ -553,9 +553,6 @@ penalised_savings_ar1 <- function(x_subset, n, A, b = 1) {
        'B1' = optimal_subset_res$B1)
 }
 
-#' @param x A data matrix with p columns and n = (e - s) rows.
-#' @param A A precision matrix.
-#' @param l The maximum size of the subset.
 optimise_subset_AR1_SN <- function(x, A, l = p) {
   p <- ncol(x)
   n <- nrow(x)

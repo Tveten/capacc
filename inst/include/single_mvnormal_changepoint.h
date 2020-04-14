@@ -3,7 +3,8 @@
 #include "precision.h"
 #include "penalty.h"
 
-#include<RcppArmadillo.h>
+#include <RcppArmadillo.h>
+#include <limits>
 #ifdef _OPENMP
 #include <omp.h>
 #endif

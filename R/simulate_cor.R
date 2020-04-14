@@ -105,7 +105,7 @@ simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
     }
 
     X = MASS::mvrnorm(n, rep(0, p), Sigma)
-    if (any(proportions > 0)) {
+    if (any(mu > 0)) {
         for (j in 1:q)
         {
             affected_dims <- get_affected_dims(change_type, proportions[j])
