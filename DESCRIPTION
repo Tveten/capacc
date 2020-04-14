@@ -12,7 +12,7 @@ LazyData: true
 Depends:
     data.table (>= 1.12)
 Imports: 
-    anomaly (>= 2.0.1),
+    anomaly (>= 3.0.1),
     Matrix (>= 1.2),
     MASS (>= 7.3),
     ggplot2 (>= 3.2),

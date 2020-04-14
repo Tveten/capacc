@@ -55,6 +55,6 @@ iid_penalty <- function(n, p, b = 1) {
 
 iid_point_penalty <- function(n, p, b = 1) {
   point_pen <- get_penalty("point", n, p, b)
-  point_pen_vec <- 1:p * point_pen$beta
+  point_pen$beta
 }
 
