@@ -14,6 +14,7 @@ simulate_cor(
   durations = 20,
   proportions = 0.1,
   change_type = "adjacent",
+  changing_vars = NA,
   point_locations = NA,
   point_proportions = NA,
   point_mu = NA

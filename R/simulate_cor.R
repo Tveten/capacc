@@ -102,6 +102,8 @@ simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
             return(changing_vars)
         } else if (change_type == 'adjacent')
             return(1:round(prop * p))
+        else if (change_type == 'adjacent_lattice')
+            return(unique(c(1, unlist(lattice_neighbours(p))))[1:round(prop * p)])
         else if (change_type == 'scattered')
             return(round(seq(2, p - 1, length.out = prop * p)))
         else if (change_type == 'randomised')

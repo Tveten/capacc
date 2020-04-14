@@ -125,7 +125,7 @@ power_curve <- function(data = init_data(), params = mvcapa_params(),
                  "."))
   if (already_estimated(data, params, tuning, curve, loc_tol)) return(NULL)
 
-  params$b <- get_tuned_penalty(data, params, tuning, seed = sample(1:1000))$b
+  params$b <- get_tuned_penalty(data, params, tuning, seed = sample(1:1000, 1))$b
   if (!is.na(seed)) set.seed(seed)
   res <- do.call('rbind', Map(est_power, curve$init_values))
   ind <- split_inds(res)
@@ -144,6 +144,7 @@ power_curve <- function(data = init_data(), params = mvcapa_params(),
 many_power_curves <- function(ns = 100, ps = 10, costs = c("iid", "cor"),
                               precision_types = "banded", bands = 2,
                               rhos = 0.9, props = 0.1, loc = 50,
+                              change_types = "adjacent",
                               precision_est_structs = "correct", est_bands = NA,
                               tuning = tuning_params(), curve = curve_params(),
                               loc_tol = 10) {
@@ -153,33 +154,34 @@ many_power_curves <- function(ns = 100, ps = 10, costs = c("iid", "cor"),
         lapply(precision_types, function(precision_type) {
           lapply(rhos, function(rho) {
             lapply(bands, function(band) {
-              lapply(precision_est_structs, function(precision_est_struct) {
-                lapply(est_bands, function(est_band) {
-                  seed <- sample(1:10^6, 1)
-                  lapply(costs, function(cost) {
-                    if (precision_type == "block_banded") {
-                      m <- p - 1
-                      change_type <- "custom"
-                      changing_vars <- p
-                    } else {
-                      m <- p
-                      change_type <- "adjacent"
-                      changing_vars <- NA
-                    }
-                    data <- init_data(n = n,
-                                      p = p,
-                                      precision_type = precision_type,
-                                      band = band,
-                                      rho = rho,
-                                      block_size = m,
-                                      proportions = prop,
-                                      locations = loc,
-                                      change_type = change_type,
-                                      changing_vars = changing_vars)
-                    params <- mvcapa_params(cost,
-                                            precision_est_struct = precision_est_struct,
-                                            est_band = est_band)
-                    power_curve(data, params, tuning, curve, loc_tol, seed)
+              lapply(change_types, function(change_type) {
+                lapply(precision_est_structs, function(precision_est_struct) {
+                  lapply(est_bands, function(est_band) {
+                    seed <- sample(1:10^6, 1)
+                    lapply(costs, function(cost) {
+                      if (precision_type == "block_banded") {
+                        m <- p - 1
+                        change_type <- "custom"
+                        changing_vars <- p
+                      } else {
+                        m <- p
+                        changing_vars <- NA
+                      }
+                      data <- init_data(n = n,
+                                        p = p,
+                                        precision_type = precision_type,
+                                        band = band,
+                                        rho = rho,
+                                        block_size = m,
+                                        proportions = prop,
+                                        locations = loc,
+                                        change_type = change_type,
+                                        changing_vars = changing_vars)
+                      params <- mvcapa_params(cost,
+                                              precision_est_struct = precision_est_struct,
+                                              est_band = est_band)
+                      power_curve(data, params, tuning, curve, loc_tol, seed)
+                    })
                   })
                 })
               })
@@ -194,14 +196,22 @@ many_power_curves <- function(ns = 100, ps = 10, costs = c("iid", "cor"),
 
 #' @export
 power_runs <- function() {
+  tuning <- tuning_params()
   curve <- curve_params(max_dist = 0.1, n_sim = 300)
-  many_power_curves(precision_types = c("banded"),
-                    rhos = c(-0.3, 0.7, 0.9, 0.99), props = c(0.1, 0.3, 1))
-  many_power_curves(precision_types = c("block_banded"),
-                    rhos = c(0.5, 0.7, 0.9, 0.99), props = 0.1)
-  many_power_curves(precision_types = c("lattice"), rhos = c(0.7, 0.9, 0.99),
+  many_power_curves(precision_types = "banded",
+                    rhos = c(-0.3, 0.7, 0.9, 0.99), props = c(0.1, 0.3, 1),
+                    tuning = tuning, curve = curve)
+  many_power_curves(precision_types = "block_banded",
+                    rhos = c(0.5, 0.7, 0.9, 0.99), props = 0.1,
+                    tuning = tuning, curve = curve)
+  many_power_curves(precision_types = "lattice", rhos = c(0.7, 0.9, 0.99),
                     ns = 200, p = 20, props = c(0.1, 0.3, 1), loc = 100,
-                    precision_est_structs = c("correct", "banded"), est_bands = 2)
+                    change_types = "adjacent_lattice",
+                    precision_est_structs = c("correct", "banded"), est_bands = 2,
+                    tuning = tuning, curve = curve)
+  many_power_curves(precision_types = "banded",
+                    rhos = 0.7, bands = c(1, 3:4), props = c(0.1, 0.3, 1),
+                    tuning = tuning, curve = curve)
 }
 
 plot_power_curve <- function(data = init_data(), params = mvcapa_params(),
