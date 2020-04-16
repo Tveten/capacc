@@ -148,13 +148,13 @@ run_and_save_p_false_dt2 <- function(n = 200, p = 10, n_sim = 500, sign_phi = 1)
   cost_types <- c('iid', 'ar1')
   phis <- sign_phi * c(0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99)
 
-  p_false_list <- list(p_false('iid', cor_mat_type = 'iid', phi = 0, n_sim = n_sim))
+  p_false_list <- list(p_false2('iid', cor_mat_type = 'iid', phi = 0, n_sim = n_sim))
   for (phi in phis) {
     for (cost_type in cost_types) {
       print(c(phi, cost_type))
-      p_false_list[[length(p_false_list) + 1]] <- p_false(cost_type,
-                                                          setup = init_setup(n, p),
-                                                          phi = phi, n_sim = n_sim)
+      p_false_list[[length(p_false_list) + 1]] <- p_false2(cost_type,
+                                                           setup = init_setup(n, p),
+                                                           phi = phi, n_sim = n_sim)
       print(p_false_list[[length(p_false_list)]])
     }
   }
@@ -234,7 +234,7 @@ run_all_1anom_tests2 <- function(change_type = 'adjacent', sign_phi = 1, n_sim =
     print(paste0('Proportion = ', prop))
     do.call('rbind', lapply(mean_changes, function(mu) {
       print(paste0('Mean change = ', mu))
-      run_1anom_test(init_setup(200, 10, prop, mu, change_type = change_type),
+      run_1anom_test2(init_setup(200, 10, prop, mu, change_type = change_type),
                      sign_phi = sign_phi, n_sim = n_sim)
     }))
   }))

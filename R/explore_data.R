@@ -110,8 +110,9 @@ avg_temp_cols <- function(wide_temp_data) {
   avg_temp_data
 }
 
-mvcapa_cor_temp <- function(temp_data, country = 'Norway', city = 'all', month = '01', from_year = 1770,
-                            lambda_min_ratio = 0.1, scr = FALSE, scr_num = 10, eps = 0.2, b = 1, min_seg_len = 3, max_seg_len = 50) {
+mvcapa_cor_temp <- function(temp_data, country = 'Norway', city = 'all',
+                            month = '01', from_year = 1770,
+                            b = 1, min_seg_len = 3, max_seg_len = 50) {
   # Anomalies detected:
   #   - Switzerland august anomaly.
 
@@ -120,9 +121,9 @@ mvcapa_cor_temp <- function(temp_data, country = 'Norway', city = 'all', month =
                            direction = 'wide', timevar = 'CityCountry',
                            idvar = 'dt', v.names = 'AverageTemperature')
   x <- as.matrix(avg_temp_cols(wide_sub_data))
-  res <- mvcapa_cor(x, lambda_min_ratio = lambda_min_ratio, b = b, eps = eps,
-                    scr = scr, scr_num = scr_num,
-                    min_seg_len = min_seg_len, max_seg_len = max_seg_len)
+  Q_hat <- estimate_precision_mat(x, banded_neighbours(5, ncol(x)))
+  res <- mvcapa_cor(x, Q_hat, b = b, b_point = b,
+                    min_seg_len = minsl, max_seg_len = maxsl)
   plot_capa(res)
   res
 }

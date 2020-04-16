@@ -28,6 +28,11 @@ init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p, mu = 1,
     }
   }
 
+  if (change_type == "custom" && is.na(changing_vars))
+    stop("If change_type is 'custom', you must provide a changing_vars vector")
+  else
+    proportions <- length(changing_vars) / p
+
   Sigma_obj <- get_Sigma(precision_type)
   list('n'                 = n,
        'p'                 = p,

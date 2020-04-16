@@ -35,15 +35,19 @@ car_precision_mat <- function(nbs = banded_neighbours(2, 10), rho = 0.5, sigma =
                               min_nbs = 1, max_nbs = 3, standardised = TRUE, sparse = TRUE) {
   p <- length(nbs)
   W <- adjacency_mat(nbs, sparse)
-  eigen_values_W <- eigen(W)$values
-  if (rho <= 1 / eigen_values_W[p]) {
-    min_rho <- 1 / eigen_values_W[p]
-    warning(paste0('rho has been altered to 1 / smallest_eigen_value(W) = ', min_rho))
-    rho <- min_rho + sqrt(.Machine$double.eps)
+  if (all(unlist(Map(length, nbs)) == 0)) {
+    Sigma_inv <- diag(1, p)
+  } else {
+    eigen_values_W <- eigen(W)$values
+    if (rho <= 1 / eigen_values_W[p]) {
+      min_rho <- 1 / eigen_values_W[p]
+      warning(paste0('rho has been altered to 1 / smallest_eigen_value(W) = ', min_rho))
+      rho <- min_rho + sqrt(.Machine$double.eps)
+    }
+    Sigma_inv <- 1 / sigma^2 * (diag(as.vector(W %*% rep(1, p))) - rho * W)
+    if (standardised) Sigma_inv <- standardise_precision_mat(Sigma_inv)
   }
 
-  Sigma_inv <- 1 / sigma^2 * (diag(as.vector(W %*% rep(1, p))) - rho * W)
-  if (standardised) Sigma_inv <- standardise_precision_mat(Sigma_inv)
   if (sparse) return(Matrix::Matrix(Sigma_inv, sparse = TRUE))
   else return(Sigma_inv)
 }
@@ -65,13 +69,17 @@ symmetric_from_lower_tri <- function(x_tri) {
 }
 
 banded_neighbours <- function(band, p) {
-  nbs <- list()
-  for (i in 1:p) {
-    if (i == 1) lower <- integer(0)
-    else        lower <- max(1, i - band):(i - 1)
-    if (i == p) upper <- integer(0)
-    else        upper <- (i + 1):min(i + band, p)
-    nbs[[i]] <- c(lower, upper)
+  if (band == 0) {
+    nbs <- lapply(1:p, function(i) integer(0))
+  } else {
+    nbs <- list()
+    for (i in 1:p) {
+      if (i == 1) lower <- integer(0)
+      else        lower <- max(1, i - band):(i - 1)
+      if (i == p) upper <- integer(0)
+      else        upper <- (i + 1):min(i + band, p)
+      nbs[[i]] <- c(lower, upper)
+    }
   }
   nbs
 }
