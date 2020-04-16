@@ -54,9 +54,10 @@ init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p, mu = 1,
 }
 
 #' @export
-mvcapa_params <- function(cost = "cor", b = 1, minsl = 2, maxsl = 100,
+method_params <- function(cost = "cor", b = 1, minsl = 2, maxsl = 100,
                           precision_est_struct = "correct", est_band = 2) {
   if (precision_est_struct == "correct") est_band <- NA
+  if (cost == "inspect") b <- NA
   list("cost"                 = cost,
        "b"                    = b,
        "minsl"                = minsl,
@@ -66,7 +67,7 @@ mvcapa_params <- function(cost = "cor", b = 1, minsl = 2, maxsl = 100,
 }
 
 #' @export
-simulate_mvcapa <- function(data = init_data(), params = mvcapa_params(),
+simulate_mvcapa <- function(data = init_data(), params = method_params(),
                             seed = NULL, return_anom_only = FALSE) {
   get_adj_mat <- function(est_struct) {
     if (est_struct == "correct")

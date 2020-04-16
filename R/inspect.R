@@ -8,7 +8,7 @@
 #' x.rescaled <- rescale.variance(x)
 #' x.rescaled
 #' @export
-rescale.variance <- function(x){
+rescale.variance <- function(x, by_row = FALSE){
     p <- dim(x)[1]
     n <- dim(x)[2]
     for (j in 1:p){
@@ -270,9 +270,9 @@ single_cor_inspect <- function(x, Q, b = 1, schatten=2, sample.splitting=FALSE,
     if (view.cusum) plot(as.numeric(cusum.proj), ylab='projected cusum', pch=20)
 
     ret <- NULL
-    ret$changepoint <- which.max(abs(cusum.proj))
+    ret$cpt <- which.max(abs(cusum.proj))
     if (sample.splitting) ret$changepoint <- ret$changepoint * 2
-    ret$cusum <- max(abs(cusum.proj))
+    ret$value <- max(abs(cusum.proj))
     ret$vector.proj <- vector.proj
 
     return(ret)

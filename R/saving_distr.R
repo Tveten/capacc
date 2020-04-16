@@ -6,7 +6,8 @@ saving_iid <- function(J, x) {
 
 find_threshold <- function(data = init_data(), alpha = 0.99, n_sim = 10^4) {
   current_thresholds <- fread("./results/alpha_dense.csv")
-  current_thresholds <- current_thresholds[n == data$n & p == data$p & alpha == a & precision_type == data$precision_type & band == band & rho == rho]
+  a <- alpha
+  current_thresholds <- current_thresholds[n == data$n & p == data$p & alpha == a & precision_type == data$precision_type & band == data$band & rho == data$rho]
   if (nrow(current_thresholds) > 0) stop("A threshold for this data setup already exists.")
 
   res_dt <- data.table("value" = rep(0, 2 * n_sim),
