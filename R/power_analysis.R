@@ -62,11 +62,15 @@ read_single_curve <- function(file_name, data = init_data(), params = mvcapa_par
                curve_n_sim == curve$curve_n_sim &
                curve_max_dist == curve$curve_max_dist &
                loc_tol == .loc_tol]
-  if (data$precision_type == "banded" || data$precision_type == "block_banded")
+
+  if (data$precision_type %in% c("banded", "block_banded"))
     res <- res[band == data$band]
-  if (params$cost == "cor")
-    res <- res[precision_est_struct == params$precision_est_struct &
-                 est_band == params$est_band]
+
+  if (params$cost == "cor") {
+    res <- res[precision_est_struct == params$precision_est_struct]
+    if (is.na(params$est_band)) res <- res[is.na(est_band)]
+    else res <- res[est_band == params$est_band]
+  }
   res
 }
 
@@ -215,8 +219,8 @@ power_runs <- function() {
 #' @export
 adjust_power_runs <- function() {
   tuning <- tuning_params()
-  curve <- curve_params(max_dist = 0.1, n_sim = 300, init_values = c(5.2, 10))
-  out_file <- "power.csv"
+  curve <- curve_params(max_dist = 0.1, n_sim = 300, init_values = c(6, 10))
+  out_file <- "adjust_power.csv"
 
   many_power_curves(out_file,
                     init_data(n = 100, p = 10, precision_type = "banded",
