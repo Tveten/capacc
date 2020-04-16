@@ -60,27 +60,33 @@ tune_penalty <- function(data = init_data(mu = 0), params = mvcapa_params(),
 get_tuned_penalty <- function(data = init_data(mu = 0), params = mvcapa_params(),
                               tuning = tuning_params(), seed = NA) {
 
-  pen <- fread("./results/penalties.csv")
-  pen <- pen[n == data$n &
+  res <- fread("./results/penalties.csv")
+  res <- res[n == data$n &
                p == data$p &
                rho == data$rho &
                precision_type == data$precision_type &
-               band == data$band &
                block_size == data$block_size &
                cost == params$cost &
-               precision_est_struct == params$precision_est_struct &
                minsl == params$minsl &
                maxsl == params$maxsl &
-               alpha == tuning$alpha &
-               alpha_tol == tuning$alpha_tol &
+               is_equal(alpha, tuning$alpha) &
+               is_equal(alpha_tol, tuning$alpha_tol) &
                tuning_n_sim == tuning$tuning_n_sim]
-  if (is.na(params$est_band)) pen <- pen[is.na(est_band)]
-  else pen <- pen[est_band == params$est_band]
-  if (nrow(pen) == 0) {
+
+  if (data$precision_type %in% c("banded", "block_banded"))
+    res <- res[band == data$band]
+
+  if (params$cost == "cor") {
+    res <- res[precision_est_struct == params$precision_est_struct]
+    if (is.na(params$est_band)) res <- res[is.na(est_band)]
+    else res <- res[est_band == params$est_band]
+  }
+
+  if (nrow(res) == 0) {
     message("The penalty for this setup has not been tuned yet.")
     tune_penalty(data, params, tuning, seed)
     return(get_tuned_penalty(data, params, tuning, seed))
-  } else return(pen)
+  } else return(res)
 }
 
 #' @export
