@@ -153,6 +153,6 @@ Rcpp::List single_mvnormal_changepoint(const arma::mat& x,
   }
   return Rcpp::List::create(Rcpp::_["cpt"] = t_max,
                             Rcpp::_["J"]   = J[t_max],
-                            Rcpp::_["lr"]  = C_max);
+                            Rcpp::_["value"]  = C_max);
 }
 

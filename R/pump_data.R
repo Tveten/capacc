@@ -11,6 +11,7 @@ library(ggvis)
 ###############################################
 ## create new variables
 ###############################################
+#' @export
 load_pump_data <- function() {
   ###############################################################
   ## read data
@@ -22,7 +23,9 @@ load_pump_data <- function() {
                 running = as_factor(if_else(speed >= 1200, "Running", "Not Running")),
                 year = lubridate::year(time),
                 month = lubridate::month(time),
-                year_month = as.numeric(paste0(lubridate::year(time), str_pad(lubridate::month(time), 2, pad = "0"))),
+                year_month = as.numeric(paste0(lubridate::year(time),
+                                               str_pad(lubridate::month(time), 2,
+                                                       pad = "0"))),
                 date = lubridate::date(time))
 
   ###############################################
@@ -138,24 +141,44 @@ daily_means <- function(data, vars = "all") {
     dplyr::summarise_all(mean)
 }
 
-plot_daily_mean <- function(data, var) {
-  data %>%
+anonymise <- function(p) {
+    p + ggplot2::theme(axis.text.x=element_blank(),
+                       axis.text.y=element_blank(),
+                       axis.ticks=element_blank(),
+                       axis.title.x=element_blank(),
+                       axis.title.y=element_blank())
+}
+
+plot_daily_mean <- function(data, var, plot_type = "point", anonymise = FALSE) {
+  dat <- data %>%
     dplyr::filter(running == "Running") %>%
     dplyr::select(date, starts_with(var), status) %>%
     dplyr::group_by(date, status) %>%
-    dplyr::summarise(mean_temp = mean(eval(parse(text = var)))) %>%
-    ggvis(x = ~date, y = ~mean_temp, fill = ~status) %>%
-    layer_points(size = 0.1) %>%
-    add_relative_scales() %>%
-    add_axis("x", title = "date") %>%
-    add_axis("x", orient = "top", ticks = 0, title = paste0("Daily mean ", var),
-             properties = axis_props(axis = list(stroke = "white"))) %>%
-    add_legend(scales = "fill",
-               title = "",
-               properties = legend_props(
-                 legend = list(
-                   x = scaled_value("x_rel", 0.45),
-                   y = scaled_value("y_rel", -0.15))))
+    dplyr::summarise(mean_temp = mean(eval(parse(text = var))))
+
+  if (plot_type == "point")
+  p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = date, y = mean_temp, colour = status)) +
+      ggplot2::geom_point(size = 0.7)
+  else if (plot_type == "hist")
+  p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = mean_temp, fill = status)) +
+      ggplot2::geom_histogram(ggplot2::aes(y = ..density..),
+                              bins = 50, position = "dodge")
+  else if (plot_type == "density")
+  p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = mean_temp, colour = status)) +
+      ggplot2::geom_density()
+  if (anonymise) p <- anonymise(p)
+  else p <- p + ggplot2::ggtitle(paste0("Daily mean ", var))
+  p
+}
+
+#' @export
+group_plot_daily_means <- function(data, var_type = "all", plot_type = "point",
+                                   anonymise = FALSE) {
+  vars <- relevant_vars(var_type)
+  plots <- Map(plot_daily_mean, var = vars,
+               MoreArgs = list(data = data, plot_type = plot_type, anonymise = anonymise))
+  ggpubr::ggarrange(plotlist = plots, nrow = length(vars), ncol = 1,
+                    common.legend = TRUE, legend = "right")
 }
 
 plot_monthly_mean <- function(data, var) {
@@ -191,7 +214,9 @@ failure_period <- function(nr) {
   a[nr]
 }
 
-mvcapa_pump <- function(est_band = 2, b = 1, b_point = 1, nr = 3, vars = "all", diff = FALSE, rank_transform = FALSE) {
+#' @export
+mvcapa_pump <- function(data, est_band = 2, b = 1, b_point = 1, nr = 3,
+                        vars = "all", diff = FALSE, rank_transform = FALSE) {
   failure_nr <- failure_period(nr)
   daily_pump_data <- daily_means(data, vars) %>% filter(date %within% failure_nr)
   x <- as.matrix(daily_pump_data[, 3:ncol(daily_pump_data)])

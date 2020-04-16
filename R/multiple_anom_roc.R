@@ -1,4 +1,4 @@
-sim_roc <- function(data = init_data(), params = mvcapa_params(),
+sim_roc <- function(data = init_data(), params = method_params(),
                     tuning = tuning_params(),
                     curve = curve_params(init_values = sort(c(10^(-4), 1, 10, exp(c(-3, 0.5))))),
                     loc_tol = 10, seed = NA) {
@@ -58,7 +58,7 @@ sim_roc <- function(data = init_data(), params = mvcapa_params(),
   fwrite(add_setup_info(res), "./results/roc.csv", append = TRUE)
 }
 
-many_rocs <- function(data = init_data(), params = mvcapa_params(),
+many_rocs <- function(data = init_data(), params = method_params(),
                       costs = c("iid", "cor"), bands = 2, rhos = 0.9,
                       varthetas = 1, props = 0.1, precision_est_structs = "correct",
                       est_bands = NA, tuning = tuning_params(),

@@ -41,7 +41,7 @@ curve_params <- function(max_dist = 0.2, max_iter = 50, n_sim = 100,
        "init_values"    = init_values)
 }
 
-read_single_curve <- function(file_name, data = init_data(), params = mvcapa_params(),
+read_single_curve <- function(file_name, data = init_data(), params = method_params(),
                               tuning = tuning_params(), curve = curve_params(),
                               .loc_tol = 10) {
   res <- fread(paste0("./results/", file_name))
@@ -86,7 +86,7 @@ already_estimated <- function(file_name, data, params, tuning, curve, loc_tol) {
 }
 
 #' @export
-power_curve <- function(out_file, data = init_data(), params = mvcapa_params(),
+power_curve <- function(out_file, data = init_data(), params = method_params(),
                         tuning = tuning_params(), curve = curve_params(),
                         loc_tol = 10, seed = NA) {
   add_setup_info <- function(res_dt) {
@@ -162,7 +162,7 @@ power_curve <- function(out_file, data = init_data(), params = mvcapa_params(),
 
 #' @export
 many_power_curves <- function(out_file = "power_csv", data = init_data(),
-                              params = mvcapa_params(),
+                              params = method_params(),
                               costs = c("iid", "cor"), bands = 2, rhos = 0.9,
                               props = 0.1, precision_est_structs = "correct",
                               est_bands = NA, tuning = tuning_params(),
@@ -251,10 +251,10 @@ adjust_power_runs <- function() {
                     tuning = tuning, curve = curve)
 }
 
-plot_power_curve <- function(data = init_data(), params = mvcapa_params(),
+plot_power_curve <- function(file_name, data = init_data(), params = method_params(),
                              tuning = tuning_params(), curve = curve_params(),
                              loc_tol = 10, seed = NA) {
-    get_title <- function() {
+  get_title <- function() {
       if (data$precision_type == "lattice")
         title <- "lattice"
       if (data$precision_type == "banded")
@@ -262,12 +262,17 @@ plot_power_curve <- function(data = init_data(), params = mvcapa_params(),
       if (data$precision_type == "block_banded")
         title <- paste0(data$band, "-banded, m=", data$block_size)
 
-      title <- paste0(title, " rho=", data$rho, ", p=", data$p, ", n=", data$n,
-             ", s=", data$locations, ", e=", data$locations + data$durations,
-             ", prop=", round(data$proportions, 2))
+      title <- paste0(title,
+                      " rho=", data$rho,
+                      ", p=", data$p,
+                      ", n=", data$n,
+                      ", s=", data$locations,
+                      ", e=", data$locations + data$durations,
+                      ", prop=", round(data$proportions, 2))
   }
 
-  res <- read_single_curve(data, params, tuning, curve, loc_tol)
+  res <- read_single_curve(file_name, data, params, tuning, curve, loc_tol)
+  print(res)
   ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power, colour = cost)) +
     ggplot2::geom_line() +
     ggplot2::ggtitle(get_title()) +

@@ -10,7 +10,7 @@ tuning_params <- function(alpha = 0.05, tol = 0.02, max_iter = 50,
 }
 
 #' @export
-tune_penalty <- function(data = init_data(mu = 0), params = mvcapa_params(),
+tune_penalty <- function(data = init_data(mu = 0), params = method_params(),
                          tuning = tuning_params(), seed = NA) {
 
   add_setup_info <- function(res) {
@@ -57,7 +57,7 @@ tune_penalty <- function(data = init_data(mu = 0), params = mvcapa_params(),
 }
 
 #' @export
-get_tuned_penalty <- function(data = init_data(mu = 0), params = mvcapa_params(),
+get_tuned_penalty <- function(data = init_data(mu = 0), params = method_params(),
                               tuning = tuning_params(), seed = NA) {
 
   res <- fread("./results/penalties.csv")
@@ -102,7 +102,7 @@ tune_many <- function(n = 100, p = 10, band = 2) {
         else m <- p
         data <- init_data(n = n, p = p, precision_type = precision_type,
                           band = band, rho = rho, block_size = m)
-        get_tuned_penalty(data, mvcapa_params(cost), tuning_params(init_b = init_b))
+        get_tuned_penalty(data, method_params(cost), tuning_params(init_b = init_b))
       })
     })
   })

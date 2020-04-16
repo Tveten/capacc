@@ -4,7 +4,7 @@
 \alias{rescale.variance}
 \title{Noise standardisation for multivariate time series.}
 \usage{
-rescale.variance(x)
+rescale.variance(x, by_row = FALSE)
 }
 \arguments{
 \item{x}{An input matrix of real values.}
