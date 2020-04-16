@@ -161,7 +161,8 @@ power_curve <- function(out_file, data = init_data(), params = mvcapa_params(),
 }
 
 #' @export
-many_power_curves <- function(out_file = "power_csv", data = init_data(), params = mvcapa_params(),
+many_power_curves <- function(out_file = "power_csv", data = init_data(),
+                              params = mvcapa_params(),
                               costs = c("iid", "cor"), bands = 2, rhos = 0.9,
                               props = 0.1, precision_est_structs = "correct",
                               est_bands = NA, tuning = tuning_params(),
@@ -178,7 +179,8 @@ many_power_curves <- function(out_file = "power_csv", data = init_data(), params
               data$band <- band
               params$cost <- cost
               params$precision_est_struct <- precision_est_struct
-              params$est_band <- est_band
+              if (precision_est_struct == "correct") params$est_band <- NA
+              else params$est_band <- est_band
               power_curve(out_file, data, params, tuning, curve, loc_tol, seed)
             })
           })
