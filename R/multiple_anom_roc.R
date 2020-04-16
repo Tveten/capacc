@@ -1,145 +1,148 @@
-sim_roc_curve <- function(cost_type, change_setup = init_data(),
-                          random_changes = FALSE, nb_struct = "correct", est_band = 2,
-                          tol = 10, max_iter = 50, max_dist = 0.2,
-                          root_seeds = 1:100) {
-  add_setup_info <- function(res_dt) {
-    res_dt$cost_type <- rep(cost_type, nrow(res_dt))
-    res_dt$rho <- rep(change_setup$rho, nrow(res_dt))
-    res_dt$band <- rep(change_setup$band, nrow(res_dt))
-    res_dt$cor_mat_type <- rep(change_setup$cor_mat_type, nrow(res_dt))
-    res_dt$n <- rep(change_setup$n, nrow(res_dt))
-    res_dt$p <- rep(change_setup$p, nrow(res_dt))
-    res_dt$proportion <- rep(change_setup$proportions, nrow(res_dt))
-    res_dt$change_type <- rep(change_setup$change_type, nrow(res_dt))
-    if (random_changes) {
-      res_dt$mu <- rep(NA, nrow(res_dt))
-      res_dt$duration <- rep(NA, nrow(res_dt))
-      res_dt$location <- rep(NA, nrow(res_dt))
-    } else {
-      res_dt$mu <- rep(change_setup$mu[1], nrow(res_dt))
-      res_dt$vartheta <- rep(res_dt$mu[1] * sqrt(round(change_setup$proportions * change_setup$p)), nrow(res_dt))
-      res_dt$duration <- rep(change_setup$durations[1], nrow(res_dt))
-      res_dt$location <- rep(change_setup$locations[1], nrow(res_dt))
-    }
-    res_dt$est_nb_struct <- rep(nb_struct, nrow(res_dt))
-    if (nb_struct == "correct") res_dt$est_band <- rep(NA, nrow(res_dt))
-    else if (nb_struct == "banded") res_dt$est_band <- rep(est_band, nrow(res_dt))
-    res_dt
+sim_roc <- function(data = init_data(), params = mvcapa_params(),
+                    tuning = tuning_params(),
+                    curve = curve_params(init_values = sort(c(10^(-4), 1, 10, exp(c(-3, 0.5))))),
+                    loc_tol = 10, seed = NA) {
+  add_setup_info <- function(res) {
+    res <- cbind(res,
+                 as.data.table(data[!(grepl("Sigma", names(data)) |
+                                        names(data) == "changing_vars")]),
+                 as.data.table(params[names(params) != "b"]),
+                 as.data.table(tuning[names(tuning) != "init_b"]),
+                 as.data.table(curve[names(curve) != "init_values"]))
+    res$vartheta <- res$mu / sqrt(round(data$proportions * data$p))
+    res$loc_tol <- loc_tol
+    res$seed <-  seed
+    res
   }
 
-  sim_FP_TP <- function(b, seeds) {
-    fp_tp_df <- do.call("rbind", lapply(seeds, function(seed) {
-      # cat('.')
-      if (random_changes)
-        change_setup <- draw_anomaly_setup(change_setup, seed = seed + 333)
-      anom_list <- simulate_mvcapa(change_setup, cost_type, b, seed,
-                                   return_anom_only = TRUE, nb_struct = nb_struct)
-      count_tpfp(anom_list)
+  sim_tpfp <- function(b) {
+    cat('.')
+    tpfp_df <- do.call("rbind", lapply(1:curve$curve_n_sim, function(i) {
+      params$b <- b
+      anom_list <- simulate_mvcapa(data, params, return_anom_only = TRUE)
+      tpfp_rate(anom_list, loc_tol, data)
     }))
-    # cat('\n')
-    data.table("b"       = b,
-               "FP_rate" = mean(fp_tp_df$FP_rate),
-               "TP_rate" = mean(fp_tp_df$TP_rate))
+    data.table("b" = b, "tp" = mean(tpfp_df$tp), "fp" = mean(tpfp_df$fp))
   }
 
   split_inds <- function(res) {
-    exceeds_max_dist <- adjacent_dist(res[, .(FP_rate, TP_rate)]) > max_dist
+    exceeds_max_dist <- adjacent_dist(res[, .(fp, tp)]) > curve$curve_max_dist
     ind <- which(exceeds_max_dist) + 1
-    ind <- ind[!(res[ind - 1]$TP_rate >= 0.99 & res[ind]$TP_rate >= 0.99)]
-    ind <- ind[!(res[ind - 1]$FP_rate <= 0.01 & res[ind]$FP_rate <= 0.01)]
+    ind <- ind[!(res[ind - 1]$tp >= 0.99 & res[ind]$fp >= 0.99)]
+    ind <- ind[!(res[ind - 1]$tp <= 0.01 & res[ind]$fp <= 0.01)]
     ind
   }
 
-  seeds <- lapply(seq.int(1, 10^6, length.out = 2 * max_iter),
-                  function(i) i + root_seeds)
-  bs <- sort(c(10^(-4), 1, 10, exp(c(-3, 0.5))))
-  res <- do.call('rbind', Map(sim_FP_TP, bs, seeds[1:length(bs)]))
+  message(paste0("Estimating roc for n=", data$n,
+                 ", p=", data$p,
+                 ", cost=", params$cost,
+                 ", precision=", data$precision_type,
+                 ", band=", data$band,
+                 ", rho=", data$rho,
+                 ", prop=", data$proportions,
+                 ", mu=", data$mu,
+                 ", precision_est_struct=", params$precision_est_struct,
+                 ", est_band=", params$est_band,
+                 "."))
+
+  res <- do.call('rbind', Map(sim_tpfp, curve$init_values))
   ind <- split_inds(res)
-  while (length(ind) > 0 && nrow(res) <= max_iter) {
-    # print(res)
+  while (length(ind) > 0 && nrow(res) <= curve$curve_max_iter) {
     new_bs <- exp((log(res$b[ind - 1]) + log(res$b[ind])) / 2)
-    seed_ind <- (nrow(res) + 1):(nrow(res) + length(new_bs))
-    res <- rbind(res, do.call('rbind', Map(sim_FP_TP, new_bs, seeds[seed_ind])))
+    res <- rbind(res, do.call('rbind', Map(sim_tpfp, new_bs)))
     res <- res[order(b)]
     ind <- split_inds(res)
   }
-  add_setup_info(res)
+  cat('\n')
+  print(res)
+  fwrite(add_setup_info(res), "./results/roc.csv", append = TRUE)
 }
 
+many_rocs <- function(data = init_data(), params = mvcapa_params(),
+                      costs = c("iid", "cor"), bands = 2, rhos = 0.9,
+                      varthetas = 1, props = 0.1, precision_est_structs = "correct",
+                      est_bands = NA, tuning = tuning_params(),
+                      curve = curve_params(), loc_tol = 10) {
 
-run_mvcapa_sim <- function(out_file, n = 500, p = 20, rhos = c(0.5, 0.7, 0.9, 0.99),
-                           band = 2,
-                           varthetas = 1, mus = 1, locations = n/2, durations = 10,
-                           proportions = c(1/p, round(p^{-5/8}, 2), 1),
-                           cor_mat_type = "banded", change_type = "adjacent",
-                           random_changes = TRUE, nb_struct = "true", est_band = 2,
-                           max_iter = 50, max_dist = 0.2, n_sim = 100, tol = 10,
-                           init_seed = 4) {
-  cost_types <- c('iid', 'cor')
-  force(p)
-  set.seed(init_seed)
-  start_time <- proc.time()[3]
-  res <- do.call("rbind", lapply(varthetas, function(vartheta) {
-    do.call("rbind", lapply(proportions, function(prop) {
-      do.call("rbind", lapply(rhos, function(rho) {
-        start_seed <- sample(1:10^6, 1)
-        root_seeds <- (start_seed + 1):(start_seed + n_sim)
-        do.call("rbind", lapply(cost_types, function(cost_type) {
-          print(paste0("vartheta = ", vartheta, ", prop = ", prop,  ', rho = ', rho, ', cost = ', cost_type))
-          print(paste0("Time elapsed: ", round((proc.time()[3] - start_time) / 60, 1), " min."))
-          change_setup <- init_data(n = n,
-                                    p = p,
-                                    proportions = prop,
-                                    mu = vartheta / sqrt(round(prop * p)),
-                                    locations = locations,
-                                    durations = durations,
-                                    rho = rho,
-                                    band = band,
-                                    change_type = change_type,
-                                    cor_mat_type = cor_mat_type)
-          sim_roc_curve(cost_type, change_setup, random_changes,
-                        nb_struct, est_band, tol, max_iter, max_dist,
-                        root_seeds = root_seeds)
-        }))
-      }))
-    }))
-  }))
-  fwrite(res, file = paste0("./results/", out_file), append = TRUE)
-  res
 }
 
-runs <- function() {
-  run_mvcapa_sim("mvcapa_roc_p10n100dense.csv", n = 100, p = 10, rhos = 0.99, varthetas = 1.5, locations = 50, durations = 10, proportions = 1, change_type = "adjacent", cor_mat_type = "banded", random_changes = FALSE, n_sim = 1000, init_seed = 86)
-  run_mvcapa_sim("mvcapa_roc_p10n100dense_noscaling.csv", n = 100, p = 10, rhos = 0.99, varthetas = 3, locations = 50, durations = 10, proportions = 1, change_type = "adjacent", cor_mat_type = "banded", random_changes = FALSE, n_sim = 1000, init_seed = 86)
-  run_mvcapa_sim("mvcapa_roc_p10n100dense.csv", n = 100, p = 10, rhos = 0.7, varthetas = 1.5, locations = 50, durations = 10, proportions = 1, change_type = "adjacent", cor_mat_type = "banded", random_changes = FALSE, n_sim = 1000, init_seed = 54)
+roc_runs <- function() {
 
-  rhos <- c(0.5, 0.7, 0.9, 0.99)
-  init_seeds <- c(19, 50, 22, 43)
-  start_time <- proc.time()[3]
-  for (i in 1:length(rhos)) {
-    run_mvcapa_sim("mvcapa_roc_multiple_p20n300.csv", n = 300, p = 20, rhos = rhos[i], varthetas = seq(0.5, 1.5, 0.25), locations = c(50, 100, 200), durations = c(5, 10, 20), proportions = c(1, 4, 20)/20, change_type = "adjacent", cor_mat_type = "banded", random_changes = FALSE, n_sim = 100, init_seed = init_seeds[i])
-  }
-
-  rho <- 0.99
-  start_time <- proc.time()[3]
-  run_mvcapa_sim(n = 100, p = 20, rhos = rho, mus = seq(0.25, 1.3, 0.25), locations = 50, durations = 10, proportions = c(1, 4, 10)/20, change_type = "adjacent", cor_mat_type = "lattice", random_changes = FALSE, n_sim = 100)
-  rhos <- c(0.5, 0.7, 0.9, 0.99)
-  start_time <- proc.time()[3]
-  for (rho in rhos) {
-    run_mvcapa_sim(n = 100, p = 20, rhos = rho, mus = seq(0.25, 1.3, 0.25), locations = 50, durations = 10, proportions = c(1, 4, 10)/20, change_type = "adjacent", cor_mat_type = "lattice", nb_struct = "banded", est_band = 2, random_changes = FALSE, n_sim = 100)
-    # run_mvcapa_sim(n = 100, p = 10, rhos = rho, mus = seq(0.5, 1.3, 0.25), locations = 50, durations = 10, proportions = c(1, 2, 10)/10, change_type = "adjacent", random_changes = FALSE, n_sim = 100)
-  }
-
-  rhos <- c(0.5, 0.7, 0.9, 0.99)
-  start_time <- proc.time()[3]
-  for (rho in rhos) {
-    run_mvcapa_sim(n = 100, p = 20, rhos = rho, mus = seq(0.25, 1.3, 0.25), locations = 50, durations = 10, proportions = c(1, 4, 10)/20, change_type = "adjacent", cor_mat_type = "lattice", random_changes = FALSE, n_sim = 100)
-    # run_mvcapa_sim(n = 100, p = 10, rhos = rho, mus = seq(0.5, 1.3, 0.25), locations = 50, durations = 10, proportions = c(1, 2, 10)/10, change_type = "adjacent", random_changes = FALSE, n_sim = 100)
-  }
-  run_mvcapa_sim(n = 100, p = 10, rhos = 0.99, mus = seq(0.5, 1.3, 0.1), locations = 50, durations = 10, proportions = c(1, 2)/10, change_type = "scattered", random_changes = FALSE, n_sim = 100)
-  run_mvcapa_sim(n = 100, p = 10, rhos = 0.99, mus = seq(0.5, 1.3, 0.1), locations = 50, durations = 10, proportions = c(1, 2)/10, change_type = "adjacent", random_changes = FALSE, n_sim = 100)
-  run_mvcapa_sim(n = 100, p = 50, rhos = 0.99, mus = seq(0.5, 1.3, 0.1), locations = 50, durations = 10, change_type = "adjacent", random_changes = FALSE, n_sim = 100)
 }
+
+# run_mvcapa_sim <- function(out_file, n = 500, p = 20, rhos = c(0.5, 0.7, 0.9, 0.99),
+#                            band = 2,
+#                            varthetas = 1, mus = 1, locations = n/2, durations = 10,
+#                            proportions = c(1/p, round(p^{-5/8}, 2), 1),
+#                            cor_mat_type = "banded", change_type = "adjacent",
+#                            random_changes = TRUE, nb_struct = "true", est_band = 2,
+#                            max_iter = 50, max_dist = 0.2, n_sim = 100, tol = 10,
+#                            init_seed = 4) {
+#   cost_types <- c('iid', 'cor')
+#   force(p)
+#   set.seed(init_seed)
+#   start_time <- proc.time()[3]
+#   res <- do.call("rbind", lapply(varthetas, function(vartheta) {
+#     do.call("rbind", lapply(proportions, function(prop) {
+#       do.call("rbind", lapply(rhos, function(rho) {
+#         start_seed <- sample(1:10^6, 1)
+#         root_seeds <- (start_seed + 1):(start_seed + n_sim)
+#         do.call("rbind", lapply(cost_types, function(cost_type) {
+#           print(paste0("vartheta = ", vartheta, ", prop = ", prop,  ', rho = ', rho, ', cost = ', cost_type))
+#           print(paste0("Time elapsed: ", round((proc.time()[3] - start_time) / 60, 1), " min."))
+#           change_setup <- init_data(n = n,
+#                                     p = p,
+#                                     proportions = prop,
+#                                     mu = vartheta / sqrt(round(prop * p)),
+#                                     locations = locations,
+#                                     durations = durations,
+#                                     rho = rho,
+#                                     band = band,
+#                                     change_type = change_type,
+#                                     cor_mat_type = cor_mat_type)
+#           sim_roc_curve(cost_type, change_setup, random_changes,
+#                         nb_struct, est_band, tol, max_iter, max_dist,
+#                         root_seeds = root_seeds)
+#         }))
+#       }))
+#     }))
+#   }))
+#   fwrite(res, file = paste0("./results/", out_file), append = TRUE)
+#   res
+# }
+#
+# runs <- function() {
+#   run_mvcapa_sim("mvcapa_roc_p10n100dense.csv", n = 100, p = 10, rhos = 0.99, varthetas = 1.5, locations = 50, durations = 10, proportions = 1, change_type = "adjacent", cor_mat_type = "banded", random_changes = FALSE, n_sim = 1000, init_seed = 86)
+#   run_mvcapa_sim("mvcapa_roc_p10n100dense_noscaling.csv", n = 100, p = 10, rhos = 0.99, varthetas = 3, locations = 50, durations = 10, proportions = 1, change_type = "adjacent", cor_mat_type = "banded", random_changes = FALSE, n_sim = 1000, init_seed = 86)
+#   run_mvcapa_sim("mvcapa_roc_p10n100dense.csv", n = 100, p = 10, rhos = 0.7, varthetas = 1.5, locations = 50, durations = 10, proportions = 1, change_type = "adjacent", cor_mat_type = "banded", random_changes = FALSE, n_sim = 1000, init_seed = 54)
+#
+#   rhos <- c(0.5, 0.7, 0.9, 0.99)
+#   init_seeds <- c(19, 50, 22, 43)
+#   start_time <- proc.time()[3]
+#   for (i in 1:length(rhos)) {
+#     run_mvcapa_sim("mvcapa_roc_multiple_p20n300.csv", n = 300, p = 20, rhos = rhos[i], varthetas = seq(0.5, 1.5, 0.25), locations = c(50, 100, 200), durations = c(5, 10, 20), proportions = c(1, 4, 20)/20, change_type = "adjacent", cor_mat_type = "banded", random_changes = FALSE, n_sim = 100, init_seed = init_seeds[i])
+#   }
+#
+#   rho <- 0.99
+#   start_time <- proc.time()[3]
+#   run_mvcapa_sim(n = 100, p = 20, rhos = rho, mus = seq(0.25, 1.3, 0.25), locations = 50, durations = 10, proportions = c(1, 4, 10)/20, change_type = "adjacent", cor_mat_type = "lattice", random_changes = FALSE, n_sim = 100)
+#   rhos <- c(0.5, 0.7, 0.9, 0.99)
+#   start_time <- proc.time()[3]
+#   for (rho in rhos) {
+#     run_mvcapa_sim(n = 100, p = 20, rhos = rho, mus = seq(0.25, 1.3, 0.25), locations = 50, durations = 10, proportions = c(1, 4, 10)/20, change_type = "adjacent", cor_mat_type = "lattice", nb_struct = "banded", est_band = 2, random_changes = FALSE, n_sim = 100)
+#     # run_mvcapa_sim(n = 100, p = 10, rhos = rho, mus = seq(0.5, 1.3, 0.25), locations = 50, durations = 10, proportions = c(1, 2, 10)/10, change_type = "adjacent", random_changes = FALSE, n_sim = 100)
+#   }
+#
+#   rhos <- c(0.5, 0.7, 0.9, 0.99)
+#   start_time <- proc.time()[3]
+#   for (rho in rhos) {
+#     run_mvcapa_sim(n = 100, p = 20, rhos = rho, mus = seq(0.25, 1.3, 0.25), locations = 50, durations = 10, proportions = c(1, 4, 10)/20, change_type = "adjacent", cor_mat_type = "lattice", random_changes = FALSE, n_sim = 100)
+#     # run_mvcapa_sim(n = 100, p = 10, rhos = rho, mus = seq(0.5, 1.3, 0.25), locations = 50, durations = 10, proportions = c(1, 2, 10)/10, change_type = "adjacent", random_changes = FALSE, n_sim = 100)
+#   }
+#   run_mvcapa_sim(n = 100, p = 10, rhos = 0.99, mus = seq(0.5, 1.3, 0.1), locations = 50, durations = 10, proportions = c(1, 2)/10, change_type = "scattered", random_changes = FALSE, n_sim = 100)
+#   run_mvcapa_sim(n = 100, p = 10, rhos = 0.99, mus = seq(0.5, 1.3, 0.1), locations = 50, durations = 10, proportions = c(1, 2)/10, change_type = "adjacent", random_changes = FALSE, n_sim = 100)
+#   run_mvcapa_sim(n = 100, p = 50, rhos = 0.99, mus = seq(0.5, 1.3, 0.1), locations = 50, durations = 10, change_type = "adjacent", random_changes = FALSE, n_sim = 100)
+# }
 
 roc <- function(res, prop = 0.2, m = 1, ss = 1) {
   if (is.na(m)) sub_res <- res[is.na(mu)][proportion == prop]

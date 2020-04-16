@@ -2,6 +2,7 @@
 
 export(PiS)
 export(PiW)
+export(adjust_power_runs)
 export(curve_params)
 export(cusum.transform)
 export(get_tuned_penalty)
