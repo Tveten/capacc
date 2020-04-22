@@ -1,3 +1,4 @@
+
 #' A function for generating simulated multivariate data
 #'
 #' @name simulate
@@ -23,8 +24,8 @@
 #' sim.data<-simulate(500,200,2,c(100,200,300),6,c(0.04,0.06,0.08))
 #'
 #' @export
-simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
-                        locations=40,durations=20,proportions=0.1,
+simulate_cor <-function(n=100,p=10,vartheta=1,shape=0,change_seed=NA,
+                        Sigma=diag(1, p),locations=40,durations=20,proportions=0.1,
                         change_type = 'adjacent', changing_vars = NA,
                         point_locations = NA, point_proportions = NA, point_mu = NA)
 {
@@ -64,71 +65,63 @@ simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
     {
         stop("durations must be a scalar or a vector the same size as locations")
     }
-    if(length(mu) != 1 && length(mu) != length(locations))
+    if(length(vartheta) != 1 && length(vartheta) != length(locations))
     {
-        stop("mu must be a scalar or a vector the same size as locations")
+        stop("vartheta must be a scalar or a vector the same size as locations")
     }
     if(length(durations) == 1)
     {
-        durations<-rep(durations,length(locations))
+        durations <- rep(durations,length(locations))
     }
     if(length(proportions) == 1)
     {
-        proportions<-rep(proportions,length(locations))
+        proportions <- rep(proportions,length(locations))
     }
-    if(length(mu) == 1)
+    if(length(vartheta) == 1)
     {
-        mu<-rep(mu,length(locations))
+        vartheta <- rep(vartheta, length(locations))
     }
     if(!Reduce("&",locations+durations <= n))
     {
         stop("locations+durations must be <= n")
     }
 
-    q = length(proportions);
-    if(length(durations) == 1)
-    {
-        s = rep(durations, q);
-    }
-    else
-    {
-        s=durations
-    }
-
-    get_affected_dims <- function(change_type, prop) {
-        if (change_type == "custom") {
-            if (is.na(changing_vars))
-                stop("If change_type is 'custom', you must provide a changing_vars vector")
-            return(changing_vars)
-        } else if (change_type == 'adjacent')
-            return(1:round(prop * p))
-        else if (change_type == 'adjacent_lattice')
-            return(unique(c(1, unlist(lattice_neighbours(p))))[1:round(prop * p)])
-        else if (change_type == 'scattered')
-            return(round(seq(2, p - 1, length.out = prop * p)))
-        else if (change_type == 'randomised')
-            return(sample(1:p, prop * p))
-    }
-
+    s <- locations
+    e <- locations + durations
     X = MASS::mvrnorm(n, rep(0, p), Sigma)
-    if (any(mu > 0)) {
-        for (j in 1:q)
-        {
-            affected_dims <- get_affected_dims(change_type, proportions[j])
-            for (i in affected_dims)
-            {
-                X[locations[j]:(locations[j]+s[j]-1),i] = X[locations[j]:(locations[j]+s[j]-1),i]+mu[j];
-            }
-        }
+    if (any(vartheta > 0)) {
+      for (j in 1:length(s))
+      {
+        J <- get_affected_dims(change_type, proportions[j], p, changing_vars)
+        mu <- generate_change(vartheta, length(J), shape, change_seed)
+        X[(s[j] + 1):e[j], J] <- X[(s[j] + 1):e[j], J] + mu
+      }
     }
     if (!is.na(point_locations)) {
-        for (j in 1:length(point_locations)) {
-            affected_dims <- get_affected_dims(change_type, point_proportions[j])
-            X[point_locations[j], affected_dims] <- X[point_locations[j], affected_dims] + point_mu[j]
-        }
+      for (j in 1:length(point_locations)) {
+        J <- get_affected_dims(change_type, point_proportions[j])
+        X[point_locations[j], J] <- X[point_locations[j], J] + point_mu[j]
+      }
     }
 
     return(X)
+}
+
+simulate_cor_ <- function(data = init_data()) {
+  simulate_cor(n                 = data$n,
+               p                 = data$p,
+               vartheta          = data$vartheta,
+               shape             = data$shape,
+               change_seed       = data$change_seed,
+               Sigma             = data$Sigma,
+               locations         = data$locations,
+               durations         = data$durations,
+               proportions       = data$proportions,
+               change_type       = data$change_type,
+               changing_vars     = data$changing_vars,
+               point_locations   = data$point_locations,
+               point_proportions = data$point_proportions,
+               point_mu          = data$point_mu)
 }
 
 # - Start from location[j] + 1 to locations[j] + s[j] to be consistent with
@@ -141,3 +134,30 @@ simulate_cor <-function(n=100,p=10,mu=1,Sigma=diag(1, p),
 #     * Error in penalty? psi must have proportionality constant > 2 or > 3?
 # - Possibility to simulate data with no anomalies.
 # - High-dim plot which also shows J?
+
+get_affected_dims <- function(change_type, prop, p, changing_vars) {
+  if (change_type == "custom") {
+    if (is.na(changing_vars))
+      stop("If change_type is 'custom', you must provide a changing_vars vector")
+    return(changing_vars)
+  } else if (change_type == 'adjacent')
+    return(1:round(prop * p))
+  else if (change_type == 'adjacent_lattice')
+    return(unique(c(1, unlist(lattice_neighbours(p))))[1:round(prop * p)])
+  else if (change_type == 'scattered')
+    return(round(seq(2, p - 1, length.out = prop * p)))
+  else if (change_type == 'randomised')
+    return(sample(1:p, prop * p))
+}
+
+generate_change <- function(vartheta, k, shape, seed = NA) {
+  if (!is.na(seed)) set.seed(seed)
+  if      (shape == 0) mu <- rep(1,k)
+  else if (shape == 1) mu <- k:1
+  else if (shape == 2) mu <- (k:1)^2
+  else if (shape == 3) mu <- (1:k)^(-1/2)
+  else if (shape == 4) mu <- rchisq(k, 2)
+  else if (shape == 5) mu <- rnorm(k)
+  mu / vector.norm(mu) * vartheta
+}
+

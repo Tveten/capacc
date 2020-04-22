@@ -186,17 +186,17 @@ rcor_mat <- function(d, k0 = d, alphad = 1) {
 }
 
 block_precision_mat <- function(p, m, within_block_type = "banded",
-                                rho = 0.7, band = 2, alphad = 1, sigma = 1,
+                                rho = 0.7, band = 2, sigma = 1,
+                                min_nbs = 1, max_nbs = 3,
                                 standardised = TRUE, sparse = TRUE) {
   block_Q <- function(k) {
     if (within_block_type == "lattice")
-      return(car_precision_mat(lattice_neighbours(k), rho = rho,
-                               standardised = FALSE, sparse = FALSE))
+      nbs <- lattice_neighbours(k)
     else if (within_block_type == "banded")
-      return(car_precision_mat(banded_neighbours(band, k), rho = rho,
-                               standardised = FALSE, sparse = FALSE))
+      nbs <- banded_neighbours(band, k)
     else if (within_block_type == "random")
-      return(solve(rcor_mat(k, alphad = alphad)))
+      nbs <- random_neighbours(k, min_nbs, max_nbs)
+    car_precision_mat(nbs, rho = rho, standardised = FALSE, sparse = FALSE)
   }
 
   if (length(m) == 1 && m < p) {
