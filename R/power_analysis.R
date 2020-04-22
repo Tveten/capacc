@@ -112,7 +112,7 @@ power_runs <- function() {
   out_file <- "power.csv"
 
   #### BANDED
-  banded_data <- init_data(n = 100, p = 9, precision_type = "banded",
+  banded_data <- init_data(n = 100, p = 10, precision_type = "banded",
                            band = 2, locations = 50, durations = 10,
                            change_type = "adjacent")
   banded_variables <- list("cost"        = c("iid", "cor"),
