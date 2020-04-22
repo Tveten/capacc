@@ -14,9 +14,9 @@ tune_penalty <- function(data = init_data(mu = 0), params = method_params(),
                          tuning = tuning_params(), seed = NA) {
 
   add_setup_info <- function(res) {
+    which_data <- !(grepl("Sigma", names(data)) | names(data) == c("changing_vars"))
     res <- cbind(res,
-                 as.data.table(data[!(grepl("Sigma", names(data)) |
-                                        names(data) == "changing_vars")]),
+                 as.data.table(data[which_data]),
                  as.data.table(params[names(params) != "b"]),
                  as.data.table(tuning[names(tuning) != "init_b"]))
     res$seed <-  seed
@@ -59,22 +59,10 @@ tune_penalty <- function(data = init_data(mu = 0), params = method_params(),
 #' @export
 get_tuned_penalty <- function(data = init_data(mu = 0), params = method_params(),
                               tuning = tuning_params(), seed = NA) {
-
-  res <- fread("./results/penalties.csv")
-  res <- res[n == data$n &
-               p == data$p &
-               rho == data$rho &
-               precision_type == data$precision_type &
-               block_size == data$block_size &
-               cost == params$cost &
-               minsl == params$minsl &
-               maxsl == params$maxsl &
-               is_equal(alpha, tuning$alpha) &
-               is_equal(alpha_tol, tuning$alpha_tol) &
-               tuning_n_sim == tuning$tuning_n_sim]
-
-  if (data$precision_type %in% c("banded", "block_banded"))
-    res <- res[band == data$band]
+  query_params <- c("n", "p", "rho", "precision_type", "block_size", "band",
+                    "cost", "minsl", "maxsl",
+                    "alpha", "alpha_tol", "tuning_n_sim")
+  res <- read_single_result("penalties.csv", query_params, c(data, params, tuning))
 
   if (params$cost == "cor") {
     res <- res[precision_est_struct == params$precision_est_struct]

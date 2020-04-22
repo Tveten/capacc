@@ -8,7 +8,9 @@
 simulate_cor(
   n = 100,
   p = 10,
-  mu = 1,
+  vartheta = 1,
+  shape = 0,
+  change_seed = NA,
   Sigma = diag(1, p),
   locations = 40,
   durations = 20,
@@ -25,8 +27,6 @@ simulate_cor(
 
 \item{p}{The number of variates. The default is \code{p=10}.}
 
-\item{mu}{The change in mean. Default is \code{mu=1}.}
-
 \item{locations}{A vector of locations (or scalar for a single location) where the change in mean occurs. The default is \code{locations=20}.}
 
 \item{durations}{A scalar or vector (the same length as \code{locations}) of values indicating the duration for the change in mean. If the durations are all
@@ -34,6 +34,8 @@ of the same length then a scalar value can be used. The default is \code{duratio
 
 \item{proportions}{A scalar or vector (the same length as \code{locations}) of values in the range (0,1] indicating the proportion of variates at each location that are affected by
 the change in mean. If the proportions are all same than a scalar value can be used. The default is \code{proportions=0.1}.}
+
+\item{mu}{The change in mean. Default is \code{mu=1}.}
 }
 \value{
 A matrix with n rows and p columns

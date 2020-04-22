@@ -10,7 +10,6 @@ sim_cpt_distr <- function(out_file,
                  as.data.table(data[!(grepl("Sigma", names(data)) |
                                         names(data) == "changing_vars")]),
                  as.data.table(params[names(data) != "maxsl"]))
-    res$vartheta <- res$mu * sqrt(round(data$proportions * data$p))
     res$n_sim <- n_sim
     res$seed <-  seed
     res
@@ -23,68 +22,46 @@ sim_cpt_distr <- function(out_file,
                  ", band=", data$band,
                  ", rho=", data$rho,
                  ", prop=", data$proportions,
-                 ", mu=", round(data$mu, 1),
+                 ", vartheta=", data$vartheta,
+                 ", shape=", data$shape,
                  ", location=", data$locations,
                  ", precision_est_struct=", params$precision_est_struct,
                  ", est_band=", params$est_band,
                  "."))
+  all_params <- c(data, params, list("n_sim" = n_sim))
+  if (already_estimated(out_file, all_params, read_cpt_distr)) return(NULL)
 
   if (!is.na(seed)) set.seed(seed)
   res <- data.table(cpt = replicate(n_sim, simulate_mvcpt(data, params)$cpt))
   fwrite(add_setup_info(res), paste0("./results/", out_file), append = TRUE)
 }
 
-# list("locations" = c(40, 50, 60), "vartheta" = c(0.5, 1, 2))
-# Map(sim_cpt_distr,
-#     data     = data_list,
-#     params   = params_list,
-#     MoreArgs = list(out_file = out_file,
-#                     seed     = seed,
-#                     n_sim    = n_sim))
-
-#' @export
-many_cpt_distr <- function(out_file,
-                           data = init_data(n = 200, p = 10, rho = 0.8, band = 2,
-                                            locations = 80, durations = 120),
-                           params = method_params(), n_sim = 100,
-                           costs = c("inspect", "mvlrt"), bands = 2,
-                           rhos = 0.9, props = 0.1, varthetas = 1,
-                           locations = round(data$n / 2),
-                           precision_est_structs = "correct", est_bands = NA) {
-  lapply(locations, function(location) {
-    lapply(varthetas, function(vartheta) {
-      lapply(props, function(prop) {
-        lapply(rhos, function(rho) {
-          lapply(bands, function(band) {
-            lapply(precision_est_structs, function(precision_est_struct) {
-              lapply(est_bands, function(est_band) {
-                seed <- sample(1:10^6, 1)
-                lapply(costs, function(cost) {
-                  data$locations <- location
-                  data$durations <- data$n - location
-                  data$mu <- vartheta / sqrt(round(prop * data$p))
-                  data$proportions <- prop
-                  data$rho <- rho
-                  data$band <- band
-                  params$cost <- cost
-                  params$precision_est_struct <- precision_est_struct
-                  if (precision_est_struct == "correct") params$est_band <- NA
-                  else params$est_band <- est_band
-                  sim_cpt_distr(out_file, data, params, n_sim, seed)
-                })
-              })
-            })
-          })
-        })
-      })
-    })
-  })
+#' #' @export
+many_cpt_distr <- function(out_file = "cpt_distr.csv",
+                           variables = list("cost" = c("inspect", "inspect_iid",
+                                                       "mvlrt", "mvlrt_iid"),
+                                            "rho" = c(0.7, 0.9, 0.99),
+                                            "proportions" = c(0.1, 0.3, 1)),
+                           data   = init_data(n = 100, locations = 50, durations = 50),
+                           params = method_params(),
+                           loc_tol = 10) {
+  params_list <- split_lists(expand_list(c(data, params), variables),
+                             list("data"   = names(data),
+                                  "method" = names(params)))
+  Map(sim_cpt_distr,
+      data = params_list$data,
+      params = params_list$method,
+      seed = get_sim_seeds(params_list, variables),
+      MoreArgs = list("out_file" = out_file,
+                      "n_sim"    = n_sim))
   NULL
 }
 
 #' @export
 cpt_runs <- function(n_sim = 100) {
   out_file <- "cpt_distr.csv"
+
+  #### FIX DURATIONS
   many_cpt_distr(out_file,
                  init_data(n = 100, p = 10),
                  method_params(b = 1),
@@ -117,83 +94,69 @@ cpt_runs <- function(n_sim = 100) {
                  est_bands = 0)
 }
 
-read_single_cpt_distr <- function(file_name, data = init_data(),
-                                  params = method_params(), .n_sim = 100) {
-  res <- fread(paste0("./results/", file_name))
-  res <- res[n == data$n &
-               p == data$p &
-               rho == data$rho &
-               precision_type == data$precision_type &
-               block_size == data$block_size &
-               is_equal(proportions, data$proportions) &
-               locations == data$locations &
-               durations == data$durations &
-               change_type == data$change_type &
-               minsl == params$minsl &
-               maxsl == params$maxsl &
-               n_sim == .n_sim]
-
-  if (data$precision_type %in% c("banded", "block_banded"))
-    res <- res[band == data$band]
-
-  if (params$cost == "cor") {
-    res <- res[precision_est_struct == params$precision_est_struct]
-    if (is.na(params$est_band)) res <- res[is.na(est_band)]
-    else res <- res[est_band == params$est_band]
-  }
-  res
-}
-
+#' @export
 plot_cpt_distr <- function(file_name,
                            data = init_data(n = 100, p = 10, rho = 0.9, band = 2,
+                                            proportions = 0.1, vartheta = 1,
                                             locations = 50, durations = 50),
                            params = method_params(),
-                           n_sim = 100) {
-  get_title <- function() {
-      if (data$precision_type == "lattice")
-        title <- "lattice"
-      if (data$precision_type == "banded")
-        title <- paste0(data$band, "-banded")
-      if (data$precision_type == "block_banded")
-        title <- paste0(data$band, "-banded, m=", data$block_size)
-
-      title <- paste0(title,
-                      " rho=", data$rho,
-                      ", p=", data$p,
-                      ", n=", data$n,
-                      ", cpt=", data$locations,
-                      ", prop=", round(data$proportions, 2))
-  }
-
-  res <- read_single_cpt_distr(file_name, data, params, n_sim)
-  print(res)
-  # sub_res <- res
+                           n_sim = 200, vars_in_title = NA) {
+  all_params <- c(data, params, list("n_sim" = n_sim))
+  res <- do.call("rbind",
+                 Map(read_cpt_distr,
+                     expand_list(all_params, list("cost" = c("iid", "cor"))),
+                     MoreArgs = list(file_name = file_name)))
+  title <- make_title(all_params, cpt_distr_title_parts(vars_in_title), "cpt")
   ggplot2::ggplot(res, ggplot2::aes(cpt, colour = cost)) +
     ggplot2::stat_bin(alpha = 0.8, ggplot2::aes(y=..density..), geom = "step",
                       position = "identity", binwidth = 1) +
-    # ggplot2::geom_histogram(alpha = 0.5, ggplot2::aes(y = ..density..), position = 'identity', binwidth = 1) +
-    ggplot2::ggtitle(get_title()) +
-    # ggplot2::scale_fill_manual() +
+    ggplot2::ggtitle(title) +
     ggplot2::scale_x_continuous(name = "Estimated cpt",
                                 limits = c(0, res$n[1]),
                                 breaks = res$location[1] - 1)
 }
 
 #' @export
-prop_mean_distr <- function(file_name, rho_ = 0.9, b_ = 1, varthetas = NULL, props = NULL,
-                            n_obs = 200, n_var = 20, cmt = "banded",
-                            band = 2, duration = NA, location = NA,
-                            ct = "adjacent", nb_struct = "banded") {
-  res <- fread(file_name)
-  res <- res[rho == rho_][b == b_ | is.na(b)]
-  if (cmt == "lattice") res <- adjust_res_lattice(res)
+boxplot_cpt_distr <- function(file_name,
+                              data = init_data(n = 100, p = 10, rho = 0.9, band = 2,
+                                               vartheta = 1, proportions = 0.1,
+                                               locations = 50, durations = 50),
+                              params = method_params(),
+                              n_sim = 200, vars_in_title = NA) {
+  data_list <- expand_list(data, list("vartheta" = c(0.5, 1, 2)))
+  res <- do.call("rbind", lapply(data_list, function(data) {
+    read_single_cpt_distr(file_name, data, params, n_sim)
+  }))
+  title <- make_title(c(data, params), cpt_distr_title_parts(vars_in_title), "cpt")
+  ggplot2::ggplot(res, ggplot2::aes(as.factor(vartheta), cpt, fill = cost)) +
+    ggplot2::geom_boxplot() +
+    ggplot2::scale_x_discrete("Signal strength") +
+    ggplot2::scale_y_continuous("Cpt estimate") +
+    ggplot2::ggtitle(title)
+}
 
-  if (is.null(varthetas)) varthetas <- unique(res$vartheta)
-  if (is.null(props)) props <- unique(res$proportion)
 
-  mean_prop_combs <- expand.grid(varthetas, props)
-  plots <- Map(plot_cpt_distr, prop = mean_prop_combs[, 2], ss = mean_prop_combs[, 1],
-               MoreArgs = list("res" = res))
-  ggpubr::ggarrange(plotlist = plots, nrow = length(props), ncol = length(varthetas),
-                    common.legend = TRUE, legend = "right")
+#' @export
+grid_plot_cpt_distr <- function(plot_func,
+                                variables = list("rho" = c(0.7, 0.9, 0.99),
+                                                 "proportions" = c(0.1, 1)),
+                                data = init_data(n = 100, p = 10, band = 2,
+                                                 vartheta = 1, locations = 50,
+                                                 durations = 50),
+                                params = method_params(),
+                                n_sim = 200) {
+  if (length(variables) > 2)
+    stop("Maximum two variables at a time.")
+  params_list <- split_lists(expand_list(c(data, params), variables),
+                             list("data"   = names(data),
+                                  "method" = names(params)))
+  plots <- Map(plot_func, data = params_list$data,
+               params = params_list$method,
+               MoreArgs = list("file_name"     = "cpt_distr.csv",
+                               "n_sim"         = n_sim,
+                               "vars_in_title" = names(variables)))
+  vars_in_title <- cpt_distr_title_parts(NA)
+  vars_in_title <- vars_in_title[!vars_in_title %in% names(variables)]
+  dims <- c(length(variables[[2]]), length(variables[[1]]))
+  grid_plot(plots, dims, make_title(c(data, params), vars_in_title, "cpt"))
 }

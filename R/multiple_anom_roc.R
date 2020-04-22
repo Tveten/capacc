@@ -20,7 +20,7 @@ sim_roc <- function(data = init_data(), params = method_params(),
     tpfp_df <- do.call("rbind", lapply(1:curve$curve_n_sim, function(i) {
       params$b <- b
       anom_list <- simulate_mvcapa(data, params, return_anom_only = TRUE)
-      tpfp_rate(anom_list, loc_tol, data)
+      count_tfp_anom(anom_list, loc_tol, data)
     }))
     data.table("b" = b, "tp" = mean(tpfp_df$tp), "fp" = mean(tpfp_df$fp))
   }
@@ -220,77 +220,3 @@ prop_ss_roc <- function(file_name, rho_ = 0.9, varthetas = NULL, props = NULL,
                     common.legend = TRUE, legend = "right")
 }
 
-
-
-sim_fptp <- function(b, cost_type, change_setup = init_data(),
-                     random_changes = FALSE, nb_struct = "true", est_band = 2,
-                     tol = 10, max_iter = 50, max_dist = 0.2,
-                     root_seeds = 1:100) {
-  count_FP_TP <- function(anom_list) {
-    true_anoms <- data.frame("start" = change_setup$locations,
-                             "end"   = change_setup$locations + change_setup$durations)
-    est_anoms <- data.frame("start" = unique(anom_list$collective$start),
-                            "end"   = unique(anom_list$collective$end))
-    n_anom <- nrow(true_anoms)
-    if (is.na(est_anoms$start[1])) {
-      n_est_anom <- 0
-      n_tp <- 0
-      tp_rate <- 0
-    } else {
-      n_est_anom <- nrow(est_anoms)
-      n_tp <- 0
-      for (i in 1:nrow(true_anoms)) {
-        correct_start <- is_in_interval(est_anoms$start, true_anoms$start[i] + c(- tol, tol))
-        correct_end <- is_in_interval(est_anoms$end, true_anoms$end[i] + c(- tol, tol))
-        which_correct <- which(correct_start & correct_end)
-        if (length(which_correct) > 0) {
-          n_tp <- n_tp + 1
-          if (which_correct[1] < nrow(est_anoms))
-            est_anoms <- est_anoms[(which_correct[1] + 1):nrow(est_anoms), ]
-          else break
-        }
-      }
-      tp_rate <- n_tp / n_anom
-    }
-    n_fp <- n_est_anom - n_tp
-    min_seg_len <- 2
-    n_negatives <- (change_setup$n  - n_anom * min_seg_len) / min_seg_len
-    fp_rate <- n_fp / n_negatives
-    return(data.frame("FP_rate" = fp_rate, "TP_rate" = tp_rate))
-  }
-
-  sim_FP_TP <- function(b, seeds) {
-    fp_tp_df <- do.call("rbind", lapply(seeds, function(seed) {
-      # cat('.')
-      if (random_changes)
-        change_setup <- draw_anomaly_setup(change_setup, seed = seed + 333)
-      anom_list <- simulate_mvcapa(change_setup, cost_type, b, seed,
-                                   return_anom_only = TRUE, nb_struct = nb_struct)
-      count_FP_TP(anom_list)
-    }))
-    # cat('\n')
-    data.table("b"       = b,
-               "FP_rate" = fp_tp_df$FP_rate,
-               "TP_rate" = fp_tp_df$TP_rate,
-               "cost_type" = cost_type)
-  }
-
-  split_inds <- function(res) {
-    exceeds_max_dist <- adjacent_dist(res[, .(FP_rate, TP_rate)]) > max_dist
-    ind <- which(exceeds_max_dist) + 1
-    ind <- ind[!(res[ind - 1]$TP_rate >= 0.99 & res[ind]$TP_rate >= 0.99)]
-    ind <- ind[!(res[ind - 1]$FP_rate <= 0.01 & res[ind]$FP_rate <= 0.01)]
-    ind
-  }
-
-  sim_FP_TP(b, root_seeds)
-}
-
-plot_tpfp <- function(res) {
-  ggplot2::ggplot(res, ggplot2::aes(TP_rate, fill = cost_type)) +
-    ggplot2::geom_histogram(alpha = 1, position = "dodge", binwidth = 0.01)
-  # ggplot2::ggplot(res, ggplot2::aes(FP_rate, TP_rate, colour = cost_type)) +
-  #   ggplot2::geom_point() +
-  #   ggplot2::scale_x_continuous(name = "False positives", limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
-  #   ggplot2::scale_y_continuous(name = "True positives", limits = c(0, 1), breaks = seq(0, 1, 0.2))
-}
