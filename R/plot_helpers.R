@@ -48,3 +48,14 @@ cpt_distr_title_parts <- function(vars_in_title) {
                        "locations", "proportions", "b")
   else vars_in_title
 }
+
+add_iid_costs <- function(res) {
+  res <- res[est_band == 0, "cost" := paste0(cost, ".iid")]
+  res
+}
+
+add_precision_est_struct_to_cost <- function(res) {
+  res <- res[cost == "cor" & is.na(est_band), "cost" := paste0(cost, ".", precision_est_struct)]
+  res <- res[cost == "cor" & !is.na(est_band), "cost" := paste0(cost, ".", est_band, precision_est_struct)]
+  res
+}

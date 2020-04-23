@@ -60,15 +60,15 @@ tune_penalty <- function(data = init_data(mu = 0), params = method_params(),
 get_tuned_penalty <- function(data = init_data(mu = 0), params = method_params(),
                               tuning = tuning_params(), seed = NA) {
   query_params <- c("n", "p", "rho", "precision_type", "block_size", "band",
-                    "cost", "minsl", "maxsl",
+                    "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
                     "alpha", "alpha_tol", "tuning_n_sim")
   res <- read_single_result("penalties.csv", query_params, c(data, params, tuning))
 
-  if (params$cost == "cor") {
-    res <- res[precision_est_struct == params$precision_est_struct]
-    if (is.na(params$est_band)) res <- res[is.na(est_band)]
-    else res <- res[est_band == params$est_band]
-  }
+  # if (params$cost == "cor") {
+  #   res <- res[precision_est_struct == params$precision_est_struct]
+  #   if (is.na(params$est_band)) res <- res[is.na(est_band)]
+  #   else res <- res[est_band == params$est_band]
+  # }
 
   if (nrow(res) == 0) {
     message("The penalty for this setup has not been tuned yet.")
