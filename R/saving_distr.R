@@ -14,7 +14,7 @@ find_threshold <- function(data = init_data(), alpha = 0.99, n_sim = 10^4) {
                        "cost" = c(rep("cor", n_sim),
                                   rep("iid", n_sim)))
   for (i in 1:n_sim) {
-    x <- simulate_cor(n = data$n, p = data$p, mu = 0, Sigma = data$Sigma)
+    x <- simulate_cor(n = data$n, p = data$p, vartheta = 0, Sigma = data$Sigma)
     res_dt$value[i] <- dense_mvnormal_savings(matrix(colMeans(x[1:2, ]), nrow = data$p),
                                               data$Sigma_inv, 2)
     res_dt$value[n_sim + i] <- saving_iid(1:data$p, x[1:2, ])
@@ -32,18 +32,20 @@ find_threshold <- function(data = init_data(), alpha = 0.99, n_sim = 10^4) {
 
 
 #' @export
-saving_distr <- function(s, e, data = init_data(n = 100, p = 10, mu = 0, rho = 0.9),
-                         b = 1, n_sim = 10^4, a = 0.99, seed = NULL) {
+saving_distr <- function(s, e, data = init_data(n = 100, p = 10, vartheta = 1,
+                                                rho = 0.99, proportions = 1),
+                         n_sim = 10^3, a = 0.99, seed = NULL) {
   get_title <- function(s, e) {
+    print(c(data$locations + 1, data$locations + data$durations))
     if (is_in_interval(data$locations + 1, c(s, e)) | is_in_interval(data$locations + data$durations, c(s, e))) {
-      mu <- data$mu
+      vartheta <- data$vartheta
       prop <- data$proportions
     } else {
-      mu <- 0
+      vartheta <- 0
       prop <- 0
     }
     paste0("2-banded, rho=", data$rho, ", p=", data$p, ", n=", data$n,
-           ", s=", s, ", e=", e, ", mu=", data$mu, ", prop=", data$proportions)
+           ", s=", s, ", e=", e, ", vartheta=", vartheta, ", prop=", prop)
   }
 
   get_threshold <- function(data, a) {

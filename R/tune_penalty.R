@@ -42,10 +42,12 @@ tune_penalty <- function(data = init_data(mu = 0), params = method_params(),
 
   if (!is.na(seed)) set.seed(seed)
   data$mu <- 0
-  message(paste0("Tuning ", params$cost,  " penalty for n = ", data$n, ", p = ", data$p,
-                 ", precision type = ", data$precision_type,
-                 ", band = ", data$band,
-                 " and rho = ", data$rho))
+  data$vartheta <- 0
+  message(paste0("Tuning ", params$cost,  " penalty for n=", data$n, ", p=", data$p,
+                 ", precision_type=", data$precision_type,
+                 ", block_size=", data$block_size,
+                 ", band=", data$band,
+                 " and rho=", data$rho))
   res <- do.call('rbind', Map(fp_rate, tuning$init_b))
   print(res)
   while (!any(abs(res$diff) <= tuning$alpha_tol + 1e-6) && nrow(res) <= tuning$tuning_max_iter) {
@@ -59,22 +61,17 @@ tune_penalty <- function(data = init_data(mu = 0), params = method_params(),
 #' @export
 get_tuned_penalty <- function(data = init_data(mu = 0), params = method_params(),
                               tuning = tuning_params(), seed = NA) {
-  query_params <- c("n", "p", "rho", "precision_type", "block_size", "band",
-                    "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
-                    "alpha", "alpha_tol", "tuning_n_sim")
-  res <- read_single_result("penalties.csv", query_params, c(data, params, tuning))
-
-  # if (params$cost == "cor") {
-  #   res <- res[precision_est_struct == params$precision_est_struct]
-  #   if (is.na(params$est_band)) res <- res[is.na(est_band)]
-  #   else res <- res[est_band == params$est_band]
-  # }
-
-  if (nrow(res) == 0) {
-    message("The penalty for this setup has not been tuned yet.")
+  if (!file.exists("./results/penalties.csv")) {
+    message(paste0("File does not exist. Making file penalties.csv in ./results/"))
     tune_penalty(data, params, tuning, seed)
     return(get_tuned_penalty(data, params, tuning, seed))
-  } else return(res)
+  } else {
+    res <- read_penalties("penalties", c(data, params, tuning))
+    if (nrow(res) == 0) {
+      tune_penalty(data, params, tuning, seed)
+      return(get_tuned_penalty(data, params, tuning, seed))
+    } else return(res)
+  }
 }
 
 #' @export

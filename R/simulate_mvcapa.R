@@ -1,6 +1,6 @@
 
 #' @export
-init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p, mu = NA,
+init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p,
                       vartheta = 1, shape = 0, change_seed = NA,
                       locations = 50, durations = 10,
                       change_type = 'adjacent', changing_vars = NA,
@@ -15,21 +15,17 @@ init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p, mu = NA,
       return(list('mat'     = ar_cor_mat(p, rho),
                   'inverse' = ar_precision_mat(p, rho)))
     } else {
-      precision_mat <- block_precision_mat(p, block_size,
+      precision_mat <- block_precision_mat(p                 = p,
+                                           m                 = block_size,
+                                           rho               = rho,
                                            within_block_type = precision_type,
-                                           band = band, min_nbs = min_nbs,
-                                           max_nbs = max_nbs)
+                                           band              = band,
+                                           min_nbs           = min_nbs,
+                                           max_nbs           = max_nbs)
       return(list('mat'     = solve(precision_mat),
                   'inverse' = precision_mat))
     }
   }
-
-  if (all(is.na(c(mu, vartheta))))
-    mu <- vartheta <- 0
-  else if (!is.na(mu) && is.na(vartheta))
-    vartheta <- vartheta_from_mu(mu, p, proportions)
-  else
-    mu <- mu_from_vartheta(vartheta, p, proportions)
 
   if (change_type == "custom") {
     if (!is.na(changing_vars))
@@ -43,7 +39,7 @@ init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p, mu = NA,
 
   list('n'                 = n,
        'p'                 = p,
-       'mu'                = mu,
+       'mu'                = mu_from_vartheta(vartheta, p, proportions),
        'vartheta'          = vartheta,
        'shape'             = shape,
        'change_seed'       = change_seed,
