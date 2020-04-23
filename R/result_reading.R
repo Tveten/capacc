@@ -1,4 +1,4 @@
-subset_and_check <- function(res, var, var_list, approx = FALSE) {
+subset_and_check <- function(res, var, var_list, approx, msg) {
   if (is.na(var_list[[var]]))
     i_call <- paste0("is.na(", var, ")")
   else {
@@ -9,7 +9,7 @@ subset_and_check <- function(res, var, var_list, approx = FALSE) {
   }
   res <- res[eval(parse(text = i_call))]
   if (nrow(res) == 0) {
-    message(paste0("Results for ", var, "=", var_list[[var]],
+    message(paste0(msg, " for ", var, "=", var_list[[var]],
                    " does not exist for the this setup."))
     res_exists <- FALSE
   } else
@@ -17,21 +17,21 @@ subset_and_check <- function(res, var, var_list, approx = FALSE) {
   list(res = res, exists = res_exists)
 }
 
-# remove_iid_duplicates <- function(res) {
-#   iid_est_structs <- unique(res[cost == "iid"]$precision_est_struct)
-#   if (length(iid_est_structs) > 1)
-#     res <- res[!(cost == "iid" & precision_est_struct %in%
-#                    iid_est_structs[2:length(iid_est_structs)] )]
-#   res
-# }
+remove_iid_duplicates <- function(res) {
+  iid_est_structs <- unique(res[cost == "iid"]$precision_est_struct)
+  if (length(iid_est_structs) > 1)
+    res <- res[!(cost == "iid" & precision_est_struct %in%
+                   iid_est_structs[2:length(iid_est_structs)] )]
+  res
+}
 
-read_single_result <- function(file_name, query_params, all_params) {
+read_single_result <- function(file_name, query_params, all_params, msg) {
   res <- fread(paste0("./results/", file_name))
   approx <- vapply(query_params, function(var) is.numeric(all_params[[var]]), logical(1))
   i <- 1
   res_exists <- TRUE
   while (res_exists && i <= length(query_params)) {
-    sub_res <- subset_and_check(res, query_params[i], all_params, approx[i])
+    sub_res <- subset_and_check(res, query_params[i], all_params, approx[i], msg)
     res <- sub_res$res
     res_exists <- sub_res$exists
     i <- i + 1
@@ -43,31 +43,38 @@ read_single_result <- function(file_name, query_params, all_params) {
 }
 
 read_power_curve <- function(file_name, all_params) {
-  query_params <- c("n", "p", "rho", "precision_type", "block_size", "proportions",
-                    "shape", "locations", "durations", "change_type", "band",
+  query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
+                    "shape", "locations", "durations", "change_type",
                     "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
                     "alpha", "alpha_tol", "tuning_n_sim",
                     "curve_n_sim", "curve_max_dist",
                     "loc_tol")
-  read_single_result(file_name, query_params, all_params)
+  read_single_result(file_name, query_params, all_params, "A power curve")
 }
 
 read_cpt_distr <- function(file_name, all_params) {
-  query_params <- c("n", "p", "rho", "precision_type", "block_size", "proportions",
-                    "vartheta", "shape", "locations", "durations", "change_type", "band",
+  query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
+                    "vartheta", "shape", "locations", "durations", "change_type",
                     "cost", "minsl", "maxsl", "b", "precision_est_struct", "est_band",
                     "n_sim")
-  read_single_result(file_name, query_params, all_params)
+  read_single_result(file_name, query_params, all_params, "A changepoint distribution")
 }
 
-already_estimated <- function(file_name, all_params, read_func) {
+read_penalties <- function(file_name, all_params) {
+    query_params <- c("n", "p", "rho", "precision_type", "band", "block_size",
+                      "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
+                      "alpha", "alpha_tol", "tuning_n_sim")
+    read_single_result("penalties.csv", query_params, all_params, "A penalty")
+}
+
+already_estimated <- function(file_name, all_params, read_func, out = TRUE) {
   if (!file.exists(paste0("./results/", file_name))) {
     message(paste0("File does not exist. Making file ", file_name, " in ./results/"))
     return(FALSE)
   }
   res <- read_func(file_name, all_params)
   if (nrow(res) > 0) {
-    message("Results for this setup already exists. Exiting.")
+    if (out) message("Results for this setup already exists. Exiting.")
     return(TRUE)
   } else return(FALSE)
 }

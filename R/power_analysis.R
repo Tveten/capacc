@@ -11,7 +11,7 @@ curve_params <- function(max_dist = 0.2, max_iter = 50, n_sim = 100,
 power_curve <- function(out_file, data = init_data(), params = method_params(),
                         tuning = tuning_params(), curve = curve_params(),
                         loc_tol = 10, seed = NA) {
-  add_setup_info <- function(res_dt) {
+  add_setup_info <- function(res) {
     which_data <- !(grepl("Sigma", names(data)) | names(data) %in% c("changing_vars", "vartheta"))
     res <- cbind(res,
                  as.data.table(data[which_data]),
@@ -69,7 +69,7 @@ power_curve <- function(out_file, data = init_data(), params = method_params(),
   all_params <- c(data, params, tuning, curve, list("loc_tol" = loc_tol))
   if (already_estimated(out_file, all_params, read_power_curve)) return(NULL)
 
-  params$b <- get_tuned_penalty(data, params, tuning, seed = sample(1:1000, 1))$b
+  params$b <- get_tuned_penalty(data, params, tuning, seed = seed + 2)$b
   if (!is.na(seed)) set.seed(seed)
   res <- init_power_est(curve$init_values)
   ind <- split_inds(res)
@@ -115,32 +115,32 @@ power_runs <- function() {
   out_file <- "power.csv"
 
   #### BANDED
-  # banded_data <- init_data(n = 100, p = 10, precision_type = "banded",
-  #                          band = 2, locations = 50, durations = 10,
-  #                          change_type = "adjacent")
-  # banded_variables <- list("cost"        = c("iid", "cor"),
-  #                          "rho"         = rev(c(-0.3, 0.5, 0.7, 0.9, 0.99)),
-  #                          "proportions" = rev(c(0.1, 0.3, 1)),
-  #                          "shape"       = rev(c(0, 2, 3, 4, 5)))
-  # many_power_curves(out_file, banded_variables, banded_data,
-  #                   method_params(), tuning_params(), curve)
-  #
-  # #### BLOCK
-  # block_data <- init_data(n = 100, p = 10, precision_type = "banded",
-  #                                band = 2, block_size = 9, locations = 50,
-  #                                durations = 10, change_type = "custom",
-  #                                changing_vars = 10)
-  # block_variables <- list("cost"   = c("iid", "cor"),
-  #                         "rho"    = c(0.5, 0.7, 0.9, 0.99))
-  # many_power_curves(out_file, block_variables, block_data,
-  #                   method_params(), tuning_params(), curve)
+  banded_data <- init_data(n = 100, p = 10, precision_type = "banded",
+                           band = 2, locations = 50, durations = 10,
+                           change_type = "adjacent")
+  banded_variables <- list("cost"        = c("iid", "cor"),
+                           "rho"         = rev(c(-0.3, 0.5, 0.7, 0.9, 0.99)),
+                           "proportions" = rev(c(0.1, 0.3, 1)),
+                           "shape"       = rev(c(0, 2, 3, 4, 5)))
+  many_power_curves(out_file, banded_variables, banded_data,
+                    method_params(), tuning_params(), curve)
+
+  #### BLOCK
+  block_data <- init_data(n = 100, p = 10, precision_type = "banded",
+                                 band = 2, block_size = 9, locations = 50,
+                                 durations = 10, change_type = "custom",
+                                 changing_vars = 10)
+  block_variables <- list("cost"   = c("iid", "cor"),
+                          "rho"    = c(0.5, 0.7, 0.9, 0.99))
+  many_power_curves(out_file, block_variables, block_data,
+                    method_params(), tuning_params(), curve)
 
   #### LATTICE
   lattice_data <- init_data(n = 100, p = 10, precision_type = "lattice",
                             locations = 50, durations = 10,
                             change_type = "adjacent_lattice")
   lattice_variables <- list("cost"        = c("iid", "cor"),
-                            "rho"         = c(0.5, 0.7, 0.9, 0.99),
+                            "rho"         = rev(c(0.5, 0.7, 0.9, 0.99)),
                             "proportions" = rev(c(1, 4, 20)/20),
                             "shape"      = rev(c(0, 2, 3, 4, 5)),
                             "precision_est_struct" = c("correct", "banded"),

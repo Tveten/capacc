@@ -94,6 +94,7 @@ simulate_cor <-function(n=100,p=10,vartheta=1,shape=0,change_seed=NA,
       {
         J <- get_affected_dims(change_type, proportions[j], p, changing_vars)
         mu <- generate_change(vartheta, length(J), shape, change_seed)
+        mu <- t(replicate(e[j] - s[j], mu))
         X[(s[j] + 1):e[j], J] <- X[(s[j] + 1):e[j], J] + mu
       }
     }
