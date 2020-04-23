@@ -48,9 +48,11 @@ many_cpt_distr <- function(out_file = "cpt_distr.csv",
   params_list <- split_lists(expand_list(c(data, params), variables),
                              list("data"   = names(data),
                                   "method" = names(params)))
+  data_list <- lapply(params_list$data, function(data) {init_data_(data)})
+  method_list <- lapply(params_list$method, function(method) {method_params_(method)})
   Map(sim_cpt_distr,
-      data = params_list$data,
-      params = params_list$method,
+      data = data_list,
+      params = method_list,
       seed = get_sim_seeds(params_list, variables),
       MoreArgs = list("out_file" = out_file,
                       "n_sim"    = n_sim))

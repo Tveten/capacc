@@ -63,21 +63,54 @@ init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p, mu = NA,
        'point_mu'          = point_mu)
 }
 
+init_data_ <- function(data) {
+  init_data(n                 = data$n,
+            p                 = data$p,
+            proportions       = data$proportions,
+            vartheta          = data$vartheta,
+            shape             = data$shape,
+            change_seed       = data$change_seed,
+            locations         = data$locations,
+            durations         = data$durations,
+            change_type       = data$change_type,
+            changing_vars     = data$changing_vars,
+            point_locations   = data$point_locations,
+            point_proportions = data$point_proportions,
+            point_mu          = data$point_mu,
+            precision_type    = data$precision_type,
+            rho               = data$rho,
+            band              = data$band,
+            block_size        = data$block_size)
+}
+
 #' @export
 method_params <- function(cost = "cor", b = 1, minsl = 2, maxsl = 100,
-                          precision_est_struct = "correct", est_band = 2) {
+                          precision_est_struct = "correct", est_band = NA) {
   if (grepl("iid", cost)) {
     precision_est_struct <- "banded"
     est_band <- 0
+  } else {
+    if (precision_est_struct == "correct") est_band <- NA
+    else if (precision_est_struct == "banded") {
+      if (is.na(est_band)) est_band <- 2
+    }
   }
-  if (precision_est_struct == "correct") est_band <- NA
-  if (cost == "inspect") b <- NA
+  if (grepl("inspect", cost)) b <- NA
   list("cost"                 = cost,
        "b"                    = b,
        "minsl"                = minsl,
        "maxsl"                = maxsl,
        "precision_est_struct" = precision_est_struct,
        "est_band"             = est_band)
+}
+
+method_params_ <- function(method) {
+  method_params(cost                 = method$cost,
+                b                    = method$b,
+                minsl                = method$minsl,
+                maxsl                = method$maxsl,
+                precision_est_struct = method$precision_est_struct,
+                est_band             = method$est_band)
 }
 
 

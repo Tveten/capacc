@@ -96,9 +96,11 @@ many_power_curves <- function(out_file = "power.csv",
   params_list <- split_lists(expand_list(c(data, params), variables),
                              list("data"   = names(data),
                                   "method" = names(params)))
+  data_list <- lapply(params_list$data, function(data) {init_data_(data)})
+  method_list <- lapply(params_list$method, function(method) {method_params_(method)})
   Map(power_curve,
-      data   = params_list$data,
-      params = params_list$method,
+      data   = data_list,
+      params = method_list,
       seed   = get_sim_seeds(params_list, variables),
       MoreArgs = list("out_file"     = out_file,
                       "tuning"        = tuning,
@@ -141,9 +143,10 @@ power_runs <- function() {
                             "rho"         = c(0.5, 0.7, 0.9, 0.99),
                             "proportions" = rev(c(1, 4, 20)/20),
                             "shape"      = rev(c(0, 2, 3, 4, 5)),
-                            "precision_est_struct" = c("correct", "banded"))
+                            "precision_est_struct" = c("correct", "banded"),
+                            "est_band" = 2)
   many_power_curves(out_file, lattice_variables, lattice_data,
-                    method_params(est_band = 2), tuning_params(), curve)
+                    method_params(), tuning_params(), curve)
 
   # #### DIFFERENT BANDS
   # many_power_curves(out_file,
