@@ -12,8 +12,8 @@ test_that('MLE savings always increases as more components are added in affected
   for (i in 1:100) expect_true(all(diff(test_savings_MLE()) >= 0))
 })
 
-compare_OP_BF <- function(n = 50, p = 5, r = 2, rho = 0.9,
-                          prop = 0.1, cor_mat_type = 'random', mu = 1) {
+compare_OP_BF <- function(n = 50, p = 10, r = 2, rho = 0.9,
+                          prop = 0.1, cor_mat_type = 'random', vartheta = 1) {
   if (cor_mat_type == 'random')
     Q <- cuthill_mckee(car_precision_mat(random_neighbours(p), rho))
   else if (cor_mat_type == 'banded')
@@ -22,15 +22,16 @@ compare_OP_BF <- function(n = 50, p = 5, r = 2, rho = 0.9,
 
   lower_nbs <- lower_nbs(Q_sparse)
   extended_nbs <- extended_lower_nbs(lower_nbs)
-  x <- simulate_cor(n, p, mu, solve(Q), 1, n - 2, prop)
+  x <- simulate_cor(n, p, vartheta = vartheta, Sigma = solve(Q),
+                    locations = 1, durations = n - 2, proportions = prop)
   n_full <- 1000
   sparse_penalty <- get_penalty('sparse', n_full, p)
   dense_penalty <- get_penalty('dense', n_full, p)
   OP_res <- optimise_mvnormal_saving(x, Q_sparse, lower_nbs, extended_nbs,
                                      dense_penalty$alpha, sparse_penalty$beta, sparse_penalty$alpha)
   BF_res <- optim_penalised_savings_BF(n_full, Q)(x)
-  list('BF' = list('B_max' = BF_res$B_max, 'J_max' = BF_res$J_max),
-       'OP' = list('B_max' = OP_res$B_max, 'J_max' = OP_res$J_max))
+  list('BF' = list('S_max' = BF_res$S_max, 'J_max' = BF_res$J_max),
+       'OP' = list('S_max' = OP_res$S_max, 'J_max' = OP_res$J_max))
 }
 
 test_that('OP C++ implementation returns equally as brute force in R', {
@@ -46,7 +47,7 @@ test_that('OP C++ implementation returns equally as brute force in R', {
         # print(c(k, j, i))
         res <- compare_OP_BF(n, p, r[k], rho[i], prop[j], 'banded')
         # print(res)
-        expect_equal(res$OP$B_max, res$BF$B_max)
+        expect_equal(res$OP$S_max, res$BF$S_max)
         expect_equal(res$OP$J_max, res$BF$J_max)
       }
     }
@@ -57,7 +58,7 @@ test_that('OP C++ implementation returns equally as brute force in R', {
         set.seed(k)
         res <- compare_OP_BF(n, p, rho = rho[i], prop = prop[j],
                              cor_mat_type = 'random')
-        expect_equal(res$OP$B_max, res$BF$B_max)
+        expect_equal(res$OP$S_max, res$BF$S_max)
         expect_equal(res$OP$J_max, res$BF$J_max)
       }
     }

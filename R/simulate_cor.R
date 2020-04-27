@@ -89,16 +89,16 @@ simulate_cor <-function(n=100,p=10,vartheta=1,shape=0,change_seed=NA,
     s <- locations
     e <- locations + durations
     X = MASS::mvrnorm(n, rep(0, p), Sigma)
-    if (any(vartheta > 0)) {
-      for (j in 1:length(s))
-      {
+    for (j in 1:length(s))
+    {
+      if (vartheta[j] > 0 && proportions[j] > 0) {
         J <- get_affected_dims(change_type, proportions[j], p, changing_vars)
         mu <- generate_change(vartheta, length(J), shape, change_seed)
         mu <- t(replicate(e[j] - s[j], mu))
         X[(s[j] + 1):e[j], J] <- X[(s[j] + 1):e[j], J] + mu
       }
     }
-    if (!is.na(point_locations)) {
+    if (!any(is.na(point_locations))) {
       for (j in 1:length(point_locations)) {
         J <- get_affected_dims(change_type, point_proportions[j])
         X[point_locations[j], J] <- X[point_locations[j], J] + point_mu[j]
@@ -137,18 +137,20 @@ simulate_cor_ <- function(data = init_data()) {
 # - High-dim plot which also shows J?
 
 get_affected_dims <- function(change_type, prop, p, changing_vars) {
+  k <- ceiling(prop * p)
+  if (k < 1) return(integer(0))
   if (change_type == "custom") {
     if (is.na(changing_vars))
       stop("If change_type is 'custom', you must provide a changing_vars vector")
     return(changing_vars)
   } else if (change_type == 'adjacent')
-    return(1:round(prop * p))
+    return(1:k)
   else if (change_type == 'adjacent_lattice')
-    return(unique(c(1, unlist(lattice_neighbours(p))))[1:round(prop * p)])
+    return(unique(c(1, unlist(lattice_neighbours(p))))[1:k])
   else if (change_type == 'scattered')
-    return(round(seq(2, p - 1, length.out = prop * p)))
+    return(round(seq(2, p - 1, length.out = k)))
   else if (change_type == 'randomised')
-    return(sample(1:p, prop * p))
+    return(sample(1:p, k))
 }
 
 generate_change <- function(vartheta, k, shape, seed = NA) {

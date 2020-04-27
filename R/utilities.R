@@ -40,7 +40,7 @@ split_lists <- function(a, grouping) {
   split_list
 }
 
-
+identity <- function(a) {return(a)}
 
 off_diag_ind <- function(nr, p) {
   A <- matrix(FALSE, nrow = p, ncol = p)

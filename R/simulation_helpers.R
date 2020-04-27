@@ -16,6 +16,24 @@ vartheta_from_mu <- function(mu, p, prop) {
   mu * sqrt(round(prop * p))
 }
 
+split_params <- function(a, grouping) {
+
+  get_init_func <- function(name) {
+    if      (name == "data") return(init_data_)
+    else if (name == "method") return(method_params_)
+    else                      return(identity)
+  }
+  split_list <- lapply(grouping, extract_nested_elements, list_of_lists = a)
+  names(split_list) <- names(grouping)
+  out <- list()
+  for (i in 1:length(split_list)) {
+    init_func <- get_init_func(names(grouping)[i])
+    out[[length(out) + 1]] <- Map(init_func, split_list[[i]])
+  }
+  names(out) <- names(grouping)
+  out
+}
+
 #
 # change_sd <- function(p, prop, duration) {
 #   xi <- - log(prop) / log(p)
