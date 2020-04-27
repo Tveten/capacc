@@ -158,14 +158,45 @@ power_runs <- function() {
 }
 
 #' @export
+additional_power_runs <- function() {
+  curve <- curve_params(max_dist = 0.1, n_sim = 300)
+  out_file <- "power.csv"
+
+  #### BANDED
+  banded_data <- init_data(n = 100, p = 10, precision_type = "banded",
+                           band = 2, locations = 50, durations = 10,
+                           change_type = "adjacent")
+  banded_variables <- list("cost"        = c("iid", "cor"),
+                           "rho"         = c(0.01, 0.2),
+                           "proportions" = rev(c(0.1, 0.3, 1)),
+                           "shape"       = rev(c(0, 2, 3, 4, 5)))
+  many_power_curves(out_file, banded_variables, banded_data,
+                    method_params(), tuning_params(), curve)
+
+}
+
+#' @export
 plot_power_curve <- function(file_name, data = init_data(), params = method_params(),
                              tuning = tuning_params(), curve = curve_params(),
                              loc_tol = 10, vars_in_title = NA) {
 
   all_params <- c(data, params, tuning, curve, list("loc_tol" = loc_tol))
+  params_list <- split_params(expand_list(all_params,
+                                          list("cost" = c("iid", "cor"))),
+                              list("data"   = names(data),
+                                   "method" = names(params),
+                                   "tuning" = names(tuning),
+                                   "curve"  = names(curve),
+                                   "loc_tol" = "loc_tol"))
+  all_params_list <- Map(c,
+                         params_list[[1]],
+                         params_list[[2]],
+                         params_list[[3]],
+                         params_list[[4]],
+                         params_list[[5]])
   res <- do.call("rbind",
                  Map(read_power_curve,
-                     expand_list(all_params, list("cost" = c("iid", "cor"))),
+                     all_params_list,
                      MoreArgs = list(file_name = file_name)))
   title <- make_title(all_params, power_curve_title_parts(vars_in_title))
   ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power, colour = cost)) +
@@ -191,9 +222,12 @@ grid_plot_power <- function(variables = list("rho" = c(-0.3, 0.9),
   params_list <- split_lists(expand_list(c(data, params), variables),
                              list("data"   = names(data),
                                   "method" = names(params)))
-  plots <- Map(plot_power_curve, data = params_list$data,
-               params = params_list$method,
-               MoreArgs = list("file_name"     = "power_test.csv",
+  data_list <- lapply(params_list$data, function(data) {init_data_(data)})
+  method_list <- lapply(params_list$method, function(method) {method_params_(method)})
+  plots <- Map(plot_power_curve,
+               data = data_list,
+               params = method_list,
+               MoreArgs = list("file_name"     = "power.csv",
                                "tuning"        = tuning,
                                "curve"         = curve,
                                "loc_tol"       = loc_tol,

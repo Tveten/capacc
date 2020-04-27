@@ -153,10 +153,10 @@ node_ptr_vec select_parents(const int& d,
   }
 }
 
-node_ptr init_tree()
+node_ptr init_tree(const double& c)
 {
   weak_node_ptr weak_null_ptr;
-  node_ptr root(std::make_shared<node>(weak_null_ptr, ' ', 0, 0, 0));
+  node_ptr root(std::make_shared<node>(weak_null_ptr, ' ', 0, 0, c));
   return root;
 }
 
@@ -203,11 +203,10 @@ BQP::BQP(const arma::sp_mat& A_,
 BQP_res BQP_optim(const BQP& curr_BQP)
 {
   int p = curr_BQP.A.n_rows;
-  node_ptr root = init_tree();
+  node_ptr root = init_tree(curr_BQP.c);
   node_ptr_vec leaf_vec = init_leaf_vec(root);
-  leaf_vec = grow_tree(1, leaf_vec, curr_BQP);
   int min_subset_size= 0;
-  int d = 2;
+  int d = 1;
   while (d <= p && min_subset_size < curr_BQP.k_star)
   {
     leaf_vec = select_parents(d, leaf_vec, curr_BQP.extended_nbs);
@@ -217,7 +216,7 @@ BQP_res BQP_optim(const BQP& curr_BQP)
   }
 
   node_ptr max_node = which_node_max(leaf_vec);
-  double max_value = max_node->value + curr_BQP.c;
+  double max_value = max_node->value;
   std::vector<int> max_subset = active_subset_at_levels(seq_int_reverse(1, d - 1), max_node);
   std::reverse(max_subset.begin(), max_subset.end());
 

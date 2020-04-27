@@ -23,5 +23,6 @@ plot_signal_strength <- function(p, vartheta = 1, rho = 0.9, band = 2) {
     ggplot2::scale_y_continuous("Signal strength", limits = c(0, max(ss$signal_strength))) +
     ggplot2::scale_x_continuous("Proportion") +
     ggplot2::ggtitle(paste0("2-banded, p=", p, ", rho=", rho,
-                            ", vartheta=", vartheta))
+                            ", vartheta=", vartheta)) +
+    ggplot2::labs(colour = "cost.shape")
 }

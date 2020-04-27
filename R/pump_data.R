@@ -146,25 +146,30 @@ anonymise <- function(p) {
                        axis.text.y=element_blank(),
                        axis.ticks=element_blank(),
                        axis.title.x=element_blank(),
-                       axis.title.y=element_blank())
+                       axis.title.y=element_blank()) +
+    scale_colour_discrete(name = "", labels = c("A", "B"))
 }
 
-plot_daily_mean <- function(data, var, plot_type = "point", anonymise = FALSE) {
+plot_daily_mean <- function(data, var, plot_type = "point",
+                            colour_by = "status", anonymise = FALSE) {
   dat <- data %>%
     dplyr::filter(running == "Running") %>%
     dplyr::select(date, starts_with(var), status) %>%
     dplyr::group_by(date, status) %>%
     dplyr::summarise(mean_temp = mean(eval(parse(text = var))))
+  dat$ind <- 1:nrow(dat)
+  dat$nostatus <- "nostatus"
 
   if (plot_type == "point")
-  p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = date, y = mean_temp, colour = status)) +
+  p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = ind, y = mean_temp,
+                                                colour = get(colour_by))) +
       ggplot2::geom_point(size = 0.7)
   else if (plot_type == "hist")
-  p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = mean_temp, fill = status)) +
+  p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = mean_temp, fill = get(colour_by))) +
       ggplot2::geom_histogram(ggplot2::aes(y = ..density..),
                               bins = 50, position = "dodge")
   else if (plot_type == "density")
-  p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = mean_temp, colour = status)) +
+  p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = mean_temp, colour = get(colour_by))) +
       ggplot2::geom_density()
   if (anonymise) p <- anonymise(p)
   else p <- p + ggplot2::ggtitle(paste0("Daily mean ", var))
@@ -173,10 +178,11 @@ plot_daily_mean <- function(data, var, plot_type = "point", anonymise = FALSE) {
 
 #' @export
 group_plot_daily_means <- function(data, var_type = "all", plot_type = "point",
-                                   anonymise = FALSE) {
+                                   colour_by = "status", anonymise = FALSE) {
   vars <- relevant_vars(var_type)
   plots <- Map(plot_daily_mean, var = vars,
-               MoreArgs = list(data = data, plot_type = plot_type, anonymise = anonymise))
+               MoreArgs = list(data = data, plot_type = plot_type,
+                               colour_by = colour_by, anonymise = anonymise))
   ggpubr::ggarrange(plotlist = plots, nrow = length(vars), ncol = 1,
                     common.legend = TRUE, legend = "right")
 }
