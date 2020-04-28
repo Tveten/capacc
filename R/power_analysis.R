@@ -279,13 +279,13 @@ known_anom_power_runs <- function() {
   curve <- curve_params(max_dist = 0.1, n_sim = 300)
   out_file <- "power_known_anom.csv"
 
-  banded_data <- init_data(n = 100, p = 10, precision_type = "banded",
+  banded_data <- init_data(n = 100, p = 8, precision_type = "banded",
                            band = 2, locations = 50, durations = 10,
                            change_type = "adjacent")
   banded_variables <- list("cost"  = c("iid", "cor", "cor_exact"),
                            "precision_est_struct" = c(NA, "correct"),
-                           "rho"         = rev(c(-0.3, 0.01, 0.2, 0.5, 0.7, 0.9, 0.99)),
-                           "proportions" = rev(c(0.1, 0.3, 1)),
+                           "rho"         = rev(c(0.01, 0.2, 0.5, 0.7, 0.9, 0.99)),
+                           "proportions" = rev(c(1, 3, 8)/8),
                            "shape"       = rev(c(0, 5)))
   many_power_curves(out_file, banded_variables, banded_data,
                     method_params(), tuning_params(), curve, known = TRUE)
