@@ -173,13 +173,9 @@ additional_power_runs <- function() {
                            band = 2, locations = 50, durations = 10,
                            change_type = "adjacent")
   banded_variables <- list("cost"        = "cor",
-                           "rho"         = c(0.2, 0.01),
-                           "proportions" = 1,
-                           "shape"       = 0)
-  # banded_variables <- list("cost"        = "cor",
-  #                          "rho"         = c(-0.3, 0.01, 0.2, 0.5, 0.7, 0.9, 0.99),
-  #                          "proportions" = c(0.1, 0.3, 1),
-  #                          "shape"       = c(0, 5))
+                           "rho"         = c(-0.3, 0.01, 0.2, 0.5, 0.7, 0.9, 0.99),
+                           "proportions" = c(0.1, 0.3, 1),
+                           "shape"       = c(0, 5))
   many_power_curves(out_file, banded_variables, banded_data,
                     method_params(precision_est_struct = NA), tuning_params(), curve)
 
