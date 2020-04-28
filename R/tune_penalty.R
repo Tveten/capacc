@@ -64,18 +64,22 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
 
 #' @export
 get_tuned_penalty <- function(data = init_data(mu = 0), method = method_params(),
-                              tuning = tuning_params(), seed = NA) {
+                              tuning = tuning_params(), known = FALSE, seed = NA) {
   if (method$cost == "cor_exact") method$cost <- "cor"
   if (!file.exists("./results/penalties.csv")) {
     message(paste0("File does not exist. Making file penalties.csv in ./results/"))
     tune_penalty(data, method, tuning, seed)
     return(get_tuned_penalty(data, method, tuning, seed))
   } else {
-    res <- read_penalties("penalties", c(data, method, tuning))
+    if (known)
+      res <- read_penalties_known("penalties", c(data, method, tuning))
+    else
+      res <- read_penalties("penalties", c(data, method, tuning))
     if (nrow(res) == 0) {
       tune_penalty(data, method, tuning, seed)
       return(get_tuned_penalty(data, method, tuning, seed))
-    } else return(res)
+    } else
+      return(res[1])
   }
 }
 

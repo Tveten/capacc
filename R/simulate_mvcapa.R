@@ -140,6 +140,7 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
       Q_hat <- data$Sigma_inv
     else
       Q_hat <- estimate_precision_mat(x, get_adj_mat(method$precision_est_struct))
+
     if (method$cost == "cor_exact")
       res <- mvcapa_cor_exact(x, Q_hat,
                               b = method$b,
@@ -164,4 +165,40 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
   }
   if (return_anom_only) return(get_anom_only_list(method$cost, res))
   else return(res)
+}
+
+#' @export
+simulate_mvcapa_known <- function(data = init_data(), method = method_params(),
+                                  seed = NULL) {
+  get_adj_mat <- function(est_struct) {
+    if (est_struct == "correct")
+      return(data$Sigma_inv)
+    else if (est_struct == "banded")
+      return(adjacency_mat(banded_neighbours(method$est_band, data$p)))
+  }
+
+  if (!is.null(seed)) set.seed(seed)
+  x <- anomaly::robustscale(simulate_cor_(data))
+  x_anom <- x[(data$locations + 1):(data$locations + data$durations), ]
+  if (grepl("cor", method$cost)) {
+    if (is.na(method$precision_est_struct))
+      Q_hat <- data$Sigma_inv
+    else
+      Q_hat <- estimate_precision_mat(x, get_adj_mat(method$precision_est_struct))
+
+    if (method$cost == "cor_exact")
+      return(optim_penalised_savings_BF(data$n, Q_hat, mu_MLE(Q_hat))(x_anom, method$b))
+    else {
+      sparse_penalty <- get_penalty('sparse', data$n, data$p)
+      dense_penalty <- get_penalty('dense', data$n, data$p)
+      lower_nbs <- lower_nbs(Q_hat)
+      extended_nbs <- extended_lower_nbs(lower_nbs)
+      return(optimise_mvnormal_saving(x_anom, Q_hat, lower_nbs, extended_nbs,
+                                      dense_penalty$alpha, sparse_penalty$beta,
+                                      sparse_penalty$alpha))
+    }
+  } else if (method$cost == "iid") {
+    return(optim_penalised_savings_iid(data$n)(x_anom, method$b))
+  }
+
 }

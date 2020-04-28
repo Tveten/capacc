@@ -2,8 +2,11 @@
 get_sim_seeds <- function(params_list, variables) {
   # Uses structure of output from expand.grid.
   if (names(variables)[1] != "cost")
-    stop("'cost' must be the first element in 'variables' for seeds to be correct")
-  seeds <- sample(1:10^6, length(params_list[[1]]) / length(variables$cost))
+    stop("'cost' must be the first element in 'variables' for seeds to be correct.")
+  if (!is.null(variables$precision_est_struct) && names(variables)[2] != "precision_est_struct")
+    stop("'precision_est_struct' must be the second element in 'variables' if present for seeds to be correct.")
+  n_seeds <- length(params_list[[1]]) / (length(variables$cost) * length(variables$precision_est_struct))
+  seeds <- sample(1:10^6, n_seeds)
   rep(seeds, each = length(variables$cost))
 }
 
