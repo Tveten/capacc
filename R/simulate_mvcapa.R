@@ -145,7 +145,7 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
                               b = method$b,
                               min_seg_len = method$minsl,
                               max_seg_len = method$maxsl,
-                              print_progress = TRUE)
+                              print_progress = FALSE)
     else
       res <- mvcapa_cor(x, Q_hat,
                         b                = method$b,
