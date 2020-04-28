@@ -250,9 +250,10 @@ low_dim_exact_power_runs <- function() {
   banded_data <- init_data(n = 50, p = 5, precision_type = "banded",
                            band = 2, rho = 0.9, locations = 20, durations = 5,
                            proportions = 1, change_type = "adjacent")
-  method <- method_params(maxsl = 10, precision_est_struct = NA)
+  method <- method_params(maxsl = 10)
   banded_variables <- list("cost"  = c("iid", "cor", "cor_exact"),
+                           "precision_est_struct" = c(NA, "correct"),
                            "shape" = c(5, 0))
   many_power_curves(out_file, banded_variables, banded_data,
-                    method_params(), tuning_params(), curve, loc_tol = 5)
+                    method, tuning_params(), curve, loc_tol = 5)
 }
