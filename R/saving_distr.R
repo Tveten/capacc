@@ -15,8 +15,8 @@ find_threshold <- function(data = init_data(), alpha = 0.99, n_sim = 10^4) {
                                   rep("iid", n_sim)))
   for (i in 1:n_sim) {
     x <- simulate_cor(n = data$n, p = data$p, vartheta = 0, Sigma = data$Sigma)
-    res_dt$value[i] <- dense_mvnormal_savings(matrix(colMeans(x[1:2, ]), nrow = data$p),
-                                              data$Sigma_inv, 2)
+    mean_x <- matrix(colMeans(x[1:2, ]), nrow = data$p)
+    res_dt$value[i] <- dense_mvnormal_savings(mean_x, data$Sigma_inv, 2)
     res_dt$value[n_sim + i] <- saving_iid(1:data$p, x[1:2, ])
   }
   threshold_dt <- res_dt[, .(threshold      = quantile(value, alpha),
@@ -65,8 +65,8 @@ saving_distr <- function(s, e, data = init_data(n = 100, p = 10, vartheta = 1,
                                   rep("chisq_p", n_sim)))
   for (i in 1:n_sim) {
     x <- simulate_cor_(data)
-    res_dt$value[i] <- dense_mvnormal_savings(matrix(colMeans(x[s:e, ]), nrow = data$p),
-                                              data$Sigma_inv, e - s + 1)
+    mean_x <- matrix(colMeans(x[s:e, ]), nrow = data$p)
+    res_dt$value[i] <- dense_mvnormal_savings(mean_x, data$Sigma_inv, e - s + 1)
     res_dt$value[n_sim + i] <- saving_iid(1:data$p, x[s:e, ])
   }
   res_dt$value[(2 * n_sim + 1):(3 * n_sim)] <- rchisq(n_sim, data$p)

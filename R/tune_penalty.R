@@ -10,14 +10,14 @@ tuning_params <- function(alpha = 0.05, tol = 0.02, max_iter = 50,
 }
 
 #' @export
-tune_penalty <- function(data = init_data(mu = 0), params = method_params(),
+tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
                          tuning = tuning_params(), seed = NA) {
 
   add_setup_info <- function(res) {
     which_data <- !(grepl("Sigma", names(data)) | names(data) == c("changing_vars"))
     res <- cbind(res,
                  as.data.table(data[which_data]),
-                 as.data.table(params[names(params) != "b"]),
+                 as.data.table(method[names(method) != "b"]),
                  as.data.table(tuning[names(tuning) != "init_b"]))
     res$seed <-  seed
     res
@@ -25,8 +25,8 @@ tune_penalty <- function(data = init_data(mu = 0), params = method_params(),
 
   fp_rate <- function(b) {
     fps <- unlist(lapply(1:tuning$tuning_n_sim, function(i) {
-      params$b <- b
-      !is.na(simulate_mvcapa(data, params, return_anom_only = TRUE)$collective$start[1])
+      method$b <- b
+      !is.na(simulate_mvcapa(data, method, return_anom_only = TRUE)$collective$start[1])
     }))
     data.table("b" = b, "fp" = mean(fps), "diff" = mean(fps) - tuning$alpha)
   }
@@ -43,11 +43,15 @@ tune_penalty <- function(data = init_data(mu = 0), params = method_params(),
   if (!is.na(seed)) set.seed(seed)
   data$mu <- 0
   data$vartheta <- 0
-  message(paste0("Tuning ", params$cost,  " penalty for n=", data$n, ", p=", data$p,
+  message(paste0("Tuning ", method$cost,
+                 " penalty for n=", data$n,
+                 ", p=", data$p,
                  ", precision_type=", data$precision_type,
                  ", block_size=", data$block_size,
                  ", band=", data$band,
-                 " and rho=", data$rho))
+                 ", rho=", data$rho,
+                 ", precision_est_struct=", method$precision_est_struct,
+                 ", est_band=", method$est_band))
   res <- do.call('rbind', Map(fp_rate, tuning$init_b))
   print(res)
   while (!any(abs(res$diff) <= tuning$alpha_tol + 1e-6) && nrow(res) <= tuning$tuning_max_iter) {
@@ -59,17 +63,17 @@ tune_penalty <- function(data = init_data(mu = 0), params = method_params(),
 }
 
 #' @export
-get_tuned_penalty <- function(data = init_data(mu = 0), params = method_params(),
+get_tuned_penalty <- function(data = init_data(mu = 0), method = method_params(),
                               tuning = tuning_params(), seed = NA) {
   if (!file.exists("./results/penalties.csv")) {
     message(paste0("File does not exist. Making file penalties.csv in ./results/"))
-    tune_penalty(data, params, tuning, seed)
-    return(get_tuned_penalty(data, params, tuning, seed))
+    tune_penalty(data, method, tuning, seed)
+    return(get_tuned_penalty(data, method, tuning, seed))
   } else {
-    res <- read_penalties("penalties", c(data, params, tuning))
+    res <- read_penalties("penalties", c(data, method, tuning))
     if (nrow(res) == 0) {
-      tune_penalty(data, params, tuning, seed)
-      return(get_tuned_penalty(data, params, tuning, seed))
+      tune_penalty(data, method, tuning, seed)
+      return(get_tuned_penalty(data, method, tuning, seed))
     } else return(res)
   }
 }
@@ -91,4 +95,8 @@ tune_many <- function(n = 100, p = 10, band = 2) {
       })
     })
   })
+}
+
+plot_penalty <- function(data, param) {
+
 }
