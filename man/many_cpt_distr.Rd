@@ -9,7 +9,7 @@ many_cpt_distr(
   variables = list(cost = c("inspect", "inspect_iid", "mvlrt", "mvlrt_iid"), rho =
     c(0.7, 0.9, 0.99), proportions = c(0.1, 0.3, 1)),
   data = init_data(n = 100, locations = 50, durations = 50),
-  params = method_params(),
+  method = method_params(),
   loc_tol = 10
 )
 }
