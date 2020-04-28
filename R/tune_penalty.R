@@ -65,6 +65,7 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
 #' @export
 get_tuned_penalty <- function(data = init_data(mu = 0), method = method_params(),
                               tuning = tuning_params(), seed = NA) {
+  if (method$cost == "cor_exact") method$cost <- "cor"
   if (!file.exists("./results/penalties.csv")) {
     message(paste0("File does not exist. Making file penalties.csv in ./results/"))
     tune_penalty(data, method, tuning, seed)
