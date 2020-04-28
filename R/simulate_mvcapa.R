@@ -121,6 +121,18 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
       return(adjacency_mat(banded_neighbours(method$est_band, data$p)))
   }
 
+  get_anom_only_list <- function(cost, res) {
+    if (cost == "cor_exact")
+      return(list("collective" = collective_anomaliesR(res),
+                  "point"      = point_anomaliesR(res)))
+    else if (cost == "cor")
+      return(list("collective" = collective_anomalies(list("anoms" = res)),
+                  "point"      = point_anomalies(list("anoms" = res))))
+    else if (cost == "iid")
+      return(list("collective" = anomaly::collective_anomalies(res),
+                  "point"      = anomaly::point_anomalies(res)))
+  }
+
   if (!is.null(seed)) set.seed(seed)
   x <- anomaly::robustscale(simulate_cor_(data))
   if (grepl("cor", method$cost)) {
@@ -128,24 +140,18 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
       Q_hat <- data$Sigma_inv
     else
       Q_hat <- estimate_precision_mat(x, get_adj_mat(method$precision_est_struct))
-    if (method$cost == "cor_exact") {
+    if (method$cost == "cor_exact")
       res <- mvcapa_cor_exact(x, Q_hat,
                               b = method$b,
                               min_seg_len = method$minsl,
                               max_seg_len = method$maxsl,
                               print_progress = TRUE)
-      if (!return_anom_only) return(res)
-      else return(list("collective" = collective_anomaliesR(res),
-                       "point"      = point_anomaliesR(res)))
-    }
-    res <- mvcapa_cor(x, Q_hat,
-                      b                = method$b,
-                      b_point          = max(0.05, method$b),
-                      min_seg_len      = method$minsl,
-                      max_seg_len      = method$maxsl)
-    if (!return_anom_only) return(res)
-    else return(list("collective" = collective_anomalies(list("anoms" = res)),
-                     "point"      = point_anomalies(list("anoms" = res))))
+    else
+      res <- mvcapa_cor(x, Q_hat,
+                        b                = method$b,
+                        b_point          = max(0.05, method$b),
+                        min_seg_len      = method$minsl,
+                        max_seg_len      = method$maxsl)
   } else if (method$cost == "iid") {
     beta <- iid_penalty(data$n, data$p, method$b)
     beta_tilde <- iid_point_penalty(data$n, data$p, max(0.05, method$b))
@@ -155,9 +161,7 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
                             min_seg_len = method$minsl,
                             max_seg_len = method$maxsl,
                             type        = "mean")
-    if (!return_anom_only) return(res)
-    else return(list("collective" = anomaly::collective_anomalies(res),
-                     "point"      = anomaly::point_anomalies(res)))
-  } else if (method$cost == "cor_exact") {
   }
+  if (return_anom_only) return(get_anom_only_list(method$cost, res))
+  else return(res)
 }
