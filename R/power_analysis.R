@@ -116,6 +116,65 @@ many_power_curves <- function(out_file = "power.csv",
 }
 
 #' @export
+plot_power_curve <- function(file_name, data = init_data(), method = method_params(),
+                             tuning = tuning_params(), curve = curve_params(),
+                             loc_tol = 10, vars_in_title = NA) {
+
+  all_params <- c(data, method, tuning, curve, list("loc_tol" = loc_tol))
+  params_list <- combine_lists(split_params(
+    expand_list(all_params, list("cost" = c("iid", "cor"),
+                                 "precision_est_struct" = c(NA, "correct"))),
+    list("data"   = names(data),
+         "method" = names(method),
+         "tuning" = names(tuning),
+         "curve"  = names(curve),
+         "loc_tol" = "loc_tol")
+  ))
+  res <- do.call("rbind",
+                 Map(read_power_curve,
+                     params_list,
+                     MoreArgs = list(file_name = file_name)))
+  res <- add_precision_est_struct_to_cost(res)
+  title <- make_title(all_params, power_curve_title_parts(vars_in_title))
+  ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power, colour = cost)) +
+    ggplot2::geom_line() +
+    ggplot2::ggtitle(title) +
+    ggplot2::scale_x_continuous("Signal strength") +
+    ggplot2::scale_y_continuous("Power")
+}
+
+#' @export
+grid_plot_power <- function(variables = list("rho" = c(-0.3, 0.9),
+                                             "proportions" = c(1, 0.3, 0.1)),
+                            data = init_data(n = 100, p = 10,
+                                             precision_type = "banded",
+                                             locations = 50, durations = 10,
+                                             change_type = "adjacent"),
+                            method = method_params(),
+                            tuning = tuning_params(),
+                            curve = curve_params(max_dist = 0.1, n_sim = 300),
+                            loc_tol = 10) {
+  if (length(variables) > 2)
+    stop("Maximum two variables at a time.")
+  params_list <- split_params(
+    expand_list(c(data, method), variables),
+    list("data"   = names(data),
+         "method" = names(method))
+  )
+  plots <- Map(plot_power_curve,
+               data = params_list$data,
+               method = params_list$method,
+               MoreArgs = list("file_name"     = "power.csv",
+                               "tuning"        = tuning,
+                               "curve"         = curve,
+                               "loc_tol"       = loc_tol,
+                               "vars_in_title" = names(variables)))
+  vars_in_title <- names(data)[!names(data) %in% names(variables)]
+  dims <- c(length(variables[[2]]), length(variables[[1]]))
+  grid_plot(plots, dims, make_title(c(data, method), vars_in_title))
+}
+
+#' @export
 power_runs <- function() {
   curve <- curve_params(max_dist = 0.1, n_sim = 300)
   out_file <- "power.csv"
@@ -182,60 +241,17 @@ additional_power_runs <- function() {
 }
 
 #' @export
-plot_power_curve <- function(file_name, data = init_data(), method = method_params(),
-                             tuning = tuning_params(), curve = curve_params(),
-                             loc_tol = 10, vars_in_title = NA) {
+low_dim_exact_power_runs <- function() {
+  curve <- curve_params(max_dist = 0.2, n_sim = 100)
+  out_file <- "power.csv"
 
-  all_params <- c(data, method, tuning, curve, list("loc_tol" = loc_tol))
-  params_list <- combine_lists(split_params(
-    expand_list(all_params, list("cost" = c("iid", "cor"),
-                                 "precision_est_struct" = c(NA, "correct"))),
-    list("data"   = names(data),
-         "method" = names(method),
-         "tuning" = names(tuning),
-         "curve"  = names(curve),
-         "loc_tol" = "loc_tol")
-  ))
-  res <- do.call("rbind",
-                 Map(read_power_curve,
-                     params_list,
-                     MoreArgs = list(file_name = file_name)))
-  res <- add_precision_est_struct_to_cost(res)
-  title <- make_title(all_params, power_curve_title_parts(vars_in_title))
-  ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power, colour = cost)) +
-    ggplot2::geom_line() +
-    ggplot2::ggtitle(title) +
-    ggplot2::scale_x_continuous("Signal strength") +
-    ggplot2::scale_y_continuous("Power")
-}
-
-#' @export
-grid_plot_power <- function(variables = list("rho" = c(-0.3, 0.9),
-                                             "proportions" = c(1, 0.3, 0.1)),
-                            data = init_data(n = 100, p = 10,
-                                             precision_type = "banded",
-                                             locations = 50, durations = 10,
-                                             change_type = "adjacent"),
-                            method = method_params(),
-                            tuning = tuning_params(),
-                            curve = curve_params(max_dist = 0.1, n_sim = 300),
-                            loc_tol = 10) {
-  if (length(variables) > 2)
-    stop("Maximum two variables at a time.")
-  params_list <- split_params(
-    expand_list(c(data, method), variables),
-    list("data"   = names(data),
-         "method" = names(method))
-  )
-  plots <- Map(plot_power_curve,
-               data = params_list$data,
-               method = params_list$method,
-               MoreArgs = list("file_name"     = "power.csv",
-                               "tuning"        = tuning,
-                               "curve"         = curve,
-                               "loc_tol"       = loc_tol,
-                               "vars_in_title" = names(variables)))
-  vars_in_title <- names(data)[!names(data) %in% names(variables)]
-  dims <- c(length(variables[[2]]), length(variables[[1]]))
-  grid_plot(plots, dims, make_title(c(data, method), vars_in_title))
+  #### BANDED
+  banded_data <- init_data(n = 50, p = 5, precision_type = "banded",
+                           band = 2, rho = 0.9, locations = 20, durations = 5,
+                           proportions = 1, change_type = "adjacent")
+  method <- method_params(maxsl = 10, precision_est_struct = NA)
+  banded_variables <- list("cost"  = c("iid", "cor", "cor_exact"),
+                           "shape" = c(5, 0))
+  many_power_curves(out_file, banded_variables, banded_data,
+                    method_params(), tuning_params(), curve, loc_tol = 5)
 }

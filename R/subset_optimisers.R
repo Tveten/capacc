@@ -132,6 +132,9 @@ optim_penalised_savings_BF <- function(n_full, A, mu_est = mu_aMLE(),
     if (penalty == 'linear') {
       penalty <- linear_penalty(n_full, p, b)
       penalty_vec <- 0:p * penalty$beta + penalty$alpha
+    } else if (penalty == "point") {
+      penalty <- get_penalty("point", n_full, p, b)
+      penalty_vec <- 0:p * penalty$beta + penalty$alpha
     } else if (penalty == 'combined')
       penalty_vec <- combined_penalty_vec(n_full, p, b)
     else stop('Invalid penalty type.')
