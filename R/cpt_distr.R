@@ -43,16 +43,16 @@ many_cpt_distr <- function(out_file = "cpt_distr.csv",
                                             "rho" = c(0.7, 0.9, 0.99),
                                             "proportions" = c(0.1, 0.3, 1)),
                            data   = init_data(n = 100, locations = 50, durations = 50),
-                           params = method_params(),
+                           method = method_params(),
                            loc_tol = 10) {
-  params_list <- split_lists(expand_list(c(data, params), variables),
-                             list("data"   = names(data),
-                                  "method" = names(params)))
-  data_list <- lapply(params_list$data, function(data) {init_data_(data)})
-  method_list <- lapply(params_list$method, function(method) {method_params_(method)})
+  params_list <- split_params(
+    expand_list(c(data, method), variables),
+    list("data"   = names(data),
+         "method" = names(method))
+  )
   Map(sim_cpt_distr,
-      data = data_list,
-      params = method_list,
+      data = params_list$data,
+      params = params$list$method,
       seed = get_sim_seeds(params_list, variables),
       MoreArgs = list("out_file" = out_file,
                       "n_sim"    = n_sim))

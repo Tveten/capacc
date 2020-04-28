@@ -10,9 +10,16 @@ curve_params <- function(max_dist = 0.2, max_iter = 50, n_sim = 100,
 
 est_power <- function(data, method, loc_tol, n_sim) {
   power <- mean(unlist(lapply(1:n_sim, function(i) {
-    if (method$cost == "cor_exact" && i %% 10) cat("=")
+    if (method$cost == "cor_exact" && i %% 10 == 0) cat("=")
     mvcapa_sim <- simulate_mvcapa(data, method, return_anom_only = TRUE)
     count_tfp_anom(mvcapa_sim, loc_tol, data)$tp
+  })))
+  data.table("vartheta" = data$vartheta, "power" = power)
+}
+
+est_power_known <- function(data, method, n_sim) {
+  power <- mean(unlist(lapply(1:n_sim, function(i) {
+    simulate_mvcapa_known(data, method)$S_max > 0
   })))
   data.table("vartheta" = data$vartheta, "power" = power)
 }
@@ -20,7 +27,7 @@ est_power <- function(data, method, loc_tol, n_sim) {
 #' @export
 power_curve <- function(out_file, data = init_data(), method = method_params(),
                         tuning = tuning_params(), curve = curve_params(),
-                        loc_tol = 10, seed = NA) {
+                        loc_tol = 10, known = FALSE, seed = NA) {
   add_setup_info <- function(res) {
     which_data <- !(grepl("Sigma", names(data)) | names(data) %in% c("changing_vars", "vartheta"))
     res <- cbind(res,
@@ -38,7 +45,8 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
     cat('.')
     data$vartheta <- vartheta
     data <- init_data_(data)
-    est_power(data, method, loc_tol, curve$curve_n_sim)
+    if (known) est_power_known(data, method, curve$curve_n_sim)
+    else est_power(data, method, loc_tol, curve$curve_n_sim)
   }
 
   init_power_est <- function(init_values) {
@@ -61,6 +69,9 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
     ind
   }
 
+  if (known && !grepl("known", out_file))
+    stop(paste0("out_file ", out_file, " must have 'known' in its name when running with known = TRUE."))
+
   message(paste0("Estimating power curve for n=", data$n,
                  ", p=", data$p,
                  ", cost=", method$cost,
@@ -74,9 +85,11 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
                  ", est_band=", method$est_band,
                  "."))
   all_params <- c(data, method, tuning, curve, list("loc_tol" = loc_tol))
-  if (already_estimated(out_file, all_params, read_power_curve)) return(NULL)
+  if (known) read_func <- read_power_curve_known
+  else       read_func <- read_power_curve
+  if (already_estimated(out_file, all_params, read_func)) return(NULL)
 
-  method$b <- get_tuned_penalty(data, method, tuning, seed = seed + 2)$b
+  method$b <- get_tuned_penalty(data, method, tuning, known, seed + 2)$b
   if (!is.na(seed)) set.seed(seed)
   res <- init_power_est(curve$init_values)
   ind <- split_inds(res)
@@ -99,7 +112,7 @@ many_power_curves <- function(out_file = "power.csv",
                               method = method_params(),
                               tuning = tuning_params(),
                               curve  = curve_params(max_dist = 0.1, n_sim = 300),
-                              loc_tol = 10) {
+                              known = FALSE, loc_tol = 10) {
   params_list <- split_params(
     expand_list(c(data, method), variables),
     list("data"   = names(data),
@@ -112,27 +125,30 @@ many_power_curves <- function(out_file = "power.csv",
       MoreArgs = list("out_file"     = out_file,
                       "tuning"        = tuning,
                       "curve"         = curve,
-                      "loc_tol"       = loc_tol))
+                      "loc_tol"       = loc_tol,
+                      "known"         = known))
   NULL
 }
 
 #' @export
 plot_power_curve <- function(file_name, data = init_data(), method = method_params(),
                              tuning = tuning_params(), curve = curve_params(),
-                             loc_tol = 10, vars_in_title = NA) {
+                             loc_tol = 10, known = FALSE, vars_in_title = NA) {
 
   all_params <- c(data, method, tuning, curve, list("loc_tol" = loc_tol))
   params_list <- combine_lists(split_params(
-    expand_list(all_params, list("cost" = c("iid", "cor"),
+    expand_list(all_params, list("cost" = c("iid", "cor", "cor_exact"),
                                  "precision_est_struct" = c(NA, "correct"))),
-    list("data"   = names(data),
-         "method" = names(method),
-         "tuning" = names(tuning),
-         "curve"  = names(curve),
+    list("data"    = names(data),
+         "method"  = names(method),
+         "tuning"  = names(tuning),
+         "curve"   = names(curve),
          "loc_tol" = "loc_tol")
   ))
+  if (known) read_func <- read_power_curve_known
+  else       read_func <- read_power_curve
   res <- do.call("rbind",
-                 Map(read_power_curve,
+                 Map(read_func,
                      params_list,
                      MoreArgs = list(file_name = file_name)))
   res <- add_precision_est_struct_to_cost(res)
@@ -154,7 +170,7 @@ grid_plot_power <- function(variables = list("rho" = c(-0.3, 0.9),
                             method = method_params(),
                             tuning = tuning_params(),
                             curve = curve_params(max_dist = 0.1, n_sim = 300),
-                            loc_tol = 10) {
+                            known = FALSE, loc_tol = 10) {
   if (length(variables) > 2)
     stop("Maximum two variables at a time.")
   params_list <- split_params(
@@ -169,6 +185,7 @@ grid_plot_power <- function(variables = list("rho" = c(-0.3, 0.9),
                                "tuning"        = tuning,
                                "curve"         = curve,
                                "loc_tol"       = loc_tol,
+                               "known"         = known,
                                "vars_in_title" = names(variables)))
   vars_in_title <- names(data)[!names(data) %in% names(variables)]
   dims <- c(length(variables[[2]]), length(variables[[1]]))
@@ -246,7 +263,6 @@ low_dim_exact_power_runs <- function() {
   curve <- curve_params(max_dist = 0.2, n_sim = 100)
   out_file <- "power.csv"
 
-  #### BANDED
   banded_data <- init_data(n = 50, p = 5, precision_type = "banded",
                            band = 2, rho = 0.9, locations = 20, durations = 5,
                            proportions = 1, change_type = "adjacent")
@@ -256,4 +272,21 @@ low_dim_exact_power_runs <- function() {
                            "shape" = c(5, 0))
   many_power_curves(out_file, banded_variables, banded_data,
                     method, tuning_params(), curve, loc_tol = 5)
+}
+
+#' @export
+known_anom_power_runs <- function() {
+  curve <- curve_params(max_dist = 0.1, n_sim = 300)
+  out_file <- "power_known_anom.csv"
+
+  banded_data <- init_data(n = 100, p = 10, precision_type = "banded",
+                           band = 2, locations = 50, durations = 10,
+                           change_type = "adjacent")
+  banded_variables <- list("cost"  = c("iid", "cor", "cor_exact"),
+                           "precision_est_struct" = c(NA, "correct"),
+                           "rho"         = rev(c(-0.3, 0.01, 0.2, 0.5, 0.7, 0.9, 0.99)),
+                           "proportions" = rev(c(0.1, 0.3, 1)),
+                           "shape"       = rev(c(0, 5)))
+  many_power_curves(out_file, banded_variables, banded_data,
+                    method, tuning_params(), curve, known = TRUE)
 }

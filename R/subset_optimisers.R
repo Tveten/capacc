@@ -102,16 +102,11 @@ optim_penalised_savings_iid <- function(n_full) {
     n <- nrow(x_subset)
     p <- ncol(x_subset)
 
-    # Initialise penalty.
-    # penalty <- get_penalty(penalty_regime, n_full, p, b)
-    # beta <- penalty$beta
-    # alpha <- penalty$alpha
-    penalty_vec <- combined_penalty_vec(n_full, p, b)[-1]
+    penalty_vec <- cumsum(iid_penalty(n_full, p, b))
 
     mean_x2 <- colMeans(x_subset, na.rm = TRUE)^2
     order_mean_x2 <- order(mean_x2, decreasing = TRUE)
     sorted_mean_x2 <- mean_x2[order_mean_x2]
-    # savings_k <- cumsum(n * sorted_mean_x2 - 1:p * beta) - alpha
     savings_k <- cumsum(n * sorted_mean_x2) - penalty_vec
     optimal_savings <- max(savings_k)
 

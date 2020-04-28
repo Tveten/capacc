@@ -41,6 +41,17 @@ read_power_curve <- function(file_name, all_params) {
   read_single_result(file_name, query_params, all_params, "A power curve")
 }
 
+read_power_curve_known <- function(file_name, all_params) {
+  query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
+                    "shape", "locations", "durations", "change_type",
+                    "cost", "precision_est_struct", "est_band",
+                    "alpha", "alpha_tol", "tuning_n_sim",
+                    "curve_n_sim", "curve_max_dist",
+                    "loc_tol")
+  read_single_result(file_name, query_params, all_params, "A power curve (known anom)")
+}
+
+
 read_cpt_distr <- function(file_name, all_params) {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
                     "vartheta", "shape", "locations", "durations", "change_type",
@@ -54,6 +65,13 @@ read_penalties <- function(file_name, all_params) {
                       "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
                       "alpha", "alpha_tol", "tuning_n_sim")
     read_single_result("penalties.csv", query_params, all_params, "A penalty")
+}
+
+read_penalties_known <- function(file_name, all_params) {
+    query_params <- c("n", "p", "rho", "precision_type", "band", "block_size",
+                      "cost", "precision_est_struct", "est_band",
+                      "alpha", "alpha_tol", "tuning_n_sim")
+    read_single_result("penalties.csv", query_params, all_params, "A penalty (known anom)")
 }
 
 already_estimated <- function(file_name, all_params, read_func, out = TRUE) {
