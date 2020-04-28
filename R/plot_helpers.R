@@ -55,7 +55,13 @@ add_iid_costs <- function(res) {
 }
 
 add_precision_est_struct_to_cost <- function(res) {
-  res <- res[cost == "cor" & is.na(est_band), "cost" := paste0(cost, ".", precision_est_struct)]
-  res <- res[cost == "cor" & !is.na(est_band), "cost" := paste0(cost, ".", est_band, precision_est_struct)]
+  res[cost == "cor" & precision_est_struct == "correct",
+      "precision_est_struct" := "correct_adj"]
+  res <- res[cost == "cor" & is.na(precision_est_struct),
+             "cost" := paste0(cost, ".", "true")]
+  res <- res[cost == "cor" & is.na(est_band),
+             "cost" := paste0(cost, ".", precision_est_struct)]
+  res <- res[cost == "cor" & !is.na(est_band),
+             "cost" := paste0(cost, ".", est_band, precision_est_struct)]
   res
 }

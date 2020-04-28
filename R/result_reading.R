@@ -10,23 +10,15 @@ subset_and_check <- function(res, var, var_list, approx, msg) {
   res <- res[eval(parse(text = i_call))]
   if (nrow(res) == 0) {
     message(paste0(msg, " for ", var, "=", var_list[[var]],
-                   " does not exist for the this setup."))
+                   " does not exist for this setup."))
     res_exists <- FALSE
   } else
     res_exists <- TRUE
   list(res = res, exists = res_exists)
 }
 
-remove_iid_duplicates <- function(res) {
-  iid_est_structs <- unique(res[cost == "iid"]$precision_est_struct)
-  if (length(iid_est_structs) > 1)
-    res <- res[!(cost == "iid" & precision_est_struct %in%
-                   iid_est_structs[2:length(iid_est_structs)] )]
-  res
-}
-
 read_single_result <- function(file_name, query_params, all_params, msg) {
-  res <- fread(paste0("./results/", file_name))
+  res <- fread(paste0("./results/", file_name), na.strings = "")
   approx <- vapply(query_params, function(var) is.numeric(all_params[[var]]), logical(1))
   i <- 1
   res_exists <- TRUE
@@ -36,9 +28,6 @@ read_single_result <- function(file_name, query_params, all_params, msg) {
     res_exists <- sub_res$exists
     i <- i + 1
   }
-  # res <- add_precision_est_struct_to_cost(res)
-  # res <- remove_iid_duplicates(res)
-  # res <- add_iid_costs(res)
   res
 }
 

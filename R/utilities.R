@@ -40,6 +40,10 @@ split_lists <- function(a, grouping) {
   split_list
 }
 
+combine_lists <- function(a) {
+  Reduce(function(x, y) Map(c, x, y), a)
+}
+
 identity <- function(a) {return(a)}
 
 off_diag_ind <- function(nr, p) {
@@ -83,6 +87,15 @@ inds_from_intervals <- function(starts, ends, n) {
     }))
     inds[interval_inds] <- TRUE
     return(inds)
+  }
+}
+
+dot_every <- function(n, f) {
+  i <- 1
+  function(...) {
+    if (i %% n) cat(".")
+    i <<- i + 1
+    f(...)
   }
 }
 
