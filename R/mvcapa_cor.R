@@ -32,8 +32,6 @@ init_precision_mat <- function(precision_mat, tol = sqrt(.Machine$double.eps)) {
   precision_mat[abs(precision_mat) <= tol] <- 0
   lower_nbs <- lower_nbs(precision_mat)
   extended_nbs <- extended_lower_nbs(lower_nbs)
-  # lower_nbs <- lapply(1:p, get_neighbours_less_than, sparse_mat = precision_mat)
-  # extended_nbs <- lapply(1:p, function(d) remaining_neighbours_below(d, lower_nbs, p))
   list('Q' = precision_mat, 'nbs' = lower_nbs, 'extended_nbs' = extended_nbs)
 }
 
@@ -137,6 +135,89 @@ mvcapa_corR <- function(x, Q, b = 1,
               'Q'       = Q,
               'anom'    = anom))
 }
+
+mvcapa_cor_exact <- function(x, Q, b = 1,
+                             min_seg_len = 2, max_seg_len = 100,
+                             prune = TRUE, print_progress = FALSE) {
+  # TODO: Restrict min_seg_len and max_seg_len
+  # Robustly normalise x
+  n <- nrow(x)
+  p <- ncol(x)
+  # x <- anomaly::robustscale(x)
+  # TODO: Implement standardisation based on Q.
+  # Now: Assumes x and Q are standardised before input.
+  if (!any(class(Q) == "dsCMatrix")) Q <- Matrix::Matrix(Q, sparse = TRUE)
+  Q_obj <- init_precision_mat(Q)
+  x <- rbind(rep(0, p), x)  # So the index m always means m - 1.
+
+  # # Setting up penalties
+  penalty_names <- c("sparse", "dense", "point")
+  penalty <- lapply(penalty_names, get_penalty, n = n, p = p, b = b)
+  names(penalty) <- penalty_names
+
+  # Initialising the DP for the optimal cost.
+  C <- rep(0, n + 1)
+  S <- matrix(0, nrow = n + 1, ncol = n + 1)
+  J_max <- list()
+  S_point <- rep(0, n + 1)
+  J_point <- list()
+  anom <- matrix(0, nrow = n + 1, ncol = 2)
+  prune_t <- rep(0, n + 1)
+
+  # Running OP
+  for (m in (min_seg_len + 1):(n + 1)) {
+    if (print_progress)
+      if (m %% 10 == 0) print(paste0(round(100 * m/(n + 1), 2), '% complete.'))
+    ## Collective anomalies:
+    ts <- max(m - min_seg_len - max_seg_len + 1, 1):(m - min_seg_len)
+    ts <- setdiff(ts, unique(prune_t))
+    J_m <- list()
+    for (t in ts) {
+      saving <- optim_penalised_savings_BF(n, Q, mu_MLE(Q))(x[(t + 1):m, ], b)
+      J_m[[t]] <- saving$J_max
+      S[m, t] <- saving$S_max
+    }
+    C1s <- C[ts] + S[m, ts]
+    C1_max <- max(C1s)
+    t_max <- ts[which.max(C1s)]
+    J_max[[m]] <- J_m[[t_max]]
+
+    ## Point anomalies:
+    point_saving <- optim_penalised_savings_BF(n, Q, mu_MLE(Q), penalty = "point")(x[m, , drop = FALSE], b)
+    J_point[[m]] <- point_saving$J_max
+    S_point[m] <- point_saving$S_max
+    C2 <- C[m - 1] + S_point[m]
+
+    C0 <- C[m - 1]
+    C[m] <- max(C0, C1_max, C2)
+
+    if (prune) {
+      t_to_prune <- ts[C0 >= C1s + penalty$dense$alpha]
+      prune_t[t_to_prune] <- t_to_prune
+    }
+
+    # anomaly_type == 0: Previous cost is maximal. Points one time-step back.
+    # anomaly_type == 1: Current cost for a collective anomaly is maximal. Points to the maximising time-step.
+    # anomaly_type == 2: Current cost for a point anomaly is maximal. Points to the current time-step.
+    anomaly_type <- which.max(c(C0, C1_max, C2)) - 1
+    if (anomaly_type == 0) {
+      anom[m, ] <- c(m - 1, anomaly_type)
+    } else if (anomaly_type == 1) {
+      anom[m, ] <- c(t_max, anomaly_type)
+    } else if (anomaly_type == 2) {
+      anom[m, ] <- c(m - 1, anomaly_type)
+    }
+  }
+  return(list('x'       = x[-1, ],
+              'S'       = S,
+              'J'       = J_max,
+              'S_point' = S_point,
+              'J_point' = J_point,
+              'C'       = C,
+              'Q'       = Q,
+              'anom'    = anom))
+}
+
 
 collective_anomaliesR <- function(mvcapa_cor_res) {
   anom_list <- list()

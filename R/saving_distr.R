@@ -14,7 +14,7 @@ find_threshold <- function(data = init_data(), alpha = 0.99, n_sim = 10^4) {
                        "cost" = c(rep("cor", n_sim),
                                   rep("iid", n_sim)))
   for (i in 1:n_sim) {
-    x <- simulate_cor(n = data$n, p = data$p, vartheta = 0, Sigma = data$Sigma)
+    x <- simulate_cor_(data)
     mean_x <- matrix(colMeans(x[1:2, ]), nrow = data$p)
     res_dt$value[i] <- dense_mvnormal_savings(mean_x, data$Sigma_inv, 2)
     res_dt$value[n_sim + i] <- saving_iid(1:data$p, x[1:2, ])

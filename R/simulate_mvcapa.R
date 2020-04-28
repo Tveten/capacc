@@ -113,7 +113,7 @@ method_params_ <- function(method) {
 
 #' @export
 simulate_mvcapa <- function(data = init_data(), method = method_params(),
-                            seed = NULL, return_anom_only = FALSE) {
+                            seed = NULL, return_anom_only = TRUE) {
   get_adj_mat <- function(est_struct) {
     if (est_struct == "correct")
       return(data$Sigma_inv)
@@ -128,6 +128,16 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
       Q_hat <- data$Sigma_inv
     else
       Q_hat <- estimate_precision_mat(x, get_adj_mat(method$precision_est_struct))
+    if (method$cost == "cor_exact") {
+      res <- mvcapa_cor_exact(x, Q_hat,
+                              b = method$b,
+                              min_seg_len = method$minsl,
+                              max_seg_len = method$maxsl,
+                              print_progress = TRUE)
+      if (!return_anom_only) return(res)
+      else return(list("collective" = collective_anomaliesR(res),
+                       "point"      = point_anomaliesR(res)))
+    }
     res <- mvcapa_cor(x, Q_hat,
                       b                = method$b,
                       b_point          = max(0.05, method$b),
@@ -136,7 +146,7 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
     if (!return_anom_only) return(res)
     else return(list("collective" = collective_anomalies(list("anoms" = res)),
                      "point"      = point_anomalies(list("anoms" = res))))
-  } else if (grepl("iid", method$cost)) {
+  } else if (method$cost == "iid") {
     beta <- iid_penalty(data$n, data$p, method$b)
     beta_tilde <- iid_point_penalty(data$n, data$p, max(0.05, method$b))
     res <- anomaly::capa.mv(x,
@@ -148,5 +158,6 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
     if (!return_anom_only) return(res)
     else return(list("collective" = anomaly::collective_anomalies(res),
                      "point"      = anomaly::point_anomalies(res)))
+  } else if (method$cost == "cor_exact") {
   }
 }
