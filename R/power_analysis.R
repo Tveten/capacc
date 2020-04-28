@@ -288,5 +288,5 @@ known_anom_power_runs <- function() {
                            "proportions" = rev(c(0.1, 0.3, 1)),
                            "shape"       = rev(c(0, 5)))
   many_power_curves(out_file, banded_variables, banded_data,
-                    method, tuning_params(), curve, known = TRUE)
+                    method_params(), tuning_params(), curve, known = TRUE)
 }
