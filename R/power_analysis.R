@@ -283,7 +283,7 @@ known_anom_power_runs <- function() {
   banded_data <- init_data(n = 100, p = 8, precision_type = "banded",
                            band = 2, locations = 50, durations = 10,
                            change_type = "adjacent")
-  banded_variables <- list("cost"  = c("iid", "cor", "cor_exact"),
+  banded_variables <- list("cost"        = c("iid", "cor", "cor_exact"),
                            "rho"         = c(0.01, 0.2, 0.5, 0.7, 0.9, 0.99),
                            "proportions" = c(1, 3, 8)/8,
                            "shape"       = c(0, 5))
@@ -293,11 +293,6 @@ known_anom_power_runs <- function() {
   many_power_curves(out_file, banded_variables, banded_data,
                     method_params(precision_est_struct = "correct"),
                     tuning_params(), curve, known = TRUE)
-  # banded_variables <- list("cost"  = c("iid", "cor", "cor_exact"),
-  #                          "precision_est_struct" = NA,
-  #                          "rho"         = c(0.01, 0.99),
-  #                          "proportions" = c(1, 8)/8,
-  #                          "shape"       = c(0, 5))
   # grid_plot_power(list("rho" = c(0.01, 0.99),
   #                      "proportions" = c(1, 8)/8),
   #                 banded_data,
