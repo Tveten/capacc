@@ -111,15 +111,23 @@ method_params_ <- function(method) {
 }
 
 
+get_adj_mat <- function(data, method) {
+  if (method$precision_est_struct == "correct")
+    return(data$Sigma_inv)
+  else if (method$precision_est_struct == "banded")
+    return(adjacency_mat(banded_neighbours(method$est_band, data$p)))
+}
+
+get_Q_hat <- function(x, data, method) {
+  if (is.na(method$precision_est_struct))
+    return(data$Sigma_inv)
+  else
+    return(estimate_precision_mat(x, get_adj_mat(data, method)))
+}
+
 #' @export
 simulate_mvcapa <- function(data = init_data(), method = method_params(),
                             seed = NULL, return_anom_only = TRUE) {
-  get_adj_mat <- function(est_struct) {
-    if (est_struct == "correct")
-      return(data$Sigma_inv)
-    else if (est_struct == "banded")
-      return(adjacency_mat(banded_neighbours(method$est_band, data$p)))
-  }
 
   get_anom_only_list <- function(cost, res) {
     if (cost == "cor_exact")
@@ -136,29 +144,20 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
   if (!is.null(seed)) set.seed(seed)
   x <- anomaly::robustscale(simulate_cor_(data))
   if (grepl("cor", method$cost)) {
-    if (is.na(method$precision_est_struct))
-      Q_hat <- data$Sigma_inv
-    else
-      Q_hat <- estimate_precision_mat(x, get_adj_mat(method$precision_est_struct))
-
-    if (method$cost == "cor_exact")
-      res <- mvcapa_cor_exact(x, Q_hat,
-                              b = method$b,
-                              min_seg_len = method$minsl,
-                              max_seg_len = method$maxsl,
-                              print_progress = FALSE)
-    else
-      res <- mvcapa_cor(x, Q_hat,
-                        b                = method$b,
-                        b_point          = max(0.05, method$b),
-                        min_seg_len      = method$minsl,
-                        max_seg_len      = method$maxsl)
+    Q_hat <- get_Q_hat(x, data, method)
+    if (method$cost == "cor_exact") mvcapa_func <- mvcapa_cor_exact
+    else if(method$cost == "cor")   mvcapa_func <- mvcapa_cor
+    res <- mvcapa_func(x, Q_hat,
+                       b                = method$b,
+                       b_point          = max(0.05, method$b),
+                       min_seg_len      = method$minsl,
+                       max_seg_len      = method$maxsl)
   } else if (method$cost == "iid") {
     beta <- iid_penalty(data$n, data$p, method$b)
     beta_tilde <- iid_point_penalty(data$n, data$p, max(0.05, method$b))
     res <- anomaly::capa.mv(x,
-                            beta = beta,
-                            beta_tilde = beta_tilde,
+                            beta        = beta,
+                            beta_tilde  = beta_tilde,
                             min_seg_len = method$minsl,
                             max_seg_len = method$maxsl,
                             type        = "mean")
@@ -170,35 +169,27 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
 #' @export
 simulate_mvcapa_known <- function(data = init_data(), method = method_params(),
                                   seed = NULL) {
-  get_adj_mat <- function(est_struct) {
-    if (est_struct == "correct")
-      return(data$Sigma_inv)
-    else if (est_struct == "banded")
-      return(adjacency_mat(banded_neighbours(method$est_band, data$p)))
-  }
 
   if (!is.null(seed)) set.seed(seed)
   x <- anomaly::robustscale(simulate_cor_(data))
   x_anom <- x[(data$locations + 1):(data$locations + data$durations), ]
-  if (grepl("cor", method$cost)) {
-    if (is.na(method$precision_est_struct))
-      Q_hat <- data$Sigma_inv
-    else
-      Q_hat <- estimate_precision_mat(x, get_adj_mat(method$precision_est_struct))
-
-    if (method$cost == "cor_exact")
-      return(optim_penalised_savings_BF(data$n, Q_hat, mu_MLE(Q_hat))(x_anom, method$b))
-    else {
-      sparse_penalty <- get_penalty('sparse', data$n, data$p)
-      dense_penalty <- get_penalty('dense', data$n, data$p)
+  if (method$cost == "iid") {
+    penalty_vec <- cumsum(iid_penalty(data$n, data$p, method$b))
+    return(optimise_mvnormal_iid_saving(x_anom, penalty_vec))
+  } else if (grepl("cor", method$cost)) {
+    Q_hat <- get_Q_hat(x, data, method)
+    if (method$cost == "cor") {
+      penalty <- get_penalty('combined', data$n, data$p, method$b)
       lower_nbs <- lower_nbs(Q_hat)
       extended_nbs <- extended_lower_nbs(lower_nbs)
       return(optimise_mvnormal_saving(x_anom, Q_hat, lower_nbs, extended_nbs,
-                                      dense_penalty$alpha, sparse_penalty$beta,
-                                      sparse_penalty$alpha))
+                                      penalty$alpha_const, penalty$beta,
+                                      penalty$alpha_lin))
+    } else {
+      penalty <- get_penalty_vec("combined", data$n, data$p, method$b)
+      if (method$cost == "cor_exact") mu_est <- mu_MLE(Q_hat)
+      else if (method$cost == "cor_BF") mu_est <- mu_aMLE()
+      return(optimise_mvnormal_saving_BF(x_anom, Q_hat, penalty, mu_est))
     }
-  } else if (method$cost == "iid") {
-    return(optim_penalised_savings_iid(data$n)(x_anom, method$b))
   }
-
 }

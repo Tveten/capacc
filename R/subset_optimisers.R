@@ -68,9 +68,9 @@ power_set <- function(size, include_empty_set = FALSE) {
 #### Penalized savings optimisers. ---------------------------------------------
 ####
 
-mu_MLE <- function(A) {
+mu_MLE <- function(Q) {
   function(mean_x, J) {
-    mean_x[J] + solve(A[J, J, drop = FALSE]) %*% A[J, -J, drop = FALSE] %*% mean_x[-J]
+    mean_x[J] + solve(Q[J, J, drop = FALSE]) %*% Q[J, -J, drop = FALSE] %*% mean_x[-J]
   }
 }
 
@@ -80,91 +80,49 @@ mu_aMLE <- function() {
   }
 }
 
-savings <- function(J, x, A, mu_est = mu_MLE(A)) {
+savings <- function(J, x, Q, mu_est = mu_MLE(Q)) {
   if (length(J) == 0) return(0)
   else {
     n <- nrow(x)
     mean_x <- colMeans(x, na.rm = TRUE)
     mu_hat <- rep(0, length(mean_x))
     mu_hat[J] <- mu_est(mean_x, J)
-    return(as.numeric(n * t(2 * mean_x - mu_hat) %*% A %*% mu_hat))
+    return(as.numeric(n * t(2 * mean_x - mu_hat) %*% Q %*% mu_hat))
   }
 }
 
-savings_difference <- function(J, x, A) {
-  if (length(J) > 0) return(savings(J, x, A) - savings(J, x, A, mu_aMLE()))
+savings_difference <- function(J, x, Q) {
+  if (length(J) > 0) return(savings(J, x, Q) - savings(J, x, Q, mu_aMLE()))
   else return(0)
 }
 
-optim_penalised_savings_iid <- function(n_full) {
-
-  function(x_subset, b = 1) {
-    n <- nrow(x_subset)
-    p <- ncol(x_subset)
-
-    penalty_vec <- cumsum(iid_penalty(n_full, p, b))
-
-    mean_x2 <- colMeans(x_subset, na.rm = TRUE)^2
-    order_mean_x2 <- order(mean_x2, decreasing = TRUE)
-    sorted_mean_x2 <- mean_x2[order_mean_x2]
-    savings_k <- cumsum(n * sorted_mean_x2) - penalty_vec
-    optimal_savings <- max(savings_k)
-
-    optimal_k <- which.max(savings_k)
-    optimal_J <- order_mean_x2[1:optimal_k]
-    optimal_J_indicator <- rep(0, p)
-    optimal_J_indicator[optimal_J] <- 1
-
-    return(list('k_max' = optimal_k, 'u_max' = optimal_J_indicator,
-                'S_max' = optimal_savings))
-  }
+optimise_mvnormal_iid_saving <- function(x, penalty) {
+  mean_x2 <- colMeans(x, na.rm = TRUE)^2
+  order_mean_x2 <- order(mean_x2, decreasing = TRUE)
+  sorted_mean_x2 <- mean_x2[order_mean_x2]
+  savings_k <- cumsum(nrow(x) * sorted_mean_x2) - penalty
+  optimal_savings <- max(savings_k)
+  optimal_k <- which.max(savings_k)
+  optimal_J <- order_mean_x2[1:optimal_k]
+  optimal_u <- rep(0, ncol(x))
+  optimal_u[optimal_J] <- 1
+  list("S_max" = optimal_savings, 'J_max' = optimal_J, 'u_max' = optimal_u)
 }
 
-optim_penalised_savings_BF <- function(n_full, A, mu_est = mu_aMLE(),
-                                       penalty = 'combined', adjusted = FALSE) {
-  # Restrict n to be greater than p?
-  set_penalty <- function(b, p, n_full, penalty) {
-    if (penalty == 'linear') {
-      penalty <- linear_penalty(n_full, p, b)
-      penalty_vec <- 0:p * penalty$beta + penalty$alpha
-    } else if (penalty == "point") {
-      penalty <- get_penalty("point", n_full, p, b)
-      penalty_vec <- 0:p * penalty$beta + penalty$alpha
-    } else if (penalty == 'combined')
-      penalty_vec <- combined_penalty_vec(n_full, p, b)
-    else stop('Invalid penalty type.')
-    penalty_vec
-  }
-
-  function(x, b = 1) {
-    p <- ncol(x)
-    n <- nrow(x)
-    P_J <- power_set(p, include_empty_set = TRUE)
-    penalty_vec <- set_penalty(b, p, n_full, penalty)
-    S <- vapply(P_J, function(J) {
-      savings(J, x, A, mu_est) - penalty_vec[length(J) + 1]
-    }, numeric(1))
-
-    if (adjusted) {
-      dense_S_max <- savings(1:p, x, A) - const_penalty(n_full, p, b)
-      sparse_J_max <- P_J[[which.max(S)]]
-      sparse_S_max <- max(S) + savings_difference(sparse_J_max, x, A)
-      if (dense_S_max > sparse_S_max)
-        return(list('S_max' = dense_S_max, 'J_max' = 1:p, 'u_max' = rep(1, p), 'S' = S))
-      else {
-        u_max <- rep(0, p)
-        u_max[sparse_J_max] <- 1
-        return(list('S_max' = sparse_S_max, 'J_max' = sparse_J_max, 'u_max' = u_max, 'S' = S))
-      }
-    } else {
-      S_max <- max(S)
-      S_which_max <- which.max(S)
-      J_max <- P_J[[S_which_max]]
-      u_max <- rep(0, p)
-      u_max[J_max] <- 1
-      return(list('S_max' = S_max, 'J_max' = J_max, 'u_max' = u_max, 'S' = S))
-    }
-  }
+optimise_mvnormal_saving_BF <- function(x, Q, penalty, mu_est = mu_aMLE()) {
+  p <- ncol(x)
+  P_J <- power_set(p, include_empty_set = TRUE)
+  lengths <- vapply(P_J, length, numeric(1))
+  P_J <- P_J[lengths <= penalty$k_star | lengths == p]
+  S <- vapply(P_J, function(J) {
+    savings(J, x, Q, mu_est) - penalty$vec[length(J) + 1]
+  }, numeric(1))
+  S_max <- max(S)
+  S_which_max <- which.max(S)
+  J_max <- P_J[[S_which_max]]
+  u_max <- rep(0, p)
+  u_max[J_max] <- 1
+  list('S_max' = S_max, 'J_max' = J_max, 'u_max' = u_max, 'S' = S)
 }
 
 optim_penalised_savings_c <- function(x, n_full, precision_mat_obj, penalty_regime = 'combined',

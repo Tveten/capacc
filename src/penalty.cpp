@@ -71,7 +71,6 @@ namespace ostats
     double beta = collective_penalty.beta + collective_penalty.alpha_linear;
     linear_const_penalty penalty(a_const, a_lin, beta);
     return penalty;
-  ;
   }
 
 } // namespace ostats
