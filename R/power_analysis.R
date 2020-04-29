@@ -277,7 +277,7 @@ low_dim_exact_power_runs <- function() {
 
 #' @export
 known_anom_power_runs <- function() {
-  curve <- curve_params(max_dist = 0.2, n_sim = 100)
+  curve <- curve_params(max_dist = 0.1, n_sim = 300)
   out_file <- "power_known_anom.csv"
 
   banded_data <- init_data(n = 100, p = 8, precision_type = "banded",
@@ -286,15 +286,18 @@ known_anom_power_runs <- function() {
   banded_variables <- list("cost"  = c("iid", "cor", "cor_exact"),
                            "rho"         = c(0.01, 0.2, 0.5, 0.7, 0.9, 0.99),
                            "proportions" = c(1, 3, 8)/8,
-                           "shape"       = c(0, 5),
-                           "precision_est_struct" = c(NA, "correct"))
+                           "shape"       = c(0, 5))
+  many_power_curves(out_file, banded_variables, banded_data,
+                    method_params(precision_est_struct = NA),
+                    tuning_params(), curve, known = TRUE)
+  many_power_curves(out_file, banded_variables, banded_data,
+                    method_params(precision_est_struct = "correct"),
+                    tuning_params(), curve, known = TRUE)
   # banded_variables <- list("cost"  = c("iid", "cor", "cor_exact"),
   #                          "precision_est_struct" = NA,
   #                          "rho"         = c(0.01, 0.99),
   #                          "proportions" = c(1, 8)/8,
   #                          "shape"       = c(0, 5))
-  many_power_curves(out_file, banded_variables, banded_data,
-                    method_params(), tuning_params(), curve, known = TRUE)
   # grid_plot_power(list("rho" = c(0.01, 0.99),
   #                      "proportions" = c(1, 8)/8),
   #                 banded_data,
