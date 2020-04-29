@@ -136,7 +136,7 @@ mvcapa_corR <- function(x, Q, b = 1,
               'anom'    = anom))
 }
 
-mvcapa_cor_exact <- function(x, Q, b = 1,
+mvcapa_cor_exact <- function(x, Q, b = 1, b_point = 1,
                              min_seg_len = 2, max_seg_len = 100,
                              prune = TRUE, print_progress = FALSE) {
   # TODO: Restrict min_seg_len and max_seg_len
@@ -147,13 +147,12 @@ mvcapa_cor_exact <- function(x, Q, b = 1,
   # TODO: Implement standardisation based on Q.
   # Now: Assumes x and Q are standardised before input.
   if (!any(class(Q) == "dsCMatrix")) Q <- Matrix::Matrix(Q, sparse = TRUE)
-  Q_obj <- init_precision_mat(Q)
   x <- rbind(rep(0, p), x)  # So the index m always means m - 1.
+  mu_est <- mu_MLE(Q)
 
   # # Setting up penalties
-  penalty_names <- c("sparse", "dense", "point")
-  penalty <- lapply(penalty_names, get_penalty, n = n, p = p, b = b)
-  names(penalty) <- penalty_names
+  penalty <- get_penalty_vec("combined", n, p, b)
+  point_penalty <- get_penalty_vec("point", n, p, b_point)
 
   # Initialising the DP for the optimal cost.
   C <- rep(0, n + 1)
@@ -173,7 +172,7 @@ mvcapa_cor_exact <- function(x, Q, b = 1,
     ts <- setdiff(ts, unique(prune_t))
     J_m <- list()
     for (t in ts) {
-      saving <- optim_penalised_savings_BF(n, Q, mu_MLE(Q))(x[(t + 1):m, ], b)
+      saving <- optimise_mvnormal_saving_BF(x[(t + 1):m, ], Q, penalty, mu_est)
       J_m[[t]] <- saving$J_max
       S[m, t] <- saving$S_max
     }
@@ -183,7 +182,8 @@ mvcapa_cor_exact <- function(x, Q, b = 1,
     J_max[[m]] <- J_m[[t_max]]
 
     ## Point anomalies:
-    point_saving <- optim_penalised_savings_BF(n, Q, mu_MLE(Q), penalty = "point")(x[m, , drop = FALSE], b)
+    point_saving <- optimise_mvnormal_saving_BF(x[m, , drop = FALSE], Q,
+                                                point_penalty, mu_est)
     J_point[[m]] <- point_saving$J_max
     S_point[m] <- point_saving$S_max
     C2 <- C[m - 1] + S_point[m]

@@ -59,7 +59,7 @@ add_precision_est_struct_to_cost <- function(res) {
       "precision_est_struct" := "correct_adj"]
   res <- res[grepl("cor", cost) & is.na(precision_est_struct),
              "cost" := paste0(cost, ".", "true")]
-  res <- res[grepl("cor", cost) & is.na(est_band),
+  res <- res[grepl("cor", cost) & is.na(est_band) & !is.na(precision_est_struct),
              "cost" := paste0(cost, ".", precision_est_struct)]
   res <- res[grepl("cor", cost) & !is.na(est_band),
              "cost" := paste0(cost, ".", est_band, precision_est_struct)]

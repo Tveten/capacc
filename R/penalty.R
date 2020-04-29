@@ -1,9 +1,9 @@
 linear_penalty <- function(n, p, b = 1, a = 2, C = 2) {
   a <- as.numeric(a)
   psi <- a * log(n)
-  k_star <- (p + C * sqrt(p * psi)) / (2 * log(p))
-  # list('beta' = b * (C * psi / k_star + C * log(p)), 'k_star' = k_star)
-  list('alpha' = b * C * psi, 'beta' = b * C * log(p), 'k_star' = k_star)
+  # k_star <- (p + C * sqrt(p * psi)) / (2 * log(p))
+  # list('alpha' = b * C * psi, 'beta' = b * C * log(p), 'k_star' = k_star)
+  list('alpha' = b * C * psi, 'beta' = b * C * log(p))
 }
 
 const_penalty <- function(n, p, b = 1, a = 2, C = 2) {
@@ -12,32 +12,45 @@ const_penalty <- function(n, p, b = 1, a = 2, C = 2) {
   b * (p + C * psi + C * sqrt(p * psi))
 }
 
+k_star <- function(alpha_lin, alpha_const, beta) {
+  if (beta > 0) return((alpha_const - alpha_lin) / beta)
+  else return(0);
+}
+
 get_penalty <- function(penalty_regime, n, p, b = 1, a = 2) {
   if (penalty_regime == 'sparse') {
     penalty_obj <- linear_penalty(n, p, b = b, a = a)
     beta <- penalty_obj$beta
-    alpha <- penalty_obj$alpha
-    k_star <- penalty_obj$k_star
+    alpha_lin <- penalty_obj$alpha
+    alpha_const <- Inf
   } else if (penalty_regime == 'dense') {
+    alpha_lin <- 0
     beta <- 0
-    alpha <- const_penalty(n, p, b = b, a = a)
-    k_star <- p + 1
+    alpha_const <- const_penalty(n, p, b = b, a = a)
+  } else if (penalty_regime == "combined") {
+    alpha_lin <- get_penalty("sparse", n, p, b)[["alpha_lin"]]
+    beta <- get_penalty("sparse", n, p, b)[["beta"]]
+    alpha_const <- get_penalty("dense", n, p, b)[["alpha_const"]]
   } else if (penalty_regime == 'point') {
     penalty_obj <- linear_penalty(n, p, b = b, a = a)
     beta <- penalty_obj$beta + penalty_obj$alpha
-    alpha <- 0
-    k_star <- p + 1
+    alpha_lin <- 0
+    alpha_const <- Inf
   }
-  list('alpha' = alpha, 'beta' = beta, 'k_star' = k_star)
+  list("alpha_lin"   = alpha_lin,
+       "alpha_const" = alpha_const,
+       "beta"        = beta,
+       "k_star"      = k_star(alpha_lin, alpha_const, beta))
 }
 
-combined_penalty_vec <- function(n, p, b = 1, a = 2) {
-  sparse_penalty <- get_penalty('sparse', n, p, b, a)
-  dense_penalty <- get_penalty('dense', n, p, b, a)
-  penalty_vec <- 0:p * sparse_penalty$beta + sparse_penalty$alpha
-  penalty_vec[penalty_vec > dense_penalty$alpha] <- dense_penalty$alpha
-  penalty_vec
+get_penalty_vec <- function(penalty_regime, n, p, b) {
+  penalty <- get_penalty(penalty_regime, n, p, b)
+  penalty_vec <- 0:p * penalty$beta + penalty$alpha_lin
+  if (penalty$k_star <= p)
+    penalty_vec[ceiling(penalty$k_star):p + 1] <- penalty$alpha_const
+  list("vec" = penalty_vec, "k_star" = penalty$k_star)
 }
+
 
 iid_penalty <- function(n, p, b = 1) {
     s = 2 * log(n)
