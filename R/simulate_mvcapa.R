@@ -81,7 +81,8 @@ init_data_ <- function(data) {
 
 #' @export
 method_params <- function(cost = "cor", b = 1, minsl = 2, maxsl = 100,
-                          precision_est_struct = "correct", est_band = NA) {
+                          precision_est_struct = "correct", est_band = NA,
+                          size_mu = NA) {
   if (grepl("iid", cost)) {
     precision_est_struct <- "banded"
     est_band <- 0
@@ -92,13 +93,18 @@ method_params <- function(cost = "cor", b = 1, minsl = 2, maxsl = 100,
       if (is.na(est_band)) est_band <- 2
     }
   }
+  if (cost != "cor_dense_optimal") size_mu <- NA
+  else {
+    if (is.na(size_mu)) stop("size_mu must be specified if cost = cor_dense_optimal")
+  }
   if (grepl("inspect", cost)) b <- NA
   list("cost"                 = cost,
        "b"                    = b,
        "minsl"                = minsl,
        "maxsl"                = maxsl,
        "precision_est_struct" = precision_est_struct,
-       "est_band"             = est_band)
+       "est_band"             = est_band,
+       "size_mu"              = size_mu)
 }
 
 method_params_ <- function(method) {
@@ -107,7 +113,8 @@ method_params_ <- function(method) {
                 minsl                = method$minsl,
                 maxsl                = method$maxsl,
                 precision_est_struct = method$precision_est_struct,
-                est_band             = method$est_band)
+                est_band             = method$est_band,
+                size_mu              = method$size_mu)
 }
 
 
@@ -142,12 +149,13 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
   }
 
   if (!is.null(seed)) set.seed(seed)
-  x <- anomaly::robustscale(simulate_cor_(data))
+  x <- simulate_cor_(data)
+  x$x <- anomaly::robustscale(x$x)
   if (grepl("cor", method$cost)) {
-    Q_hat <- get_Q_hat(x, data, method)
+    Q_hat <- get_Q_hat(x$x, data, method)
     if (method$cost == "cor_exact") mvcapa_func <- mvcapa_cor_exact
     else if(method$cost == "cor")   mvcapa_func <- mvcapa_cor
-    res <- mvcapa_func(x, Q_hat,
+    res <- mvcapa_func(x$x, Q_hat,
                        b                = method$b,
                        b_point          = max(0.05, method$b),
                        min_seg_len      = method$minsl,
@@ -155,7 +163,7 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
   } else if (method$cost == "iid") {
     beta <- iid_penalty(data$n, data$p, method$b)
     beta_tilde <- iid_point_penalty(data$n, data$p, max(0.05, method$b))
-    res <- anomaly::capa.mv(x,
+    res <- anomaly::capa.mv(x$x,
                             beta        = beta,
                             beta_tilde  = beta_tilde,
                             min_seg_len = method$minsl,
@@ -171,13 +179,18 @@ simulate_mvcapa_known <- function(data = init_data(), method = method_params(),
                                   seed = NULL) {
 
   if (!is.null(seed)) set.seed(seed)
-  x <- anomaly::robustscale(simulate_cor_(data))
-  x_anom <- x[(data$locations + 1):(data$locations + data$durations), ]
+  x <- simulate_cor_(data)
+  # print(x$mu)
+  # x$x <- anomaly::robustscale(x$x)
+  x_anom <- x$x[(data$locations + 1):(data$locations + data$durations), ]
   if (method$cost == "iid") {
     penalty_vec <- cumsum(iid_penalty(data$n, data$p, method$b))
     return(optimise_mvnormal_iid_saving(x_anom, penalty_vec))
+  } else if (method$cost == "iid_dense") {
+    alpha <- get_penalty("dense", data$n, data$p, method$b)$alpha_const
+    return(list(S_max = saving_iid(1:data$p, x_anom) - alpha))
   } else if (grepl("cor", method$cost)) {
-    Q_hat <- get_Q_hat(x, data, method)
+    Q_hat <- get_Q_hat(x$x, data, method)
     if (method$cost == "cor") {
       penalty <- get_penalty('combined', data$n, data$p, method$b)
       lower_nbs <- lower_nbs(Q_hat)
@@ -185,11 +198,22 @@ simulate_mvcapa_known <- function(data = init_data(), method = method_params(),
       return(optimise_mvnormal_saving(x_anom, Q_hat, lower_nbs, extended_nbs,
                                       penalty$alpha_const, penalty$beta,
                                       penalty$alpha_lin))
-    } else {
+    } else if (method$cost == "cor_exact") {
       penalty <- get_penalty_vec("combined", data$n, data$p, method$b)
-      if (method$cost == "cor_exact") mu_est <- mu_MLE(Q_hat)
-      else if (method$cost == "cor_BF") mu_est <- mu_aMLE()
-      return(optimise_mvnormal_saving_BF(x_anom, Q_hat, penalty, mu_est))
+      return(optimise_mvnormal_saving_BF(x_anom, Q_hat, penalty, mu_MLE(Q_hat)))
+    } else if (method$cost == "cor_BF") {
+      penalty <- get_penalty_vec("combined", data$n, data$p, method$b)
+      return(optimise_mvnormal_saving_BF(x_anom, Q_hat, penalty, mu_aMLE))
+    } else if (method$cost == "cor_dense") {
+      alpha <- get_penalty("dense", data$n, data$p, method$b)$alpha_const
+      mean_x <- matrix(colMeans(x_anom), nrow = data$p)
+      return(list(S_max = dense_mvnormal_savings(mean_x, Q_hat, nrow(x_anom)) - alpha))
+    } else if (method$cost == "cor_dense_optimal") {
+      alpha <- get_penalty("dense", data$n, data$p, method$b)$alpha_const
+      mu <- generate_change(method$size_mu, data$p, 0)
+      # mu <- as.vector(x$mu)
+      return(list(S_max = optimal_mvnormal_dense_saving(x_anom, Q_hat, mu, alpha)))
     }
   }
 }
+

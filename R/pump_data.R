@@ -5,6 +5,7 @@ library(tidyverse)
 library(lubridate)
 library(ggplot2)
 library(ggvis)
+library(corrplot)
 
 # glimpse(data)
 
@@ -20,6 +21,9 @@ load_pump_data <- function() {
 
   data <- data %>%
   dplyr::mutate(differential_pressure = discharge_pressure - suction_pressure,
+                mpfm_gas_flow_rate = mpfm_gvf / 100 * mpfm_flow_rate,
+                mpfm_oil_flow_rate =  0.08 * (1 - mpfm_gvf / 100) * mpfm_flow_rate,
+                mpfm_water_flow_rate = 0.92 * (1 - mpfm_gvf / 100) * mpfm_flow_rate,
                 running = as_factor(if_else(speed >= 1200, "Running", "Not Running")),
                 year = lubridate::year(time),
                 month = lubridate::month(time),
@@ -32,21 +36,44 @@ load_pump_data <- function() {
   ## define variable for healthy vs. non-helathy data
   ###############################################
   ## create intervals
-  a1 <- lubridate::interval(start = ymd("1970-01-01", tz = "CET"),
-                            end = ymd("1970-01-11", tz = "CET"))
-  a2 <- lubridate::interval(start = ymd("1970-05-12", tz = "CET"),
-                            end = ymd("1970-06-05", tz = "CET"))
-  a3 <- lubridate::interval(start = ymd("1970-10-15", tz = "CET"),
-                            end = ymd("1972-12-14", tz = "CET"))
-  a4 <- lubridate::interval(start = ymd("1973-11-09", tz = "CET"),
-                            end = ymd("1978-03-29", tz = "CET"))
-  a5 <- lubridate::interval(start = ymd("1979-03-01", tz = "CET"),
-                            end = ymd("1980-06-04", tz = "CET"))
-  a <- list(a1, a2, a3, a4, a5)
+  a <- pump_anom_intervals()
   ## define variable
   data %>%
-    dplyr::mutate(status = as_factor(if_else(time %within% a, "Healthy", "Not Healthy")))
+    dplyr::mutate(status = as_factor(if_else(date %within% a, "Not Healthy", "Healthy")))
 }
+
+pump_anoms <- function() {
+  s1 <- ymd("1970-01-11", tz = "CET")
+  e1 <- ymd("1970-04-12", tz = "CET")
+
+  s2 <- ymd("1970-06-05", tz = "CET")
+  e2 <- ymd("1970-06-14", tz = "CET")
+
+  s3 <- ymd("1972-12-14", tz = "CET")
+  e3 <- ymd("1973-07-27", tz = "CET")
+
+  s4 <- ymd("1978-03-29", tz = "CET")
+  e4 <- ymd("1979-01-14", tz = "CET")
+  list(c(s1, e1), c(s2, e2), c(s3, e3), c(s4, e4))
+}
+
+pump_anom_intervals <- function() {
+  lapply(pump_anoms(), function(x) lubridate::interval(x[1], x[2]))
+}
+
+failure_period <- function(nr) {
+  a1 <- lubridate::interval(start = ymd("1970-01-01", tz = "CET"),
+                            end = ymd("1970-04-13", tz = "CET"))
+  a2 <- lubridate::interval(start = ymd("1970-05-12", tz = "CET"),
+                            end = ymd("1970-06-15", tz = "CET"))
+  a3 <- lubridate::interval(start = ymd("1970-10-15", tz = "CET"),
+                            end = ymd("1973-07-28", tz = "CET"))
+  a4 <- lubridate::interval(start = ymd("1973-11-09", tz = "CET"),
+                            end = ymd("1979-01-15", tz = "CET"))
+  a <- list(a1, a2, a3, a4)
+  a[nr]
+}
+
 ###############################################
 ## explorative statistics
 ###############################################
@@ -120,10 +147,11 @@ relevant_vars <- function(type = "all") {
   pressures <- c("discharge_pressure",
                  "mpfm_pressure",
                  "subsea_barrier_pressure",
-                 "subsea_barrier_temperature",
                  "suction_pressure",
                  "differential_pressure")
   other <- c("mpfm_gvf",
+             "mpfm_gas_flow_rate",
+             "mpfm_oil_flow_rate",
              "mpfm_flow_rate",
              "output_current",
              "output_power",
@@ -134,11 +162,14 @@ relevant_vars <- function(type = "all") {
 }
 
 daily_means <- function(data, vars = "all") {
-  data %>%
+  data <- data %>%
     dplyr::filter(running == "Running") %>%
     dplyr::select(c("date", "status", relevant_vars(vars))) %>%
     dplyr::group_by(date, status) %>%
-    dplyr::summarise_all(mean)
+    dplyr::summarise_all(mean) %>%
+    dplyr::mutate(running = "Running")
+  data$ind <- 1:nrow(data)
+  data
 }
 
 anonymise <- function(p) {
@@ -207,45 +238,159 @@ plot_monthly_mean <- function(data, var) {
                    y = scaled_value("y_rel", -0.15))))
 }
 
-failure_period <- function(nr) {
-  a1 <- lubridate::interval(start = ymd("1970-01-01", tz = "CET"),
-                            end = ymd("1970-04-12", tz = "CET"))
-  a2 <- lubridate::interval(start = ymd("1970-05-12", tz = "CET"),
-                            end = ymd("1970-06-14", tz = "CET"))
-  a3 <- lubridate::interval(start = ymd("1970-07-27", tz = "CET"),
-                            end = ymd("1973-11-08", tz = "CET"))
-  a4 <- lubridate::interval(start = ymd("1973-11-09", tz = "CET"),
-                            end = ymd("1979-01-14", tz = "CET"))
-  a <- list(a1, a2, a3, a4)
-  a[nr]
+#' @export
+mvcapa_pump <- function(x, est_band = 2, b = 1, b_point = 1, minsl = 20, nr = 3,
+                        vars = "all", diff = FALSE, rank_transform = FALSE,
+                        true_anoms = NULL, cost = "cor") {
+  n <- nrow(x)
+  p <- ncol(x)
+  if (rank_transform) x <- apply(x, 2, function(x_i) qnorm(rank(x_i)/(n + 1)))
+  x <- anomaly::robustscale(x)
+  if (diff) {
+    diff_x <- x[2:n, ] - x[1:(n - 1), ]
+    Q_hat <- 2 * estimate_precision_mat(diff_x, adjacency_mat(banded_neighbours(est_band, ncol(x))))
+  } else
+    Q_hat <- estimate_precision_mat(x, adjacency_mat(banded_neighbours(est_band, p)))
+  if (cost == "cor") {
+    res <- mvcapa_cor(x, Q_hat, b = b, b_point = b_point, min_seg_len = minsl)
+    plot_capa(list("x" = x, "anoms" = res), true_anoms = true_anoms)
+  } else if (cost == "iid") {
+    beta <- iid_penalty(n, p, b)
+    beta_tilde <- iid_point_penalty(n, p, b_point)
+    res <- anomaly::capa.mv(x,
+                            beta        = beta,
+                            beta_tilde  = beta_tilde,
+                            min_seg_len = minsl,
+                            type        = "mean")
+    plot_capa(res, true_anoms = true_anoms, cost = "iid")
+  }
 }
 
-#' @export
-mvcapa_pump <- function(data, est_band = 2, b = 1, b_point = 1, nr = 3,
-                        vars = "all", diff = FALSE, rank_transform = FALSE) {
-  failure_nr <- failure_period(nr)
-  daily_pump_data <- daily_means(data, vars) %>% filter(date %within% failure_nr)
-  x <- as.matrix(daily_pump_data[, 3:ncol(daily_pump_data)])
-  print(apply(x, 2, median))
-  if (!diff) {
-    if (rank_transform) x <- apply(x, 2, function(x_i) qnorm(rank(x_i)/(nrow(x) + 1)))
-    x <- anomaly::robustscale(x)
-    diff_x <- x[2:nrow(x), ] - x[1:(nrow(x) - 1), ]
-    Q_hat <- estimate_precision_mat(x, adjacency_mat(banded_neighbours(est_band, ncol(x))))
-    # Q_hat <- 2 * estimate_precision_mat(diff_x, adjacency_mat(banded_neighbours(est_band, ncol(x))))
-    print(Q_hat)
-    print(solve(Q_hat))
-    res <- mvcapa_cor(x, Q_hat, b = b, b_point = b_point, min_seg_len = 5)
-    collective_anoms <- collective_anomalies(list("anoms" = res))
-    print(unique(collective_anoms$start))
-    print(daily_pump_data$date[unique(collective_anoms$start)])
-    plot_capa(list("x" = x, "anoms" = res))
-  } else {
-    diff_x <- x[2:nrow(x), ] - x[1:(nrow(x) - 1), ]
-    diff_x <- anomaly::robustscale(diff_x)
-    Q_hat <- estimate_precision_mat(diff_x, adjacency_mat(banded_neighbours(est_band, ncol(x))))
-    print(Q_hat)
-    res <- mvcapa_cor(diff_x, Q_hat, b = b, b_point = b_point, min_seg_len = 5)
-    plot_capa(list("x" = diff_x, "anoms" = res))
+plot_cor_mat <- function(x, est_band, diff = FALSE) {
+  n <- nrow(x)
+  p <- ncol(x)
+  x <- anomaly::robustscale(x)
+  Q_hat <- estimate_precision_mat(x, adjacency_mat(banded_neighbours(est_band, p)))
+  # Q_hat_diff <- 2 * estimate_precision_mat(diff_x, adjacency_mat(banded_neighbours(est_band, ncol(x))))
+  Sigma <- solve(standardise_precision_mat(Q_hat))
+  # Sigma_diff <- solve(standardise_precision_mat(Q_hat_diff))
+  corrplot(Sigma, method = "number", mar = c(0, 0, 0, 0))
+}
+
+save_cor_mat_plot <- function(x, est_band, diff) {
+  png("./images/candidate_data_cor_mat.png", width = 6, height = 6, units = "in", res = 800)
+  plot_cor_mat(x, est_band)
+  dev.off()
+}
+
+save_mvcapa_pump_plot <- function(x, cost, b, b_point = 1, minsl = 20, band = 4, true_anoms = NULL) {
+  pl <- mvcapa_pump(x, est_band = band, b = b, b_point = b_point, minsl = minsl,
+                    true_anoms = true_anoms, cost = cost)
+  file_name <- paste0("candidate_data_", cost,
+                      "_penscale", b,
+                      "_pointpenscale", b_point,
+                      "_minsl", minsl,
+                      ".png")
+  ggsave(paste0("./images/", file_name), width = 8, height = 6, units = "in")
+}
+
+promising_plots <- function() {
+  x <- make_all_residuals(pump_daily)
+  band <- 4
+  plot_cor_mat(x, band)
+
+  true_anoms <- pump_anom_inds(pump_daily)
+  mvcapa_pump(x, est_band = band, b = 7, true_anoms = true_anoms)
+  mvcapa_pump(x, est_band = band, b = 10, true_anoms = true_anoms)
+  mvcapa_pump(x, est_band = band, b = 25, true_anoms = true_anoms)
+  mvcapa_pump(x, est_band = band, b = 20, true_anoms = true_anoms, b_point = 12, minsl = 20)
+
+  mvcapa_pump(x, est_band = band, b = 10, true_anoms = true_anoms, cost = "iid")
+  mvcapa_pump(x, est_band = band, b = 20, true_anoms = true_anoms, cost = "iid")
+  mvcapa_pump(x, est_band = band, b = 30, true_anoms = true_anoms, cost = "iid")
+  mvcapa_pump(x, est_band = band, b = 30, true_anoms = true_anoms, cost = "iid", b_point = 5, minsl = 20)
+
+  save_mvcapa_pump_plot(x, "cor", 7, 1, 10, band, true_anoms)
+  save_mvcapa_pump_plot(x, "cor", 10, 1, 10, band, true_anoms)
+  save_mvcapa_pump_plot(x, "cor", 25, 1, 10, band, true_anoms)
+  save_mvcapa_pump_plot(x, "cor", 20, 12, 20, band, true_anoms)
+  save_mvcapa_pump_plot(x, "iid", 10, 1, 10, band, true_anoms)
+  save_mvcapa_pump_plot(x, "iid", 20, 1, 10, band, true_anoms)
+  save_mvcapa_pump_plot(x, "iid", 30, 1, 10, band, true_anoms)
+}
+
+
+# temperatures <- c("discharge_temperature",
+#                   "mpfm_temperature",
+#                   "subsea_barrier_temperature")
+# pressures <- c("discharge_pressure",
+#                "mpfm_pressure",
+#                "subsea_barrier_pressure",
+#                "suction_pressure",
+#                "differential_pressure")
+# other <- c("mpfm_gvf",
+#            "mpfm_gas_flow_rate",
+#            "mpfm_oil_flow_rate",
+#            "mpfm_flow_rate",
+#            "output_current",
+#            "output_power",
+#            "speed")
+
+make_residuals <- function(pump_daily, var, BC = FALSE) {
+  covariates <- " ~ mpfm_gas_flow_rate + mpfm_oil_flow_rate + output_current + output_power + speed"
+  if (BC) {
+    pump_daily[[var]][pump_daily[[var]] <= 0.01] <- 0.01
+    pump_daily[[var]] <- predict(caret::BoxCoxTrans(pump_daily[[var]]), pump_daily[[var]])
   }
+  model_formula <- formula(paste0(var, covariates))
+  lm_obj <- lm(model_formula, data = pump_daily)
+  pred_name <- paste0(var, "_give_flow_rate")
+  pump_daily[[pred_name]] <- predict(lm_obj, newdata = pump_daily)
+  # res_name <- paste0(var, "_residual")
+  pump_daily[[var]] - pump_daily[[pred_name]]
+  # pump_daily[[res_name]] <- pump_daily[[var]] - pump_daily[[pred_name]]
+  # pump_daily[res_name]
+}
+
+make_all_residuals <- function(pump_daily, nr = c(3, 4), BC = FALSE) {
+  vars <- c("discharge_temperature",
+            "mpfm_temperature",
+            # "subsea_barrier_temperature",
+            "mpfm_pressure",
+            "subsea_barrier_pressure",
+            "differential_pressure")
+  failure_nr <- failure_period(nr)
+  pump_daily <- pump_daily %>% filter(date %within% failure_nr)
+  do.call("cbind", lapply(vars, make_residuals, pump_daily = pump_daily))
+}
+
+pump_anom_inds <- function(pump_daily, nr = 3:4) {
+  anoms <- do.call("c", pump_anoms()[nr])
+  anoms <- lubridate::date(anoms)
+  failure_nr <- failure_period(nr)
+  pump_daily <- pump_daily %>% filter(date %within% failure_nr)
+  which(pump_daily$date %in% anoms)
+}
+
+
+
+plot_all_residuals <- function(pump_daily) {
+  res <- reshape2::melt(make_all_residuals(pump_daily))
+  res$Var2 <- as.factor(res$Var2)
+  ggplot2::ggplot(res, ggplot2::aes(x = Var1, y = value, colour = Var2)) +
+    ggplot2::geom_line()
+}
+
+residual_plot <- function(pump_daily, var, colour_by = "status", nr = c(3, 4),
+                          BC = FALSE) {
+  failure_nr <- failure_period(nr)
+  pump_daily <- pump_daily %>% filter(date %within% failure_nr)
+  res_name <- paste0(var, "_residual")
+  pump_daily[[res_name]] <- make_residuals(pump_daily, var, nr, BC)
+  ggpubr::ggarrange(plot_daily_mean(pump_daily, res_name, "density", colour_by = colour_by),
+                    plot_daily_mean(pump_daily, res_name, colour_by = colour_by),
+                    plot_daily_mean(pump_daily, var, colour_by = colour_by),
+                    nrow = 3, ncol = 1,
+                    common.legend = TRUE, legend = "right")
+  # pump_daily[[res_name]]
 }

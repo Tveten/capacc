@@ -7,7 +7,7 @@ grid_plot <- function(plots, dims, title) {
 }
 
 make_title <- function(params,
-                       which_parts = c("cor_mat_type", "rho", "p", "n",
+                       which_parts = c("precision_type", "rho", "p", "n",
                                        "locations", "durations", "proportions",
                                        "shape"),
                        type = "anom") {
@@ -21,6 +21,8 @@ make_title <- function(params,
   if (type == "anom") location_text <- paste0("s=", params$locations + 1)
   else if (type == "cpt") location_text <- paste0("cpt=", params$locations)
 
+  alpha_text <- paste0("alpha=", params$alpha, "+-", params$alpha_tol)
+
   title_parts <- list("precision_type" = precision_text,
                       "rho"            = paste0("rho=", params$rho),
                       "p"              = paste0("p=", params$p),
@@ -29,7 +31,9 @@ make_title <- function(params,
                       "durations"      = paste0("e=", params$locations + params$durations),
                       "proportions"    = paste0("pr=", round(params$proportions, 2)),
                       "shape"          = paste0("sh=", params$shape),
-                      "b"              = paste0("b=", params$b))
+                      "b"              = paste0("b=", params$b),
+                      "alpha"          = alpha_text,
+                      "tuning_n_sim"   = paste0("n_sim=", params$tuning_n_sim))
   if (any(is.na(which_parts)))
     which_parts <- names(title_parts)
   paste0(title_parts[names(title_parts) %in% which_parts], collapse = ", ")
@@ -37,17 +41,24 @@ make_title <- function(params,
 
 power_curve_title_parts <- function(vars_in_title) {
   if (any(is.na(vars_in_title)))
-    vars_in_title <- c("cor_mat_type", "rho", "p", "n",
+    vars_in_title <- c("precision_type", "rho", "p", "n",
                        "locations", "durations", "proportions")
   else vars_in_title
 }
 
 cpt_distr_title_parts <- function(vars_in_title) {
   if (any(is.na(vars_in_title)))
-    vars_in_title <- c("cor_mat_type", "rho", "p", "n",
+    vars_in_title <- c("precision_type", "rho", "p", "n",
                        "locations", "proportions", "b")
   else vars_in_title
 }
+
+penalties_title_parts <- function(vars_in_title) {
+  if (any(is.na(vars_in_title)))
+    vars_in_title <- c("precision_type", "p", "n", "alpha", "tuning_n_sim")
+  else vars_in_title
+}
+
 
 add_iid_costs <- function(res) {
   res <- res[est_band == 0, "cost" := paste0(cost, ".iid")]
@@ -64,4 +75,19 @@ add_precision_est_struct_to_cost <- function(res) {
   res <- res[grepl("cor", cost) & !is.na(est_band),
              "cost" := paste0(cost, ".", est_band, precision_est_struct)]
   res
+}
+
+rename_cost <- function(res) {
+  res <- res[cost == "cor.true", "cost" := "cor(Q)"]
+  res <- res[cost == "cor_exact.true", "cost" := "cor_exact(Q)"]
+  res <- res[cost == "cor.correct_adj", "cost" := "cor(hat(Q))"]
+  res <- res[cost == "cor_exact.correct_adj", "cost" := "cor_exact(hat(Q))"]
+  res
+}
+rename_precision_est_struct <- function(res) {
+  res <- res[is.na(precision_est_struct), precision_est_struct := "true"]
+  res <- res[precision_est_struct == "correct", precision_est_struct := "true adj mat"]
+  res <- res[precision_est_struct == "banded",
+             precision_est_struct := paste0(est_band, "-", precision_est_struct)]
+  res <- res[grepl("iid", cost), precision_est_struct := "true"]
 }
