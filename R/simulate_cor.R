@@ -89,23 +89,24 @@ simulate_cor <-function(n=100,p=10,vartheta=1,shape=0,change_seed=NA,
     s <- locations
     e <- locations + durations
     X = MASS::mvrnorm(n, rep(0, p), Sigma)
-    for (j in 1:length(s))
+    mu <- matrix(0, ncol = p, nrow = length(s))
+    for (k in 1:length(s))
     {
-      if (vartheta[j] > 0 && proportions[j] > 0) {
-        J <- get_affected_dims(change_type, proportions[j], p, changing_vars)
-        mu <- generate_change(vartheta, length(J), shape, change_seed)
-        mu <- t(replicate(e[j] - s[j], mu))
-        X[(s[j] + 1):e[j], J] <- X[(s[j] + 1):e[j], J] + mu
+      if (vartheta[k] > 0 && proportions[k] > 0) {
+        J <- get_affected_dims(change_type, proportions[k], p, changing_vars)
+        mu[k, ] <- generate_change(vartheta, J, shape, Sigma, change_seed)
+        # mu[k, J] <- mu_J
+        mu_mat <- t(replicate(e[k] - s[k], mu[k, ]))
+        X[(s[k] + 1):e[k], ] <- X[(s[k] + 1):e[k], ] + mu_mat
       }
     }
     if (!any(is.na(point_locations))) {
-      for (j in 1:length(point_locations)) {
-        J <- get_affected_dims(change_type, point_proportions[j])
-        X[point_locations[j], J] <- X[point_locations[j], J] + point_mu[j]
+      for (k in 1:length(point_locations)) {
+        J <- get_affected_dims(change_type, point_proportions[k])
+        X[point_locations[k], J] <- X[point_locations[k], J] + point_mu[k]
       }
     }
-
-    return(X)
+    list("x" = X, "mu" = mu)
 }
 
 simulate_cor_ <- function(data = init_data()) {
@@ -153,14 +154,22 @@ get_affected_dims <- function(change_type, prop, p, changing_vars) {
     return(sample(1:p, k))
 }
 
-generate_change <- function(vartheta, k, shape, seed = NA) {
+generate_change <- function(vartheta, J, shape, Sigma, seed = NA) {
   if (!is.na(seed)) set.seed(seed)
-  if      (shape == 0) mu <- rep(1,k)
-  else if (shape == 1) mu <- k:1
-  else if (shape == 2) mu <- (k:1)^2
-  else if (shape == 3) mu <- (1:k)^(-1/2)
-  else if (shape == 4) mu <- rchisq(k, 2)
-  else if (shape == 5) mu <- rnorm(k)
+  p <- ncol(Sigma)
+  k <- length(J)
+  if      (shape == 0) mu_J <- rep(1,k)
+  else if (shape == 1) mu_J <- k:1
+  else if (shape == 2) mu_J <- (k:1)^2
+  else if (shape == 3) mu_J <- (1:k)^(-1/2)
+  else if (shape == 4) mu_J <- rchisq(k, 2)
+  else if (shape == 5) mu_J <- rnorm(k)
+  else if (shape == 6) {
+    mu <- MASS::mvrnorm(1, rep(0, p), Sigma)
+    mu_J <- mu[J]
+  }
+  mu <- rep(0, p)
+  mu[J] <- mu_J
   mu / vector.norm(mu) * vartheta
 }
 

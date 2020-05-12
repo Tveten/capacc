@@ -11,7 +11,7 @@ tuning_params <- function(alpha = 0.05, tol = 0.02, max_iter = 50,
 
 #' @export
 tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
-                         tuning = tuning_params(), seed = NA) {
+                         tuning = tuning_params(), known = FALSE, seed = NA) {
 
   add_setup_info <- function(res) {
     which_data <- !(grepl("Sigma", names(data)) | names(data) == c("changing_vars"))
@@ -26,7 +26,10 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
   fp_rate <- function(b) {
     fps <- unlist(lapply(1:tuning$tuning_n_sim, function(i) {
       method$b <- b
-      !is.na(simulate_mvcapa(data, method, return_anom_only = TRUE)$collective$start[1])
+      if (known) {
+        return(simulate_mvcapa_known(data, method)$S_max > 0)
+      } else
+        return(!is.na(simulate_mvcapa(data, method, return_anom_only = TRUE)$collective$start[1]))
     }))
     data.table("b" = b, "fp" = mean(fps), "diff" = mean(fps) - tuning$alpha)
   }
@@ -35,8 +38,8 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
     res <- res[order(diff)]
     b_lower <- as.numeric(res[diff <= 0, min(b)])
     b_upper <- as.numeric(res[diff > 0][diff == min(diff), max(b)])
-    if (is.na(b_lower) || is.na(b_upper))
-      warning("Will not converge. init_b does not cover the selected alpha level.")
+    if (is.na(b_lower) || is.na(b_upper) || is.infinite(b_lower) || is.infinite(b_upper))
+      stop("Will not converge. init_b does not cover the selected alpha level.")
     exp((log(b_lower) + log(b_upper)) / 2)
   }
 
@@ -59,25 +62,31 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
     print(res[.N])
   }
   res <- add_setup_info(res[which.min(abs(diff))])
-  fwrite(res, "./results/penalties.csv", append = TRUE)
+  if (known) file_name <- "penalties_known_anom.csv"
+  else       file_name <- "penalties.csv"
+  fwrite(res, paste0("./results/", file_name), append = TRUE)
 }
 
 #' @export
 get_tuned_penalty <- function(data = init_data(mu = 0), method = method_params(),
                               tuning = tuning_params(), known = FALSE, seed = NA) {
   if (method$cost == "cor_exact") method$cost <- "cor"
-  if (!file.exists("./results/penalties.csv")) {
-    message(paste0("File does not exist. Making file penalties.csv in ./results/"))
-    tune_penalty(data, method, tuning, seed)
-    return(get_tuned_penalty(data, method, tuning, seed))
+  if (known) {
+    file_name <- "penalties_known_anom.csv"
+    read_func <- read_penalties_known
   } else {
-    if (known)
-      res <- read_penalties_known("penalties", c(data, method, tuning))
-    else
-      res <- read_penalties("penalties", c(data, method, tuning))
+    file_name <- "penalties.csv"
+    read_func <- read_penalties
+  }
+  if (!file.exists(paste0("./results/", file_name))) {
+    message(paste0("File does not exist. Making file ", file_name, " in ./results/"))
+    tune_penalty(data, method, tuning, known, seed)
+    return(get_tuned_penalty(data, method, tuning, known, seed))
+  } else {
+    res <- read_func(file_name, c(data, method, tuning))
     if (nrow(res) == 0) {
-      tune_penalty(data, method, tuning, seed)
-      return(get_tuned_penalty(data, method, tuning, seed))
+      tune_penalty(data, method, tuning, known, seed)
+      return(get_tuned_penalty(data, method, tuning, known, seed))
     } else
       return(res[1])
   }
@@ -102,6 +111,42 @@ tune_many <- function(n = 100, p = 10, band = 2) {
   })
 }
 
-plot_penalty <- function(data, param) {
+#' @export
+plot_penalty <- function(data, method, tuning, known = FALSE, vars_in_title = NA) {
+  all_params <- c(data, method, tuning)
+  params_list <- combine_lists(split_params(
+    expand_list(all_params,
+                list("cost" = c("iid", "cor"),
+                     "precision_est_struct" = c(NA, "correct"),
+                     "rho" = c(0.01, 0.2, 0.5, 0.7, 0.9, 0.99))),
+    list("data"    = names(data),
+         "method"  = names(method),
+         "tuning"  = names(tuning))
+  ))
+  if (known) read_func <- read_penalties_known
+  else       read_func <- read_penalties
+  res <- do.call("rbind",
+                 Map(read_func,
+                     params_list,
+                     MoreArgs = list(file_name = "penalties.csv")))
+  res <- rename_precision_est_struct(res)
+  print(res[cost == "cor", .(rho, b, cost, precision_est_struct)])
+  print(res[cost == "iid", .(rho, b, cost, precision_est_struct)])
+  title <- make_title(all_params, penalties_title_parts(vars_in_title))
+  ggplot2::ggplot(data = res, ggplot2::aes(x = rho, y = b,
+                                           colour = cost,
+                                           linetype = precision_est_struct)) +
+    ggplot2::geom_line() +
+    ggplot2::ggtitle(title) +
+    ggplot2::scale_x_continuous("Rho") +
+    ggplot2::scale_y_continuous("Penalty scale") +
+    ggplot2::scale_colour_discrete(name = "Cost") +
+    ggplot2::scale_linetype_discrete(name = "Precision estimation")
+}
 
+penalty_plots <- function() {
+  banded_data <- init_data(n = 100, p = 8, precision_type = "banded",
+                           band = 2, locations = 50, durations = 10,
+                           change_type = "adjacent", shape = 0)
+  plot_penalty(banded_data, method_params(), tuning_params(), known = TRUE)
 }

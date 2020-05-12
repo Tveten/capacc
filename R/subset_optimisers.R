@@ -91,6 +91,14 @@ savings <- function(J, x, Q, mu_est = mu_MLE(Q)) {
   }
 }
 
+optimal_mvnormal_dense_saving <- function(x, Q, mu, alpha) {
+  n <- nrow(x)
+  x_bar <- colMeans(x, na.rm = TRUE)
+  saving <- as.numeric(n * t(2 * x_bar - mu) %*% Q %*% mu - alpha)
+  expected_saving <- - as.numeric(n * t(mu) %*% Q %*% mu)
+  saving - expected_saving
+}
+
 savings_difference <- function(J, x, Q) {
   if (length(J) > 0) return(savings(J, x, Q) - savings(J, x, Q, mu_aMLE()))
   else return(0)
@@ -306,25 +314,33 @@ MLE_compare_dt <- function(n = 12, p = 10, r = 2, rho = 0.9, prop = 0.3, mu = 1)
   u_max_aMLE <- unlist(res_dt[method == 'aMLE'][which.max(savings)][, 3:(3 + p - 1)])
   J_max_aMLE <- (1:p)[as.logical(u_max_aMLE)]
   W <- solve(A[J_max, J_max]) %*% A[J_max, -J_max]
-  aMLE_bound(mean_x, J_max, J_max_aMLE, A, W, n)
+  aMLE_bound(mean_x, J_max, A, W, n)
   # print(rowSums(W))
   res_dt
 }
 
-aMLE_bound <- function(mean_x, J_hat, J_hat_aMLE, A, W, n) {
+aMLE_bound <- function(mean_x, Q,  J_hat, n) {
   p <- length(mean_x)
-  print(W)
+  W <- solve(Q[J_hat, J_hat]) %*% Q[J_hat, -J_hat, drop = FALSE]
   W_extended <- matrix(0, nrow = p, ncol = p)
   W_extended[J_hat, -J_hat] <- W
   # sigma_max <- svd(A %*% W_extended)$d[1]
-  lambda_max <- eigen(A %*% W_extended + t(A %*% W_extended))$values[1]
+  # lambda_max <- eigen(Q %*% W_extended + t(Q %*% W_extended))$values[1]
+  lambda_max <- eigen(Q %*% W_extended)$values[1]
   squared_norm_nonchange_mean_x <- sum(mean_x[-J_hat]^2)
   # print(paste0('sigma_max = ', sigma_max))
-  print(paste0('lambda_max = ', lambda_max))
-  print(paste0('Squared euclidean length of x(-J_hat) = ', squared_norm_nonchange_mean_x))
-  savings_bound <- n * lambda_max * squared_norm_nonchange_mean_x
-  print(paste0('Savings bound = ', savings_bound))
-  savings_bound
+  # print(paste0('lambda_max = ', lambda_max))
+  # print(paste0('Squared euclidean length of x(-J_hat) = ', squared_norm_nonchange_mean_x))
+  savings_bound <- 2 * n * lambda_max * squared_norm_nonchange_mean_x
+  # print(paste0('Savings bound = ', savings_bound))
+  list("lambda_max" = lambda_max, "savings_bound" = savings_bound)
+}
+
+sim_aMLE_bound <- function(n, p, rho, size_J_hat, band = 2) {
+  mean_x <- rnorm(p) / sqrt(n)
+  Q <- car_precision_mat(banded_neighbours(band, p), rho = rho, sparse = FALSE)
+  J_hat <- 1:size_J_hat
+  aMLE_bound(mean_x, Q, J_hat, n)
 }
 
 MLE_compare <- function(n = 12, p = 10, rho = 0.9, prop = 0.3, mu = 1, r = 2) {
