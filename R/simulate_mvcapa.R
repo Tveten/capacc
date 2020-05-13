@@ -9,11 +9,18 @@ init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p,
                       band = 2, block_size = p, min_nbs = 1, max_nbs = 3) {
   get_Sigma <- function(precision_type) {
     if (precision_type == 'iid') {
-      return(list('mat'     = diag(1, p),
-                  'inverse' = diag(1, p)))
+      return(list('mat' = diag(1, p), 'inverse' = diag(1, p)))
     } else if (precision_type == 'ar1') {
-      return(list('mat'     = ar_cor_mat(p, rho),
-                  'inverse' = ar_precision_mat(p, rho)))
+      return(list('mat' = ar_cor_mat(p, rho), 'inverse' = ar_precision_mat(p, rho)))
+    } else if (precision_type == "Wishart") {
+      precision_mat <- Wishart_precision(p = p,
+                                         n = 20 * p,
+                                         rho = rho,
+                                         precision_type = "banded",
+                                         band = band,
+                                         min_nbs = min_nbs,
+                                         max_nbs = max_nbs)
+      return(list("mat" = solve(precision_mat), "inverse" = precision_mat))
     } else {
       precision_mat <- block_precision_mat(p                 = p,
                                            m                 = block_size,
@@ -22,8 +29,7 @@ init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p,
                                            band              = band,
                                            min_nbs           = min_nbs,
                                            max_nbs           = max_nbs)
-      return(list('mat'     = solve(precision_mat),
-                  'inverse' = precision_mat))
+      return(list('mat' = solve(precision_mat), 'inverse' = precision_mat))
     }
   }
 

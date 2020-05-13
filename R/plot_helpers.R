@@ -11,10 +11,9 @@ make_title <- function(params,
                                        "locations", "durations", "proportions",
                                        "shape"),
                        type = "anom") {
-  if (params$precision_type == "lattice")
-    precision_text <- "lattice"
-  else if (params$precision_type == "banded")
+  if (params$precision_type == "banded")
     precision_text <- paste0(params$band, "-banded")
+  else precision_text <- params$precision_type
   if (params$block_size < params$p)
     precision_text <- paste0(precision_text, ", m=", params$block_size)
 

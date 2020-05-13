@@ -95,7 +95,7 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
     }
     # change background
     if (!is.null(true_anoms)) legend_position <- "bottom"
-    else legend_position <- "non"
+    else legend_position <- "none"
     out <- out + ggplot2::theme(
                                 # Hide panel borders and remove grid lines
                                 panel.border = ggplot2::element_blank(),

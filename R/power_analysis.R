@@ -7,7 +7,6 @@ curve_params <- function(max_dist = 0.2, max_iter = 50, n_sim = 100,
        "init_values"    = init_values)
 }
 
-
 est_power <- function(data, method, loc_tol, n_sim) {
   power <- mean(unlist(lapply(1:n_sim, function(i) {
     if (method$cost == "cor_exact" && i %% 10 == 0) cat("=")
@@ -69,7 +68,9 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
 
   split_inds <- function(res) {
     # exceeds_max_dist <- adjacent_dist(res[, .(vartheta, power)]) > curve$curve_max_dist
-    exceeds_max_dist <- diff(res$power) > curve$curve_max_dist
+    exceeds_max_dist <- diff(res$power) > curve$curve_max_dist |
+                          (diff(res$power) > curve$curve_max_dist / 3 &
+                             !is_in_interval(res$power[-1], c(0.1, 0.9)))
     ind <- which(exceeds_max_dist) + 1
     ind <- ind[!(res[ind - 1]$power >= 0.98 & res[ind]$power >= 0.98)]
     ind <- ind[!(res[ind - 1]$power <= 0.02 & res[ind]$power <= 0.02)]
@@ -138,17 +139,15 @@ many_power_curves <- function(out_file = "power.csv",
 }
 
 #' @export
-plot_power_curve <- function(file_name, data = init_data(), method = method_params(),
+plot_power_curve <- function(file_name, variables, data = init_data(),
+                             method = method_params(),
                              tuning = tuning_params(), curve = curve_params(),
                              loc_tol = 10, known = FALSE, vars_in_title = NA,
                              dodge = FALSE) {
 
   all_params <- c(data, method, tuning, curve, list("loc_tol" = loc_tol))
   params_list <- combine_lists(split_params(
-    expand_list(all_params, list("cost" = c("iid", "cor", "cor_exact",
-                                            "iid_dense", "cor_dense",
-                                            "cor_dense_optimal"),
-                                 "precision_est_struct" = c(NA, "correct"))),
+    expand_list(all_params, variables),
     list("data"    = names(data),
          "method"  = names(method),
          "tuning"  = names(tuning),
@@ -161,15 +160,16 @@ plot_power_curve <- function(file_name, data = init_data(), method = method_para
                  Map(read_func,
                      params_list,
                      MoreArgs = list(file_name = file_name)))
-  # res <- add_precision_est_struct_to_cost(res)
-  # res <- rename_cost(res)
   res <- rename_precision_est_struct(res)
   title <- make_title(all_params, power_curve_title_parts(vars_in_title))
   pl <- ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power,
                                                  colour = cost,
                                                  linetype = precision_est_struct))
-  if (dodge) pl <- pl + ggplot2::geom_line(position = ggplot2::position_dodge(width = 0.1))
-  else pl <- pl + ggplot2::geom_line()
+  if (dodge) {
+    width <- max(res$vartheta) / 50
+    pl <- pl + ggplot2::geom_line(position = ggplot2::position_dodge(width = width))
+  } else
+    pl <- pl + ggplot2::geom_line()
   pl +
     ggplot2::ggtitle(title) +
     ggplot2::scale_x_continuous("Signal strength") +
@@ -190,10 +190,13 @@ grid_plot_power <- function(variables = list("rho" = c(-0.3, 0.9),
                             curve = curve_params(max_dist = 0.1, n_sim = 300),
                             file_name = "power.csv", known = FALSE, loc_tol = 10,
                             dodge = FALSE) {
-  if (length(variables) > 2)
-    stop("Maximum two variables at a time.")
+  plot_var_names <- c("cost", "precision_est_struct")
+  plot_variables <- variables[names(variables) %in% plot_var_names]
+  grid_variables <- variables[!names(variables) %in% plot_var_names]
+  if (length(grid_variables) > 2)
+    stop("Maximum two variables in addition to 'cost' and 'precision_est_struct' at a time.")
   params_list <- split_params(
-    expand_list(c(data, method), variables),
+    expand_list(c(data, method), grid_variables),
     list("data"   = names(data),
          "method" = names(method))
   )
@@ -201,6 +204,7 @@ grid_plot_power <- function(variables = list("rho" = c(-0.3, 0.9),
                data = params_list$data,
                method = params_list$method,
                MoreArgs = list("file_name"     = file_name,
+                               "variables"     = plot_variables,
                                "tuning"        = tuning,
                                "curve"         = curve,
                                "loc_tol"       = loc_tol,
@@ -208,10 +212,11 @@ grid_plot_power <- function(variables = list("rho" = c(-0.3, 0.9),
                                "vars_in_title" = names(variables),
                                "dodge"         = dodge))
   vars_in_title <- names(data)[!names(data) %in% names(variables)]
-  dims <- c(length(variables[[2]]), length(variables[[1]]))
+  dims <- c(length(grid_variables[[2]]), length(grid_variables[[1]]))
   grid_plot(plots, dims, make_title(c(data, method), vars_in_title))
 }
 
+###### Regular runs.
 #' @export
 power_runs <- function() {
   curve <- curve_params(max_dist = 0.1, n_sim = 300)
@@ -294,6 +299,7 @@ low_dim_exact_power_runs <- function() {
                     method, tuning_params(), curve, loc_tol = 5)
 }
 
+#' @export
 grid_plots_power <- function() {
   curve <- curve_params(max_dist = 0.1, n_sim = 300)
   out_file <- "power.csv"
@@ -314,26 +320,9 @@ grid_plots_power <- function() {
                   file_name = out_file)
 }
 
+###### Known anomaly runs.
 #' @export
-known_anom_power_runs <- function() {
-  # curve <- curve_params(max_dist = 0.1, n_sim = 300)
-  # out_file <- "power_known_anom.csv"
-
-  # Compare with exact.
-  # banded_data <- init_data(n = 100, p = 8, precision_type = "banded",
-  #                          band = 2, locations = 50, durations = 10,
-  #                          change_type = "adjacent")
-  # banded_variables <- list("cost"        = c("iid", "cor", "cor_exact"),
-  #                          "rho"         = c(0.01, 0.2, 0.5, 0.7, 0.9, 0.99),
-  #                          "proportions" = c(1, 3, 8)/8,
-  #                          "shape"       = c(0, 5))
-  # many_power_curves(out_file, banded_variables, banded_data,
-  #                   method_params(precision_est_struct = NA),
-  #                   tuning_params(), curve, known = TRUE)
-  # many_power_curves(out_file, banded_variables, banded_data,
-  #                   method_params(precision_est_struct = "correct"),
-  #                   tuning_params(), curve, known = TRUE)
-
+known_anom_power_runs <- function(shape = c(5, 6)) {
   # Compare iid and cor for shapes 5 and 6.
   curve <- curve_params(max_dist = 0.1, n_sim = 500)
   out_file <- "power_known_anom.csv"
@@ -343,12 +332,103 @@ known_anom_power_runs <- function() {
                            "precision_est_struct" = c(NA, "correct"),
                            "rho"         = c(0.01, 0.2, 0.5, 0.7, 0.9, 0.99),
                            "proportions" = c(0.1, 0.3, 1),
-                           "shape"       = c(5, 6))
+                           "shape"       = shape)
   tuning <- tuning_params(init_b = c(0.1, 1, 4), n_sim = 500)
   many_power_curves(out_file, banded_variables, banded_data,
                     method_params(), tuning, curve, known = TRUE)
 }
 
+#' @export
+grid_plot_power_known_anom <- function(rho = "high", shape = 6) {
+  # Compare iid and cor for shapes 5 and 6.
+  curve <- curve_params(max_dist = 0.1, n_sim = 500)
+  out_file <- "power_known_anom.csv"
+  banded_data <- init_data(n = 100, p = 10, precision_type = "banded",
+                           band = 2, locations = 50, durations = 10,
+                           shape = shape)
+  banded_variables <- list("cost"        = c("iid", "cor"),
+                           "precision_est_struct" = c(NA, "correct"))
+  if (rho == "low") banded_variables$rho <- c(0.01, 0.2, 0.5)
+  else if (rho == "high") banded_variables$rho <- c(0.7, 0.9, 0.99)
+  banded_variables$proportions <- c(0.1, 0.3, 1)
+  tuning <- tuning_params(n_sim = 500)
+  grid_plot_power(banded_variables, banded_data, method_params(), tuning,
+                  curve, file_name = out_file, known = TRUE, dodge = TRUE)
+}
+
+#' @export
+known_anom_power_runs_MLE <- function() {
+  curve <- curve_params(max_dist = 0.1, n_sim = 300)
+  out_file <- "power_known_anom.csv"
+  banded_data <- init_data(n = 100, p = 8, precision_type = "banded",
+                           band = 2, locations = 50, durations = 10,
+                           change_type = "adjacent")
+  banded_variables <- list("cost"        = c("iid", "cor", "cor_exact"),
+                           "rho"         = c(0.01, 0.2, 0.5, 0.7, 0.9, 0.99),
+                           "proportions" = c(1, 3, 8)/8,
+                           "shape"       = c(0, 5))
+  many_power_curves(out_file, banded_variables, banded_data,
+                    method_params(precision_est_struct = NA),
+                    tuning_params(), curve, known = TRUE)
+  many_power_curves(out_file, banded_variables, banded_data,
+                    method_params(precision_est_struct = "correct"),
+                    tuning_params(), curve, known = TRUE)
+}
+
+#' @export
+grid_plot_power_MLE <- function(rho = "high", shape = 0) {
+  # Shape = 0 or 5.
+  curve <- curve_params(max_dist = 0.1, n_sim = 300)
+  out_file <- "power_known_anom.csv"
+  tuning <- tuning_params()
+  banded_data <- init_data(n = 100, p = 8, precision_type = "banded",
+                           band = 2, locations = 50, durations = 10,
+                           change_type = "adjacent", shape = shape)
+  banded_variables <- list("cost"        = c("iid", "cor", "cor_exact"),
+                           "precision_est_struct" = c(NA, "correct"))
+  if (rho == "low") banded_variables$rho <- c(0.01, 0.2, 0.5)
+  else if (rho == "high") banded_variables$rho <- c(0.7, 0.9, 0.99)
+  banded_variables$proportions <- c(1, 3, 8)/8
+  grid_plot_power(banded_variables, banded_data, method_params(), tuning,
+                  curve, file_name = out_file, known = TRUE, dodge = TRUE)
+}
+
+#' @export
+known_anom_Wishart_power_runs <- function() {
+  curve <- curve_params(max_dist = 0.1, n_sim = 1000)
+  out_file <- "power_known_anom.csv"
+  banded_variables <- list("cost"        = c("iid", "cor"),
+                           "rho"         = c(0.7, 0.9, 0.99),
+                           "proportions" = c(0.1, 0.3, 1),
+                           "shape"       = c(0, 6))
+  banded_data <- init_data(n = 100, p = 10, precision_type = "Wishart",
+                           band = 2, locations = 50, durations = 10)
+  method <- method_params(precision_est_struct = "banded", est_band = 2)
+  tuning <- tuning_params(init_b = c(0.1, 1, 4), n_sim = 1000)
+  many_power_curves(out_file, banded_variables, banded_data,
+                    method, tuning, curve, known = TRUE)
+}
+
+#' @export
+grid_plot_power_known_anom_Wishart <- function(shape = 6) {
+  # Valid shapes: 0 and 6.
+  curve <- curve_params(max_dist = 0.1, n_sim = 500)
+  out_file <- "power_known_anom.csv"
+  banded_data <- init_data(n = 100, p = 10, precision_type = "Wishart",
+                           band = 2, locations = 50, durations = 10,
+                           shape = shape)
+  banded_variables <- list("cost"        = c("iid", "cor"),
+                           "rho"         = c(0.7, 0.9, 0.99),
+                           "proportions" = c(0.1, 0.3, 1))
+  method <- method_params(precision_est_struct = "banded", est_band = 2)
+  tuning <- tuning_params(n_sim = 500)
+  grid_plot_power(banded_variables, banded_data, method, tuning,
+                  curve, file_name = out_file, known = TRUE, dodge = TRUE)
+}
+
+
+###### Known dense anomaly runs.
+#' @export
 known_dense_anom_power_runs <- function() {
   curve <- curve_params(max_dist = 0.1, n_sim = 1000)
   out_file <- "power_known_anom.csv"
@@ -368,38 +448,21 @@ known_dense_anom_power_runs <- function() {
                     tuning = tuning, curve = curve, known = TRUE)
 }
 
-
-grid_plots_power_known_anom <- function() {
+#' @export
+plot_power_known_dense_anom <- function() {
   curve <- curve_params(max_dist = 0.1, n_sim = 300)
   out_file <- "power_known_anom.csv"
   banded_data <- init_data(n = 100, p = 8, precision_type = "banded",
                            band = 2, locations = 50, durations = 10,
-                           change_type = "adjacent", shape = 0)
-  grid_plot_power(list("rho" = c(0.01, 0.2, 0.5),
-                       "proportions" = c(1, 3, 8)/8),
-                  banded_data,
-                  method_params(),
-                  tuning_params(), curve,
-                  file_name = out_file, known = TRUE, dodge = TRUE)
-  grid_plot_power(list("rho" = c(0.7, 0.9, 0.99),
-                       "proportions" = c(1, 3, 8)/8),
-                  banded_data,
-                  method_params(),
-                  tuning_params(), curve,
-                  file_name = out_file, known = TRUE, dodge = TRUE)
-
-  curve <- curve_params(max_dist = 0.1, n_sim = 1000)
-  banded_data <- init_data(n = 100, p = 8, precision_type = "banded",
-                           band = 2, locations = 50, durations = 10,
                            proportions = 1, shape = 0, rho = 0.99,
                            change_type = "adjacent")
-  tuning <- tuning_params(init_b = c(0.0001, 1, 4), n_sim = 1000)
-  plot_power_curve(out_file, banded_data,
+  banded_variables <- list("cost" = c("iid", "cor", "cor_exact", "iid_dense",
+                                      "cor_dense", "cor_dense_optimal"),
+                           "precision_est_struct" = c(NA, "correct"))
+  curve <- curve_params(max_dist = 0.1, n_sim = 1000)
+  tuning <- tuning_params(n_sim = 1000)
+  plot_power_curve(out_file, banded_variables, banded_data,
                    method_params(cost = "cor_dense_optimal",
                                  precision_est_struct = NA, size_mu = 1),
-                   tuning = tuning, curve = curve, known = TRUE, dodge = TRUE,
-                   vars_in_title = c("precision_type", "rho", "p", "n",
-                                     "locations", "durations", "proportions",
-                                     "shape"))
-
+                   tuning = tuning, curve = curve, known = TRUE, dodge = TRUE)
 }

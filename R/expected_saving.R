@@ -10,16 +10,24 @@ compare_signal_strength <- function(vartheta, J, shape, Q) {
              "shape"           = shape)
 }
 
-expected_saving <- function(vartheta, J, shape, Q, n, seed = NA) {
+expected_savings <- function(vartheta, J, shape, Q, n, seed = NA, n_sim = 100) {
+  expected_saving <- function(Q) {
+    theta <- generate_change(vartheta, J, shape, solve(Q), seed)
+    p + n * as.numeric(theta %*% Q %*% theta)
+  }
+
   p <- ncol(Q)
-  theta <- generate_change(vartheta, J, shape, solve(Q), seed)
-  data.table("cost"            = c("cor", "iid"),
-             "expected_saving_H1" = c(p + n * as.numeric(theta %*% Q %*% theta),
-                                      p + n * as.numeric(theta %*% theta)),
+  if (shape %in% 4:6)
+    expected_saving_cor <- mean(replicate(n_sim, expected_saving(Q)))
+  else
+    expected_saving_cor <- expected_saving(Q)
+  data.table("cost"               = c("cor", "iid"),
+             "expected_saving_H1" = c(expected_saving_cor,
+                                      expected_saving(diag(p))),
              "expected_saving_H0" = rep(p, 2),
-             "vartheta"        = vartheta,
-             "k"               = length(J),
-             "shape"           = shape)
+             "vartheta"           = vartheta,
+             "k"                  = length(J),
+             "shape"              = shape)
 }
 
 rename_shape <- function(dt) {
@@ -38,16 +46,15 @@ rename_shape <- function(dt) {
 }
 
 #' @export
-plot_expected_saving <- function(p, vartheta = 1, rho = 0.9, band = 2, seed = NA) {
+plot_expected_saving <- function(p, vartheta = 1, rho = 0.9, band = 2,
+                                 seed = NA, n_sim = 100) {
   Q <- car_precision_mat(banded_neighbours(band, p), rho = rho)
   n <- 1
-  if (is.na(seed)) seed <- sample(1:1000, 1)
   expect_dt <- do.call("rbind", lapply(0:6, function(shape) {
     do.call("rbind", lapply(1:p, function(k) {
-      expected_saving(vartheta, 1:k, shape, Q, n, seed)
+      expected_savings(vartheta, 1:k, shape, Q, n, seed, n_sim)
     }))
   }))
-  # expect_dt <- expect_dt[(cost == "iid" & shape == 0) | cost == "cor"]
   expect_dt <- rename_shape(expect_dt)
   expect_dt[, "expected_diff" := expected_saving_H1 - expected_saving_H0]
   ggplot2::ggplot(data = expect_dt, ggplot2::aes(k/p, expected_diff,

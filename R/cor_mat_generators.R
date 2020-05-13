@@ -185,18 +185,25 @@ rcor_mat <- function(d, k0 = d, alphad = 1) {
   structure(Sigma, 'which_dims_cor' = 1:k0)
 }
 
+car_mat_from_type <- function(p, precision_type, rho = 0.9, band = 2,
+                          min_nbs = 1, max_nbs = 3) {
+  if (precision_type == "lattice")
+    nbs <- lattice_neighbours(p)
+  else if (precision_type == "banded")
+    nbs <- banded_neighbours(band, p)
+  else if (precision_type == "random")
+    nbs <- random_neighbours(p, min_nbs, max_nbs)
+  car_precision_mat(nbs, rho = rho, standardised = FALSE, sparse = FALSE)
+}
+
 block_precision_mat <- function(p, m, within_block_type = "banded",
                                 rho = 0.7, band = 2, sigma = 1,
                                 min_nbs = 1, max_nbs = 3,
-                                standardised = TRUE, sparse = TRUE) {
-  block_Q <- function(k) {
-    if (within_block_type == "lattice")
-      nbs <- lattice_neighbours(k)
-    else if (within_block_type == "banded")
-      nbs <- banded_neighbours(band, k)
-    else if (within_block_type == "random")
-      nbs <- random_neighbours(k, min_nbs, max_nbs)
-    car_precision_mat(nbs, rho = rho, standardised = FALSE, sparse = FALSE)
+                                standardise = TRUE, sparse = TRUE) {
+  block_Q <- function() {
+    function(k) {
+      car_mat_from_type(k, within_block_type, rho, band, min_nbs, max_nbs)
+    }
   }
 
   if (length(m) == 1 && m < p) {
@@ -207,14 +214,24 @@ block_precision_mat <- function(p, m, within_block_type = "banded",
 
   Q <- diag(1, p)
   s <- cumsum(m)
-  Q[1:s[1], 1:s[1]] <- block_Q(m[1])
+  Q[1:s[1], 1:s[1]] <- block_Q()(m[1])
   if (length(m) > 1) {
     for (i in 2:length(m)) {
       if (m[i] > 1)
-        Q[(s[i - 1] + 1):s[i], (s[i - 1] + 1):s[i]] <- block_Q(m[i])
+        Q[(s[i - 1] + 1):s[i], (s[i - 1] + 1):s[i]] <- block_Q()(m[i])
     }
   }
-  if (standardised) Q <- standardise_precision_mat(Q)
+  if (standardise) Q <- standardise_precision_mat(Q)
+  if (sparse) return(Matrix::Matrix(Q, sparse = TRUE))
+  else return(Q)
+}
+
+Wishart_precision <- function(p, n = 5 * p, rho = 0.9, precision_type = "banded",
+                              band = 2, min_nbs = 1, max_nbs = 3,
+                              standardise = TRUE,  sparse = TRUE) {
+  Sigma <- solve(car_mat_from_type(p, precision_type, rho, band, min_nbs, max_nbs))
+  Q <- solve(1 / (n - 1) * rWishart(1, n, Sigma)[, , 1])
+  if (standardise) Q <- standardise_precision_mat(Q)
   if (sparse) return(Matrix::Matrix(Q, sparse = TRUE))
   else return(Q)
 }
