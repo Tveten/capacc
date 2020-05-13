@@ -18,7 +18,8 @@ subset_and_check <- function(res, var, var_list, approx, msg) {
 }
 
 read_single_result <- function(file_name, query_params, all_params, msg) {
-  res <- fread(paste0("./results/", file_name), na.strings = "")
+  res <- fread(paste0("./results/", file_name))
+  res[precision_est_struct == "", precision_est_struct := NA]
   approx <- vapply(query_params, function(var) is.numeric(all_params[[var]]), logical(1))
   i <- 1
   res_exists <- TRUE
