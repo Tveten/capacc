@@ -123,12 +123,17 @@ plot_penalty <- function(data, method, tuning, known = FALSE, vars_in_title = NA
          "method"  = names(method),
          "tuning"  = names(tuning))
   ))
-  if (known) read_func <- read_penalties_known
-  else       read_func <- read_penalties
+  if (known) {
+    read_func <- read_penalties_known
+    file_name <- "penalties_known_anom.csv"
+  } else {
+    read_func <- read_penalties
+    file_name <- "penalties.csv"
+  }
   res <- do.call("rbind",
                  Map(read_func,
                      params_list,
-                     MoreArgs = list(file_name = "penalties.csv")))
+                     MoreArgs = list(file_name = file_name)))
   res <- rename_precision_est_struct(res)
   print(res[cost == "cor", .(rho, b, cost, precision_est_struct)])
   print(res[cost == "iid", .(rho, b, cost, precision_est_struct)])
@@ -138,7 +143,7 @@ plot_penalty <- function(data, method, tuning, known = FALSE, vars_in_title = NA
                                            linetype = precision_est_struct)) +
     ggplot2::geom_line() +
     ggplot2::ggtitle(title) +
-    ggplot2::scale_x_continuous("Rho") +
+    ggplot2::scale_x_continuous(latex2exp::TeX("$\\rho$")) +
     ggplot2::scale_y_continuous("Penalty scale") +
     ggplot2::scale_colour_discrete(name = "Cost") +
     ggplot2::scale_linetype_discrete(name = "Precision estimation")

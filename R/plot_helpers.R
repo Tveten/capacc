@@ -6,6 +6,27 @@ grid_plot <- function(plots, dims, title) {
   ggpubr::annotate_figure(figure, top = title)
 }
 
+# test_quote <- function() {
+#   rho_expr <- quote(rho)
+#   rho <- 0.9
+#   rho_part <- bquote(.(rho_expr) == .(rho))
+#   precision_part <- ", 2-banded"
+#   title <- bquote(.(rho_part) ~ .(precision_part))
+#   parts <- list(rho_part, precision_part)
+#   title <- lapply(1:length(parts), function(i) {
+#     paste0(".(parts[[", i, "]])")
+#   })
+#   title <- paste0("bquote(", paste(title, collapse = "*"), ")")
+#   plot(1, main = eval(parse(text = title)))
+# }
+#
+# title_expr <- function(parts) {
+#   title <- lapply(1:length(parts), function(i) {
+#     paste0(".(parts[[", i, "]])")
+#   })
+#   parse(text = paste0("bquote(", paste(title, collapse = "*"), ")"))
+# }
+
 make_title <- function(params,
                        which_parts = c("precision_type", "rho", "p", "n",
                                        "locations", "durations", "proportions",
@@ -20,22 +41,22 @@ make_title <- function(params,
   if (type == "anom") location_text <- paste0("s=", params$locations + 1)
   else if (type == "cpt") location_text <- paste0("cpt=", params$locations)
 
-  alpha_text <- paste0("alpha=", params$alpha, "+-", params$alpha_tol)
+  alpha_text <- paste0("$\\alpha =", params$alpha, "\\pm ", params$alpha_tol, "$")
 
   title_parts <- list("precision_type" = precision_text,
-                      "rho"            = paste0("rho=", params$rho),
+                      "rho"            = paste0("$\\rho =", params$rho, "$"),
                       "p"              = paste0("p=", params$p),
                       "n"              = paste0("n=", params$n),
                       "locations"      = location_text,
                       "durations"      = paste0("e=", params$locations + params$durations),
-                      "proportions"    = paste0("pr=", round(params$proportions, 2)),
+                      "proportions"    = paste0("$pr=", round(params$proportions, 2), "$"),
                       "shape"          = paste0("sh=", params$shape),
                       "b"              = paste0("b=", params$b),
                       "alpha"          = alpha_text,
-                      "tuning_n_sim"   = paste0("n_sim=", params$tuning_n_sim))
+                      "tuning_n_sim"   = paste0("n_{sim}=", params$tuning_n_sim))
   if (any(is.na(which_parts)))
     which_parts <- names(title_parts)
-  paste0(title_parts[names(title_parts) %in% which_parts], collapse = ", ")
+  latex2exp::TeX(paste0(title_parts[names(title_parts) %in% which_parts], collapse = ", "))
 }
 
 power_curve_title_parts <- function(vars_in_title) {
