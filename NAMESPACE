@@ -3,6 +3,7 @@
 export(PiS)
 export(PiW)
 export(additional_power_runs)
+export(all_known_power_runs)
 export(boxplot_cpt_distr)
 export(cpt_runs)
 export(curve_params)

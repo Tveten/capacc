@@ -1,18 +1,16 @@
 
 get_sim_seeds <- function(params_list, variables) {
   # Uses structure of output from expand.grid.
-  if (names(variables)[1] != "cost")
-    stop("'cost' must be the first element in 'variables' for seeds to be correct.")
-  if (!is.null(variables$precision_est_struct) && names(variables)[2] != "precision_est_struct")
-    stop("'precision_est_struct' must be the second element in 'variables' if present for seeds to be correct.")
-  n_costs <- length(variables$cost)
-  if (!is.null(variables$precision_est_struct))
-    n_costs <- n_costs * length(variables$precision_est_struct)
-  n_seeds <- length(params_list[[1]]) / n_costs
-  seeds <- sample(1:10^6, n_seeds)
-  rep(seeds, each = length(variables$cost))
+  same_seed_names <- c("cost", "precision_est_struct", "est_band")
+  variable_names <- names(variables)
+  ind_names_present <- which(variable_names %in% same_seed_names)
+  if (length(ind_names_present) != max(ind_names_present))
+    stop("cost, precision_est_struct and est_band must be the first elements of 'variables' for seeds to be correct")
+  n_costs <- Reduce(`*`, vapply(variables[ind_names_present], length, numeric(1)))
+  n_settings <- length(params_list[[1]])
+  n_unique_seeds <- n_settings / n_costs
+  rep(sample(1:10^6, n_unique_seeds), each = n_costs)
 }
-
 
 mu_from_vartheta <- function(vartheta, p, prop) {
   vartheta / sqrt(round(prop * p))

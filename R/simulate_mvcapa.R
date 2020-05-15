@@ -12,6 +12,10 @@ init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p,
       return(list('mat' = diag(1, p), 'inverse' = diag(1, p)))
     } else if (precision_type == 'ar1') {
       return(list('mat' = ar_cor_mat(p, rho), 'inverse' = ar_precision_mat(p, rho)))
+    } else if (precision_type == "global_const") {
+      Sigma <- constant_cor_mat(p, rho)
+      Q <- Matrix::Matrix(solve(Sigma), sparse = TRUE)
+      return(list("mat" = Sigma, "inverse" = Q))
     } else if (precision_type == "Wishart") {
       precision_mat <- Wishart_precision(p = p,
                                          n = 20 * p,
@@ -42,6 +46,7 @@ init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p,
 
   Sigma_obj <- get_Sigma(precision_type)
   if (precision_type == "lattice") band <- band(Sigma_obj$inverse)
+  else if (precision_type == "global_const") band <- p - 1
 
   list('n'                 = n,
        'p'                 = p,
@@ -187,7 +192,7 @@ simulate_mvcapa_known <- function(data = init_data(), method = method_params(),
   if (!is.null(seed)) set.seed(seed)
   x <- simulate_cor_(data)
   # print(x$mu)
-  # x$x <- anomaly::robustscale(x$x)
+  x$x <- anomaly::robustscale(x$x)
   x_anom <- x$x[(data$locations + 1):(data$locations + data$durations), ]
   if (method$cost == "iid") {
     penalty_vec <- cumsum(iid_penalty(data$n, data$p, method$b))

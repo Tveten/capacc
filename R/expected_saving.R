@@ -57,10 +57,11 @@ plot_expected_saving <- function(p, vartheta = 1, rho = 0.9, band = 2,
   }))
   expect_dt <- rename_shape(expect_dt)
   expect_dt[, "expected_diff" := expected_saving_H1 - expected_saving_H0]
+
   ggplot2::ggplot(data = expect_dt, ggplot2::aes(k/p, expected_diff,
                                                  colour = interaction(cost, shape))) +
     ggplot2::geom_line() +
-    ggplot2::scale_y_continuous("Expected increase in saving per observation under H_1",
+    ggplot2::scale_y_continuous(expression(paste(E, "[", "S | ", H[1], "] - ", E, "[", "S | ", H[0], "]")),
                                 limits = c(0, max(expect_dt$expected_diff))) +
     ggplot2::scale_x_continuous("Proportion") +
     ggplot2::ggtitle(paste0("2-banded, n=", n, " p=", p, ", rho=", rho,

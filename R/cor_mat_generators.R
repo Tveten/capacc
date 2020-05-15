@@ -18,6 +18,17 @@ constant_cor_mat <- function(p, rho) {
   Sigma
 }
 
+constant_cor_mat2 <- function(p, rho, standardise = TRUE, sparse = TRUE) {
+  one_vec <- matrix(1, nrow = p)
+  Sigma <- (1 - rho) * diag(1, p) + rho / p * one_vec %*% t(one_vec)
+  print(Sigma)
+  Q <- solve(Sigma)
+
+  if (standardise) Q <- standardise_precision_mat(Q)
+  if (sparse) return(Matrix::Matrix(Q, sparse = TRUE))
+  else return(Q)
+}
+
 ar_precision_mat <- function(p, phi, sparse = TRUE) {
   Sigma_inv <- matrix(0, nrow = p, ncol = p)
   diag(Sigma_inv) <- 1 + phi^2
