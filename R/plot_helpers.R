@@ -34,6 +34,8 @@ make_title <- function(params,
                        type = "anom") {
   if (params$precision_type == "banded")
     precision_text <- paste0(params$band, "-banded")
+  else if (params$precision_type == "global_const")
+    precision_text <- "constant"
   else precision_text <- params$precision_type
   if (params$block_size < params$p)
     precision_text <- paste0(precision_text, ", m=", params$block_size)

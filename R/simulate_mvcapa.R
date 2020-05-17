@@ -129,20 +129,6 @@ method_params_ <- function(method) {
 }
 
 
-get_adj_mat <- function(data, method) {
-  if (method$precision_est_struct == "correct")
-    return(data$Sigma_inv)
-  else if (method$precision_est_struct == "banded")
-    return(adjacency_mat(banded_neighbours(method$est_band, data$p)))
-}
-
-get_Q_hat <- function(x, data, method) {
-  if (is.na(method$precision_est_struct))
-    return(data$Sigma_inv)
-  else
-    return(estimate_precision_mat(x, get_adj_mat(data, method)))
-}
-
 #' @export
 simulate_mvcapa <- function(data = init_data(), method = method_params(),
                             seed = NULL, return_anom_only = TRUE) {
@@ -161,9 +147,9 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
 
   if (!is.null(seed)) set.seed(seed)
   x <- simulate_cor_(data)
-  x$x <- anomaly::robustscale(x$x)
   if (grepl("cor", method$cost)) {
     Q_hat <- get_Q_hat(x$x, data, method)
+    x$x <- robust_scale(x$x, Q_hat)
     if (method$cost == "cor_exact") mvcapa_func <- mvcapa_cor_exact
     else if(method$cost == "cor")   mvcapa_func <- mvcapa_cor
     res <- mvcapa_func(x$x, Q_hat,
@@ -172,6 +158,7 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
                        min_seg_len      = method$minsl,
                        max_seg_len      = method$maxsl)
   } else if (method$cost == "iid") {
+    x$x <- robust_scale(x$x)
     beta <- iid_penalty(data$n, data$p, method$b)
     beta_tilde <- iid_point_penalty(data$n, data$p, max(0.05, method$b))
     res <- anomaly::capa.mv(x$x,
@@ -191,17 +178,20 @@ simulate_mvcapa_known <- function(data = init_data(), method = method_params(),
 
   if (!is.null(seed)) set.seed(seed)
   x <- simulate_cor_(data)
-  # print(x$mu)
-  x$x <- anomaly::robustscale(x$x)
-  x_anom <- x$x[(data$locations + 1):(data$locations + data$durations), ]
-  if (method$cost == "iid") {
-    penalty_vec <- cumsum(iid_penalty(data$n, data$p, method$b))
-    return(optimise_mvnormal_iid_saving(x_anom, penalty_vec))
-  } else if (method$cost == "iid_dense") {
-    alpha <- get_penalty("dense", data$n, data$p, method$b)$alpha_const
-    return(list(S_max = saving_iid(1:data$p, x_anom) - alpha))
+  if (grepl("iid", method$cost)) {
+    x$x <- robust_scale(x$x)
+    x_anom <- x$x[(data$locations + 1):(data$locations + data$durations), ]
+    if (method$cost == "iid") {
+      penalty_vec <- cumsum(iid_penalty(data$n, data$p, method$b))
+      return(optimise_mvnormal_iid_saving(x_anom, penalty_vec))
+    } else if (method$cost == "iid_dense") {
+      alpha <- get_penalty("dense", data$n, data$p, method$b)$alpha_const
+      return(list(S_max = saving_iid(1:data$p, x_anom) - alpha))
+    }
   } else if (grepl("cor", method$cost)) {
     Q_hat <- get_Q_hat(x$x, data, method)
+    x$x <- robust_scale(x$x, Q_hat)
+    x_anom <- x$x[(data$locations + 1):(data$locations + data$durations), ]
     if (method$cost == "cor") {
       penalty <- get_penalty('combined', data$n, data$p, method$b)
       lower_nbs <- lower_nbs(Q_hat)

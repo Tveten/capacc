@@ -6,12 +6,12 @@ robust_cov_mat <- function(x) {
   mad_x %*% cor(scores_x) %*% mad_x
 }
 
-zero_inds <- function(adjacency_mat) {
-  p <- nrow(adjacency_mat)
+zero_inds <- function(adj_mat) {
+  p <- nrow(adj_mat)
   zeros <- list()
   for (i in 2:p) {
     for (j in 1:(i - 1)) {
-      if (isTRUE(all.equal(adjacency_mat[i, j], 0)))
+      if (adj_mat[i, j] >= -1e-8 && adj_mat[i, j] <= 1e-8)
         zeros[[length(zeros) + 1]] <- c(i, j)
     }
   }
