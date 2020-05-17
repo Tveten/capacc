@@ -12,6 +12,27 @@ get_sim_seeds <- function(params_list, variables) {
   rep(sample(1:10^6, n_unique_seeds), each = n_costs)
 }
 
+get_adj_mat <- function(data, method) {
+  if (method$precision_est_struct == "correct")
+    return(data$Sigma_inv)
+  else if (method$precision_est_struct == "banded")
+    return(adjacency_mat(banded_neighbours(method$est_band, data$p), sparse = FALSE))
+}
+
+get_Q_hat <- function(x, data, method) {
+  if (is.na(method$precision_est_struct))
+    return(data$Sigma_inv)
+  else
+    return(estimate_precision_mat(x, get_adj_mat(data, method)))
+}
+
+robust_scale <- function(x, Q = NULL) {
+  if (is.null(Q)) sigma <- apply(x, 2, mad)
+  else sigma <- diag(solve(Q))
+  mu <- apply(x, 2, median)
+  t((t(x) - mu) / sigma)
+}
+
 mu_from_vartheta <- function(vartheta, p, prop) {
   vartheta / sqrt(round(prop * p))
 }
