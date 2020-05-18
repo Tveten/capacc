@@ -54,7 +54,7 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
   }
 
   init_power_est <- function(init_values) {
-    min_power <- tuning$alpha + tuning$alpha_tol
+    min_power <- (tuning$alpha + tuning$alpha_tol) * 1.2
     max_power <- 0.98
     res <- do.call('rbind', Map(est_power_ss, curve$init_values))
     while ((min(res$power) > min_power || max(res$power) < max_power) && max(res$vartheta) <= 10) {
@@ -69,7 +69,7 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
   split_inds <- function(res) {
     # exceeds_max_dist <- adjacent_dist(res[, .(vartheta, power)]) > curve$curve_max_dist
     exceeds_max_dist <- diff(res$power) > curve$curve_max_dist |
-                          (diff(res$power) > curve$curve_max_dist / 3 &
+                          (diff(res$power) > curve$curve_max_dist / 2 &
                              !is_in_interval(res$power[-1], c(0.1, 0.9)))
     ind <- which(exceeds_max_dist) + 1
     ind <- ind[!(res[ind - 1]$power >= 0.98 & res[ind]$power >= 0.98)]
@@ -362,14 +362,19 @@ grid_plot_power_MLE <- function(rho = "high", shape = 0) {
 }
 
 known_anom_setup <- function(p = 10, precision_type = "banded",
-                             shape = c(0, 5, 6)) {
-  if (p == 10) n <- 100
-  else if (p == 16) n <- 100  # 4x4 lattice.
-  else if (p == 100) n <- 200
-  else stop("p must be 10, 16 (4 x 4 lattice) or 100")
+                             shape = c(0, 5, 6),
+                             rho = c(0.99, 0.9, 0.7, 0.5, 0.3),
+                             proportions = c(1/p, round(sqrt(p)) / p, 1)) {
+  if (p <= 50) {
+    n <- 100
+    n_sim <- 1000
+  } else {
+    n <- 2 * p
+    n_sim <- 500
+  }
   durations <- 10
   locations <- round(n / 2)
-  proportions <- c(1/p, round(sqrt(p)) / p, 1)
+  # proportions <- c(1/p, round(sqrt(p)) / p, 1)
 
   if (precision_type == "banded") {
     band <- 2
@@ -385,7 +390,7 @@ known_anom_setup <- function(p = 10, precision_type = "banded",
     est_band <- c(1, 2, 4)
   }
 
-  n_sim <- 1000
+  # rho <- rev(c(0.3, 0.5, 0.7, 0.9, 0.99))
   curve <- curve_params(max_dist = 0.1, n_sim = n_sim)
   out_file <- "power_known_anom_FINAL.csv"
   data <- init_data(n = n, p = p, precision_type = precision_type,
@@ -394,7 +399,7 @@ known_anom_setup <- function(p = 10, precision_type = "banded",
   variables <- list("cost"        = c("iid", "cor"),
                     "precision_est_struct" = precision_est_struct,
                     "est_band"    = est_band,
-                    "rho"         = rev(c(0.3, 0.5, 0.7, 0.9, 0.99)),
+                    "rho"         = rho,
                     "proportions" = proportions,
                     "shape"       = shape)
   tuning <- tuning_params(init_b = c(0.1, 1, 4), n_sim = n_sim)
@@ -404,17 +409,23 @@ known_anom_setup <- function(p = 10, precision_type = "banded",
 
 #' @export
 known_anom_power_runs <- function(p = 10, precision_type = "banded",
-                                  shape = c(0, 5, 6)) {
-  setup <- known_anom_setup(p, precision_type, shape)
+                                  shape = c(0, 5, 6),
+                                  rho = c(0.99, 0.9, 0.7, 0.5, 0.3),
+                                  proportions = c(1/p, round(sqrt(p)) / p, 1)) {
+  setup <- known_anom_setup(p, precision_type, shape, rho, proportions)
   many_power_curves(setup$out_file, setup$variables, setup$data,
                     setup$method, setup$tuning, setup$curve, known = TRUE)
 }
 
 #' @export
-all_known_power_runs <- function() {
+all_known_power_runs10 <- function() {
   known_anom_power_runs(10, "banded")
   known_anom_power_runs(16, "lattice")
   known_anom_power_runs(10, "global_const")
+}
+
+#' @export
+all_known_power_runs100 <- function() {
   known_anom_power_runs(100, "banded")
   known_anom_power_runs(100, "lattice")
   known_anom_power_runs(100, "global_const")

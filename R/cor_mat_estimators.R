@@ -1,9 +1,8 @@
 robust_cov_mat <- function(x) {
-  p <- ncol(x)
   n <- nrow(x)
-  scores_x <- apply(x, 2, function(x_i) qnorm(rank(x_i)/(n + 1)))
-  mad_x <- diag(apply(x, 2, mad))
-  mad_x %*% cor(scores_x) %*% mad_x
+  scores_x <- apply(Rfast::colRanks(x) / (n + 1), 2, qnorm)
+  mad_x <- Rfast::colMads(x)
+  (mad_x %*% t(mad_x)) * cor(scores_x)
 }
 
 zero_inds <- function(adj_mat) {
@@ -18,13 +17,16 @@ zero_inds <- function(adj_mat) {
   do.call("rbind", zeros)
 }
 
-estimate_precision_mat <- function(x, adj_mat, sparse = TRUE) {
-  if (ncol(x) >= nrow(x))
-    warning("There may be convergence issues when p >= n.")
+reg_mat <- function(adj_mat) {
+  reg_mat <- matrix(10^8, nrow = nrow(adj_mat), ncol = ncol(adj_mat))
+  reg_mat[adj_mat != 0] <- 0
+  diag(reg_mat) <- 0
+  reg_mat
+}
 
+estimate_precision_mat <- function(x, adj_mat, sparse = TRUE) {
   S <- robust_cov_mat(x)
-  zeros <- zero_inds(adj_mat)
-  S_inv <- suppressWarnings(glasso::glasso(S, rho = 0, zero = zeros)$wi)
+  S_inv <- glassoFast::glassoFast(S, rho = reg_mat(adj_mat))$wi
   if (sparse) return(Matrix::Matrix(S_inv, sparse = TRUE))
   else return(S_inv)
 }
@@ -71,6 +73,17 @@ estimate_CAR_precision_mat <- function(x, adj_mat, Q_theta = NULL, param_lim = N
 #==============#
 ##### OLD ######
 #==============#
+estimate_precision_mat_slow <- function(x, adj_mat, sparse = TRUE) {
+  if (ncol(x) >= nrow(x))
+    warning("There may be convergence issues when p >= n.")
+
+  S <- robust_cov_mat(x)
+  zeros <- zero_inds(adj_mat)
+  S_inv <- suppressWarnings(glasso::glasso(S, rho = 0, zero = zeros)$wi)
+  if (sparse) return(Matrix::Matrix(S_inv, sparse = TRUE))
+  else return(S_inv)
+}
+
 BIC_precision_mat <- function(A, S, n, rho) {
   nnz <- sum(A[lower.tri(A, diag = TRUE)] != 0)
   - log(det(A)) + sum(diag(A %*% S)) + log(n) / n * nnz

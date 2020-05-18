@@ -14,7 +14,7 @@ get_sim_seeds <- function(params_list, variables) {
 
 get_adj_mat <- function(data, method) {
   if (method$precision_est_struct == "correct")
-    return(data$Sigma_inv)
+    return(as.matrix(data$Sigma_inv))
   else if (method$precision_est_struct == "banded")
     return(adjacency_mat(banded_neighbours(method$est_band, data$p), sparse = FALSE))
 }
@@ -27,10 +27,10 @@ get_Q_hat <- function(x, data, method) {
 }
 
 robust_scale <- function(x, Q = NULL) {
-  if (is.null(Q)) sigma <- apply(x, 2, mad)
-  else sigma <- diag(solve(Q))
-  mu <- apply(x, 2, median)
-  t((t(x) - mu) / sigma)
+  if (is.null(Q)) sigma <- Rfast::colMads(x)
+  else sigma <- sqrt(diag(solve(Q)))
+  med <- Rfast::colMedians(x)
+  t((t(x) - med) / sigma)
 }
 
 mu_from_vartheta <- function(vartheta, p, prop) {
