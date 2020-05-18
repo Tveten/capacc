@@ -33,6 +33,11 @@ robust_scale <- function(x, Q = NULL) {
   t((t(x) - med) / sigma)
 }
 
+centralise <- function(x) {
+  med <- Rfast::colMedians(x)
+  t(t(x) - med)
+}
+
 mu_from_vartheta <- function(vartheta, p, prop) {
   vartheta / sqrt(round(prop * p))
 }

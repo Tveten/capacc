@@ -16,7 +16,19 @@ est_power <- function(data, method, loc_tol, n_sim) {
   data.table("vartheta" = data$vartheta, "power" = power)
 }
 
-est_power_known <- function(data, method, n_sim) {
+est_power_known <- function(data, method, n_sim, parallelise = TRUE) {
+  # if (parallelise) {
+  #   seeds <- sample(4000:(10 * (4000 + n_sim)), n_sim)
+  #   comp_cluster <- suppressMessages(setup_parallel())
+  #   `%dopar%` <- foreach::`%dopar%`
+  #   detection <- suppressMessages(foreach::foreach(seed = seeds,
+  #                                 .packages = c("mvcapaCor", "anomaly"),
+  #                                 .combine = "c") %dopar% {
+  #     simulate_mvcapa_known(data, method, seed)$S_max > 0
+  #   })
+  #   stop_parallel(comp_cluster)
+  #   power <- mean(detection)
+  # } else
   power <- mean(unlist(lapply(1:n_sim, function(i) {
     simulate_mvcapa_known(data, method)$S_max > 0
   })))
@@ -427,8 +439,8 @@ all_known_power_runs10 <- function() {
 #' @export
 all_known_power_runs100 <- function() {
   known_anom_power_runs(100, "banded")
-  known_anom_power_runs(100, "lattice")
   known_anom_power_runs(100, "global_const")
+  known_anom_power_runs(100, "lattice")
 }
 
 #' @export

@@ -149,7 +149,7 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
   x <- simulate_cor_(data)
   if (grepl("cor", method$cost)) {
     Q_hat <- get_Q_hat(x$x, data, method)
-    x$x <- robust_scale(x$x, Q_hat)
+    x$x <- centralise(x$x)
     if (method$cost == "cor_exact") mvcapa_func <- mvcapa_cor_exact
     else if(method$cost == "cor")   mvcapa_func <- mvcapa_cor
     res <- mvcapa_func(x$x, Q_hat,
@@ -190,7 +190,7 @@ simulate_mvcapa_known <- function(data = init_data(), method = method_params(),
     }
   } else if (grepl("cor", method$cost)) {
     Q_hat <- get_Q_hat(x$x, data, method)
-    x$x <- robust_scale(x$x, Q_hat)
+    x$x <- centralise(x$x)
     x_anom <- x$x[(data$locations + 1):(data$locations + data$durations), ]
     if (method$cost == "cor") {
       penalty <- get_penalty('combined', data$n, data$p, method$b)
@@ -221,8 +221,7 @@ simulate_mvcapa_known <- function(data = init_data(), method = method_params(),
 test_optim <- function(data, method) {
   x <- simulate_cor_(data)
   Q_hat <- get_Q_hat(x$x, data, method)
-  # Q_hat <- data$Sigma_inv
-  x$x <- robust_scale(x$x, Q_hat)
+  x$x <- centralise(x$x)
   x_anom <- x$x[(data$locations + 1):(data$locations + data$durations), ]
   penalty <- get_penalty('combined', data$n, data$p, method$b)
   lower_nbs <- lower_nbs(Q_hat)
