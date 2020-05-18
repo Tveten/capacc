@@ -218,3 +218,16 @@ simulate_mvcapa_known <- function(data = init_data(), method = method_params(),
   }
 }
 
+test_optim <- function(data, method) {
+  x <- simulate_cor_(data)
+  Q_hat <- get_Q_hat(x$x, data, method)
+  # Q_hat <- data$Sigma_inv
+  x$x <- robust_scale(x$x, Q_hat)
+  x_anom <- x$x[(data$locations + 1):(data$locations + data$durations), ]
+  penalty <- get_penalty('combined', data$n, data$p, method$b)
+  lower_nbs <- lower_nbs(Q_hat)
+  extended_nbs <- extended_lower_nbs(lower_nbs)
+  optimise_mvnormal_saving(x_anom, Q_hat, lower_nbs, extended_nbs,
+                           penalty$alpha_const, penalty$beta,
+                           penalty$alpha_lin)
+}
