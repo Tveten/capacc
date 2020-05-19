@@ -35,7 +35,7 @@ make_title <- function(params,
   if (params$precision_type == "banded")
     precision_text <- paste0(params$band, "-banded")
   else if (params$precision_type == "global_const")
-    precision_text <- "constant"
+    precision_text <- "constant cor"
   else precision_text <- params$precision_type
   if (params$block_size < params$p)
     precision_text <- paste0(precision_text, ", m=", params$block_size)

@@ -64,6 +64,7 @@ split_params <- function(a, grouping) {
   out
 }
 
+#' @export
 pll_test <- function(cpus = 1) {
   test_func <- function(i) {
     Sys.sleep(0.1)

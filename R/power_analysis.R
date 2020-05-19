@@ -467,7 +467,7 @@ all_known_power_runs100 <- function() {
 
 #' @export
 grid_plot_power_known_anom <- function(p = 10, precision_type = "banded",
-                                       shape = 6, rho = c(0.7, 0.9, 0.99),
+                                       shape = 6, rho = c(0.5, 0.7, 0.9),
                                        proportions = NULL) {
   setup <- known_anom_setup(p, precision_type, shape)
   setup$data$shape <- shape
