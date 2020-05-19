@@ -137,20 +137,35 @@ many_power_curves <- function(out_file = "power.csv",
                         "loc_tol"       = loc_tol,
                         "known"         = known))
   else if (cpus > 1) {
-    parallelMap::parallelStart(mode = "multicore", cpus = cpus, show.info = FALSE)
-    parallelMap::parallelLibrary("anomaly", "mvcapaCor")
-    parallelMap::parallelMap(
-      power_curve,
-      data   = params_list$data,
-      method = params_list$method,
-      seed   = get_sim_seeds(params_list, variables),
-      more.args = list("out_file"     = out_file,
-                       "tuning"        = tuning,
-                       "curve"         = curve,
-                       "loc_tol"       = loc_tol,
-                       "known"         = known)
-    )
-    parallelMap::parallelStop()
+    # parallelMap::parallelStart(mode = "multicore", cpus = cpus, show.info = FALSE)
+    # parallelMap::parallelLibrary("anomaly", "mvcapaCor")
+    # parallelMap::parallelMap(
+    #   power_curve,
+    #   data   = params_list$data,
+    #   method = params_list$method,
+    #   seed   = get_sim_seeds(params_list, variables),
+    #   more.args = list("out_file"     = out_file,
+    #                    "tuning"        = tuning,
+    #                    "curve"         = curve,
+    #                    "loc_tol"       = loc_tol,
+    #                    "known"         = known)
+    # )
+    # parallelMap::parallelStop()
+    seeds <- get_sim_seeds(params_list, variables)
+    comp_cluster <- setup_parallel(cpus)
+    `%dopar%` <- foreach::`%dopar%`
+    res <- foreach::foreach(i = 1:length(params_list$data),
+                            .packages = c("anomaly", "mvcapaCor")) %dopar% {
+      power_curve(data     = params_list$data[[i]],
+                  method   = params_list$method[[i]],
+                  seed     = seeds[i],
+                  out_file = out_file,
+                  tuning   = tuning,
+                  curve    = curve,
+                  loc_tol  = loc_tol,
+                  known    = known)
+    }
+    stop_parallel(comp_cluster)
   } else stop("Number of cpus must be >= 1")
   NULL
 }
