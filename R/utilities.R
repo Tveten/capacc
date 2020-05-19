@@ -1,6 +1,6 @@
-setup_parallel <- function() {
-  n_cores <- parallel::detectCores()
-  c <- parallel::makeCluster(n_cores, outfile = '', type = 'PSOCK')
+setup_parallel <- function(cpus = 1) {
+  if (is.null(cpus)) cpus <- parallel::detectCores() - 1
+  c <- parallel::makeCluster(cpus, outfile = '', type = 'PSOCK')
   doParallel::registerDoParallel(c)
   c
 }
