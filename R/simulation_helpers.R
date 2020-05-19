@@ -64,6 +64,25 @@ split_params <- function(a, grouping) {
   out
 }
 
+pll_test <- function(cpus = 1) {
+  test_func <- function(i) {
+    Sys.sleep(0.1)
+    i
+  }
+
+  if (cpus == 1) {
+    out <- Map(test_func, 1:10)
+  } else {
+    parallelMap::parallelStart(mode = "multicore", cpus = cpus, show.info = FALSE)
+    out <- parallelMap::parallelMap(
+      test_func,
+      1:10
+    )
+    parallelMap::parallelStop()
+  }
+  out
+}
+
 #
 # change_sd <- function(p, prop, duration) {
 #   xi <- - log(prop) / log(p)

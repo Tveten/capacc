@@ -132,21 +132,38 @@ many_power_curves <- function(out_file = "power.csv",
                               method = method_params(),
                               tuning = tuning_params(),
                               curve  = curve_params(max_dist = 0.1, n_sim = 300),
-                              known = FALSE, loc_tol = 10) {
+                              known = FALSE, loc_tol = 10, cpus = 1) {
   params_list <- split_params(
     expand_list(c(data, method), variables),
     list("data"   = names(data),
          "method" = names(method))
   )
-  Map(power_curve,
+  if (cpus == 1)
+    Map(power_curve,
+        data   = params_list$data,
+        method = params_list$method,
+        seed   = get_sim_seeds(params_list, variables),
+        MoreArgs = list("out_file"     = out_file,
+                        "tuning"        = tuning,
+                        "curve"         = curve,
+                        "loc_tol"       = loc_tol,
+                        "known"         = known))
+  else if (cpus > 1) {
+    parallelMap::parallelStart(mode = "multicore", cpus = cpus, show.info = FALSE)
+    parallelMap::parallelLibrary("anomaly", "mvcapaCor")
+    parallelMap::parallelMap(
+      power_curve,
       data   = params_list$data,
       method = params_list$method,
       seed   = get_sim_seeds(params_list, variables),
-      MoreArgs = list("out_file"     = out_file,
-                      "tuning"        = tuning,
-                      "curve"         = curve,
-                      "loc_tol"       = loc_tol,
-                      "known"         = known))
+      more.args = list("out_file"     = out_file,
+                       "tuning"        = tuning,
+                       "curve"         = curve,
+                       "loc_tol"       = loc_tol,
+                       "known"         = known)
+    )
+    parallelMap::parallelStop()
+  } else stop("Number of cpus must be >= 1")
   NULL
 }
 
@@ -177,9 +194,12 @@ plot_power_curve <- function(file_name, variables, data = init_data(),
                      MoreArgs = list(file_name = file_name)))
   res <- rename_precision_est_struct(res)
   title <- make_title(all_params, power_curve_title_parts(vars_in_title))
+  # pl <- ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power,
+  #                                                colour = cost,
+  #                                                linetype = precision_est_struct))
   pl <- ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power,
-                                                 colour = cost,
-                                                 linetype = precision_est_struct))
+                                                 colour = precision_est_struct,
+                                                 linetype = cost))
   if (dodge) {
     width <- max(res$vartheta) / 50
     pl <- pl + ggplot2::geom_line(position = ggplot2::position_dodge(width = width))
@@ -423,10 +443,12 @@ known_anom_setup <- function(p = 10, precision_type = "banded",
 known_anom_power_runs <- function(p = 10, precision_type = "banded",
                                   shape = c(0, 5, 6),
                                   rho = c(0.99, 0.9, 0.7, 0.5, 0.3),
-                                  proportions = c(1/p, round(sqrt(p)) / p, 1)) {
+                                  proportions = c(1/p, round(sqrt(p)) / p, 1),
+                                  cpus = 1) {
   setup <- known_anom_setup(p, precision_type, shape, rho, proportions)
   many_power_curves(setup$out_file, setup$variables, setup$data,
-                    setup$method, setup$tuning, setup$curve, known = TRUE)
+                    setup$method, setup$tuning, setup$curve, known = TRUE,
+                    cpus = cpus)
 }
 
 #' @export
@@ -530,3 +552,4 @@ plot_power_known_dense_anom <- function() {
                                  precision_est_struct = NA, size_mu = 1),
                    tuning = tuning, curve = curve, known = TRUE, dodge = TRUE)
 }
+
