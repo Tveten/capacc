@@ -137,20 +137,6 @@ many_power_curves <- function(out_file = "power.csv",
                         "loc_tol"       = loc_tol,
                         "known"         = known))
   else if (cpus > 1) {
-    # parallelMap::parallelStart(mode = "multicore", cpus = cpus, show.info = FALSE)
-    # parallelMap::parallelLibrary("anomaly", "mvcapaCor")
-    # parallelMap::parallelMap(
-    #   power_curve,
-    #   data   = params_list$data,
-    #   method = params_list$method,
-    #   seed   = get_sim_seeds(params_list, variables),
-    #   more.args = list("out_file"     = out_file,
-    #                    "tuning"        = tuning,
-    #                    "curve"         = curve,
-    #                    "loc_tol"       = loc_tol,
-    #                    "known"         = known)
-    # )
-    # parallelMap::parallelStop()
     seeds <- get_sim_seeds(params_list, variables)
     comp_cluster <- setup_parallel(cpus)
     `%dopar%` <- foreach::`%dopar%`
@@ -195,7 +181,7 @@ plot_power_curve <- function(file_name, variables, data = init_data(),
                  Map(read_func,
                      params_list,
                      MoreArgs = list(file_name = file_name)))
-  res <- rename_precision_est_struct(res)
+  res <- rename_cost(res)
   title <- make_title(all_params, power_curve_title_parts(vars_in_title))
   # pl <- ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power,
   #                                                colour = cost,
@@ -212,8 +198,8 @@ plot_power_curve <- function(file_name, variables, data = init_data(),
     ggplot2::ggtitle(title) +
     ggplot2::scale_x_continuous("Signal strength", limits = c(0, upper_xlim(res))) +
     ggplot2::scale_y_continuous("Power") +
-    ggplot2::scale_colour_discrete(name = "Cost") +
-    ggplot2::scale_linetype_discrete(name = "Precision estimation")
+    ggplot2::scale_colour_discrete(name = "Precision estimation") +
+    ggplot2::scale_linetype_discrete(name = "Cost")
 }
 
 #' @export
@@ -379,6 +365,21 @@ known_anom_power_runs_MLE <- function() {
 }
 
 #' @export
+known_anom_power_runs_MLE_sparse <- function(p = 15) {
+  curve <- curve_params(max_dist = 0.1, n_sim = 300)
+  out_file <- "power_known_anom.csv"
+  banded_data <- init_data(n = 100, p = p, precision_type = "banded",
+                           band = 2, locations = 50, durations = 10,
+                           change_type = "adjacent", proportions = 1/p,
+                           rho = 0.99, shape = 0)
+  banded_variables <- list("cost" = c("cor", "cor_exact"))
+  many_power_curves(out_file, banded_variables, banded_data,
+                    method_params(precision_est_struct = NA),
+                    tuning_params(), curve, known = TRUE)
+}
+
+
+#' @export
 grid_plot_power_MLE <- function(rho = "high", shape = 0) {
   # Shape = 0 or 5.
   curve <- curve_params(max_dist = 0.1, n_sim = 300)
@@ -387,7 +388,7 @@ grid_plot_power_MLE <- function(rho = "high", shape = 0) {
   banded_data <- init_data(n = 100, p = 8, precision_type = "banded",
                            band = 2, locations = 50, durations = 10,
                            change_type = "adjacent", shape = shape)
-  banded_variables <- list("cost"        = c("iid", "cor", "cor_exact"),
+  banded_variables <- list("cost"        = c("cor", "cor_exact"),
                            "precision_est_struct" = c(NA, "correct"))
   if (rho == "low") banded_variables$rho <- c(0.01, 0.2, 0.5)
   else if (rho == "high") banded_variables$rho <- c(0.7, 0.9, 0.99)
@@ -556,3 +557,18 @@ plot_power_known_dense_anom <- function() {
                    tuning = tuning, curve = curve, known = TRUE, dodge = TRUE)
 }
 
+
+    # parallelMap::parallelStart(mode = "multicore", cpus = cpus, show.info = FALSE)
+    # parallelMap::parallelLibrary("anomaly", "mvcapaCor")
+    # parallelMap::parallelMap(
+    #   power_curve,
+    #   data   = params_list$data,
+    #   method = params_list$method,
+    #   seed   = get_sim_seeds(params_list, variables),
+    #   more.args = list("out_file"     = out_file,
+    #                    "tuning"        = tuning,
+    #                    "curve"         = curve,
+    #                    "loc_tol"       = loc_tol,
+    #                    "known"         = known)
+    # )
+    # parallelMap::parallelStop()
