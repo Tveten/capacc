@@ -69,8 +69,10 @@ power_set <- function(size, include_empty_set = FALSE) {
 ####
 
 mu_MLE <- function(Q) {
+  Q <- as.matrix(Q)
   function(mean_x, J) {
-    mean_x[J] + solve(Q[J, J, drop = FALSE]) %*% Q[J, -J, drop = FALSE] %*% mean_x[-J]
+    W <- solve(Q[J, J, drop = FALSE]) %*% Q[J, -J, drop = FALSE]
+    mean_x[J] + W %*% mean_x[-J]
   }
 }
 
@@ -80,11 +82,9 @@ mu_aMLE <- function() {
   }
 }
 
-savings <- function(J, x, Q, mu_est = mu_MLE(Q)) {
+savings <- function(J, mean_x, n, Q, mu_est = mu_MLE(Q)) {
   if (length(J) == 0) return(0)
   else {
-    n <- nrow(x)
-    mean_x <- colMeans(x, na.rm = TRUE)
     mu_hat <- rep(0, length(mean_x))
     mu_hat[J] <- mu_est(mean_x, J)
     return(as.numeric(n * t(2 * mean_x - mu_hat) %*% Q %*% mu_hat))
@@ -122,8 +122,9 @@ optimise_mvnormal_saving_BF <- function(x, Q, penalty, mu_est = mu_aMLE()) {
   P_J <- power_set(p, include_empty_set = TRUE)
   lengths <- vapply(P_J, length, numeric(1))
   P_J <- P_J[lengths <= penalty$k_star | lengths == p]
+  mean_x <- colMeans(x, na.rm = TRUE)
   S <- vapply(P_J, function(J) {
-    savings(J, x, Q, mu_est) - penalty$vec[length(J) + 1]
+    savings(J, mean_x, nrow(x), Q, mu_est) - penalty$vec[length(J) + 1]
   }, numeric(1))
   S_max <- max(S)
   S_which_max <- which.max(S)

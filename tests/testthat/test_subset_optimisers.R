@@ -1,10 +1,11 @@
-test_savings_MLE <- function(mu_est = mu_MLE(A)) {
+test_savings_MLE <- function(mu_est = mu_MLE(Q)) {
   p <- 6
-  A <- car_precision_mat(banded_neighbours(1, p))
-  x <- simulate_cor(p = p, Sigma = solve(A))
+  Q <- car_precision_mat(banded_neighbours(1, p))
+  x <- simulate_cor(p = p, Sigma = solve(Q))
   J <- 1:3
+  mean_x <- colMeans(x$x, na.rm = TRUE)
   unlist(lapply(lapply(1:6, function(i) 1:i), function(J) {
-    as.numeric(savings(J, x, A, mu_est))
+    as.numeric(savings(J, mean_x, nrow(x$x), Q, mu_est))
   }))
 }
 

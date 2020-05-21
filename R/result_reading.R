@@ -1,12 +1,11 @@
-subset_and_check <- function(res, var, var_list, approx, msg) {
+# subset_and_check <- function(res, var, var_list, approx, msg) {
+subset_and_check <- function(res, var, var_list, msg) {
   if (is.na(var_list[[var]]))
     i_call <- paste0("is.na(", var, ")")
-  else {
-    if (approx)
-      i_call <- paste0("is_equal(", var, ", ", "var_list$", var, ")")
-    else
-      i_call <- paste0(var, " == ", "var_list$", var)
-  }
+  else if (is.numeric(var_list[[var]]))
+    i_call <- paste0("is_equal(", var, ", ", "var_list$", var, ")")
+  else
+    i_call <- paste0(var, " == ", "var_list$", var)
   res <- res[eval(parse(text = i_call))]
   if (nrow(res) == 0) {
     message(paste0(msg, " for ", var, "=", var_list[[var]],
@@ -20,11 +19,12 @@ subset_and_check <- function(res, var, var_list, approx, msg) {
 read_single_result <- function(file_name, query_params, all_params, msg) {
   res <- fread(paste0("./results/", file_name))
   res[precision_est_struct == "", precision_est_struct := NA]
-  approx <- vapply(query_params, function(var) is.numeric(all_params[[var]]), logical(1))
+  # approx <- vapply(query_params, function(var) is.numeric(all_params[[var]]), logical(1))
   i <- 1
   res_exists <- TRUE
   while (res_exists && i <= length(query_params)) {
-    sub_res <- subset_and_check(res, query_params[i], all_params, approx[i], msg)
+    # sub_res <- subset_and_check(res, query_params[i], all_params, approx[i], msg)
+    sub_res <- subset_and_check(res, query_params[i], all_params, msg)
     res <- sub_res$res
     res_exists <- sub_res$exists
     i <- i + 1

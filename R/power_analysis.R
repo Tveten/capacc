@@ -16,17 +16,28 @@ est_power <- function(data, method, loc_tol, n_sim) {
   data.table("vartheta" = data$vartheta, "power" = power)
 }
 
-est_power_known <- function(data, method, n_sim, parallelise = TRUE) {
-  power <- mean(unlist(lapply(1:n_sim, function(i) {
-    simulate_mvcapa_known(data, method)$S_max > 0
-  })))
+est_power_known <- function(data, method, n_sim, cpus = 1) {
+  seeds <- sample(1:10^4, n_sim)
+  if (method$cost == "cor_exact" && cpus > 1) {
+    comp_cluster <- setup_parallel(cpus)
+    `%dopar%` <- foreach::`%dopar%`
+    power <- mean(foreach::foreach(i = 1:n_sim,
+                                   .packages = "mvcapaCor",
+                                   .combine = "c") %dopar% {
+      simulate_mvcapa_known(data, method, seed = seeds[i])$S_max > 0
+    })
+    stop_parallel(comp_cluster)
+  } else
+    power <- mean(unlist(lapply(1:n_sim, function(i) {
+      simulate_mvcapa_known(data, method)$S_max > 0
+    })))
   data.table("vartheta" = data$vartheta, "power" = power)
 }
 
 #' @export
 power_curve <- function(out_file, data = init_data(), method = method_params(),
                         tuning = tuning_params(), curve = curve_params(),
-                        loc_tol = 10, known = FALSE, seed = NA) {
+                        loc_tol = 10, known = FALSE, seed = NA, cpus = 1) {
   add_setup_info <- function(res) {
     which_data <- !(grepl("Sigma", names(data)) | names(data) %in% c("changing_vars", "vartheta"))
     res <- cbind(res,
@@ -49,7 +60,7 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
     }
     method$b <- get_tuned_penalty(data, method, tuning, known, seed + 2)$b
     cat('.')
-    if (known) est_power_known(data, method, curve$curve_n_sim)
+    if (known) est_power_known(data, method, curve$curve_n_sim, cpus)
     else est_power(data, method, loc_tol, curve$curve_n_sim)
   }
 
@@ -95,7 +106,6 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
   all_params <- c(data, method, tuning, curve, list("loc_tol" = loc_tol))
   if (known) read_func <- read_power_curve_known
   else       read_func <- read_power_curve
-  # print(all_params$tuning_n_sim)
   if (already_estimated(out_file, all_params, read_func)) return(NULL)
 
   if (!is.na(seed)) set.seed(seed)
@@ -181,7 +191,7 @@ plot_power_curve <- function(file_name, variables, data = init_data(),
                  Map(read_func,
                      params_list,
                      MoreArgs = list(file_name = file_name)))
-  res <- rename_cost(res)
+  res <- rename_precision_est_struct(res)
   title <- make_title(all_params, power_curve_title_parts(vars_in_title))
   # pl <- ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power,
   #                                                colour = cost,
@@ -344,7 +354,47 @@ grid_plots_power <- function() {
                   file_name = out_file)
 }
 
-###### Known anomaly runs.
+#################
+#### MLE runs
+#################
+#' @export
+single_known_anom_MLE_run <- function(p = 10, rho = 0.99, proportions = 1/p,
+                                      shape = 0, cpus = 1) {
+  out_file <- "power_known_anom_FINAL.csv"
+  n <- 100
+  data <- init_data(n = n, p = p, precision_type = "banded",
+                    band = 2, locations = round(n / 2), durations = 10,
+                    change_type = "adjacent", rho = rho,
+                    proportions = proportions, shape = shape)
+  n_sim <- 300
+  tuning <- tuning_params(init_b = c(0.1, 1, 4), n_sim = n_sim)
+  curve <- curve_params(max_dist = 0.1, n_sim = n_sim)
+  costs <- c("cor", "cor_exact")
+  seed <- sample(1:10^4, 1)
+  lapply(costs, function(cost) {
+    method <- method_params(cost = cost, precision_est_struct = NA)
+    power_curve(out_file, data, method, tuning, curve,
+                known = TRUE, seed = seed, cpus = cpus)
+  })
+}
+
+#' @export
+plot_single_known_anom_MLE <- function(p = 10, rho = 0.99, proportions = 1/p,
+                                       shape = 0) {
+  out_file <- "power_known_anom_FINAL.csv"
+  n <- 100
+  data <- init_data(n = n, p = p, precision_type = "banded",
+                    band = 2, locations = round(n / 2), durations = 10,
+                    change_type = "adjacent", rho = rho,
+                    proportions = proportions, shape = shape)
+  method <- method_params(precision_est_struct = NA)
+  n_sim <- 300
+  tuning <- tuning_params(init_b = c(0.1, 1, 4), n_sim = n_sim)
+  curve <- curve_params(max_dist = 0.1, n_sim = n_sim)
+  variables <- list("cost" = c("cor", "cor_exact"))
+  plot_power_curve(out_file, variables, data, method, tuning, curve, known = TRUE)
+}
+
 #' @export
 known_anom_power_runs_MLE <- function() {
   curve <- curve_params(max_dist = 0.1, n_sim = 300)
@@ -365,21 +415,6 @@ known_anom_power_runs_MLE <- function() {
 }
 
 #' @export
-known_anom_power_runs_MLE_sparse <- function(p = 15) {
-  curve <- curve_params(max_dist = 0.1, n_sim = 300)
-  out_file <- "power_known_anom.csv"
-  banded_data <- init_data(n = 100, p = p, precision_type = "banded",
-                           band = 2, locations = 50, durations = 10,
-                           change_type = "adjacent", proportions = 1/p,
-                           rho = 0.99, shape = 0)
-  banded_variables <- list("cost" = c("cor", "cor_exact"))
-  many_power_curves(out_file, banded_variables, banded_data,
-                    method_params(precision_est_struct = NA),
-                    tuning_params(), curve, known = TRUE)
-}
-
-
-#' @export
 grid_plot_power_MLE <- function(rho = "high", shape = 0) {
   # Shape = 0 or 5.
   curve <- curve_params(max_dist = 0.1, n_sim = 300)
@@ -397,6 +432,10 @@ grid_plot_power_MLE <- function(rho = "high", shape = 0) {
                   curve, file_name = out_file, known = TRUE, dodge = TRUE)
 }
 
+
+#################
+#### known anom runs
+#################
 known_anom_setup <- function(p = 10, precision_type = "banded",
                              shape = c(0, 5, 6),
                              rho = c(0.99, 0.9, 0.7, 0.5, 0.3),
@@ -472,7 +511,7 @@ all_known_power_runs100 <- function() {
 #' @export
 grid_plot_power_known_anom <- function(p = 10, precision_type = "banded",
                                        shape = 6, rho = c(0.5, 0.7, 0.9),
-                                       proportions = NULL) {
+                                       proportions = NULL, dodge = TRUE) {
   setup <- known_anom_setup(p, precision_type, shape)
   setup$data$shape <- shape
   if (is.null(proportions)) proportions <- setup$variables$proportions
@@ -480,8 +519,10 @@ grid_plot_power_known_anom <- function(p = 10, precision_type = "banded",
                  list("rho" = rho, "proportions" = proportions))
   grid_plot_power(variables, setup$data, setup$method, setup$tuning,
                   setup$curve, file_name = setup$out_file, known = TRUE,
-                  dodge = TRUE)
+                  dodge = dodge)
 }
+
+
 
 #' @export
 known_anom_Wishart_power_runs <- function() {
@@ -557,18 +598,3 @@ plot_power_known_dense_anom <- function() {
                    tuning = tuning, curve = curve, known = TRUE, dodge = TRUE)
 }
 
-
-    # parallelMap::parallelStart(mode = "multicore", cpus = cpus, show.info = FALSE)
-    # parallelMap::parallelLibrary("anomaly", "mvcapaCor")
-    # parallelMap::parallelMap(
-    #   power_curve,
-    #   data   = params_list$data,
-    #   method = params_list$method,
-    #   seed   = get_sim_seeds(params_list, variables),
-    #   more.args = list("out_file"     = out_file,
-    #                    "tuning"        = tuning,
-    #                    "curve"         = curve,
-    #                    "loc_tol"       = loc_tol,
-    #                    "known"         = known)
-    # )
-    # parallelMap::parallelStop()
