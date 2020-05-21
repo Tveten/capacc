@@ -44,6 +44,8 @@ init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p,
       stop("If change_type is 'custom', you must provide a changing_vars vector")
   }
 
+  if (isTRUE(all.equal(1/p, proportions))) shape <- 0
+
   Sigma_obj <- get_Sigma(precision_type)
   if (precision_type == "lattice") band <- band(Sigma_obj$inverse)
   else if (precision_type == "global_const") band <- p - 1
@@ -204,7 +206,7 @@ simulate_mvcapa_known <- function(data = init_data(), method = method_params(),
       return(optimise_mvnormal_saving_BF(x_anom, Q_hat, penalty, mu_MLE(Q_hat)))
     } else if (method$cost == "cor_BF") {
       penalty <- get_penalty_vec("combined", data$n, data$p, method$b)
-      return(optimise_mvnormal_saving_BF(x_anom, Q_hat, penalty, mu_aMLE))
+      return(optimise_mvnormal_saving_BF(x_anom, Q_hat, penalty, mu_aMLE()))
     } else if (method$cost == "cor_dense") {
       alpha <- get_penalty("dense", data$n, data$p, method$b)$alpha_const
       mean_x <- matrix(colMeans(x_anom), nrow = data$p)

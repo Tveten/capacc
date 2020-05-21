@@ -123,6 +123,6 @@ adjacent_dist <- function(x) {
   }))
 }
 
-is_equal <- function(x_vec, y) {
-  vapply(x_vec, function(x) isTRUE(all.equal(x, y)), logical(1))
+is_equal <- function(x_vec, y, tol = sqrt(.Machine$double.eps)) {
+  x_vec >= y - tol & x_vec <= y + tol
 }
