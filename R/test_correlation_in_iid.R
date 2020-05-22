@@ -55,7 +55,8 @@ min_duration <- function(a = 4, n = 10^4, p = 4, proportion = 0.5, mu = 1, C = 2
 
 
 simulate_mvcapa_iid <- function(setup = init_setup(10^3, 4), Sigma = diag(1, setup$p), a = 'default') {
-  sim_data <- simulate_cor(n = setup$n, p = setup$p, mu = setup$mu, Sigma = Sigma,
+  sim_data <- simulate_cor(n = setup$n, p = setup$p, vartheta = vartheta_from_mu(setup$mu),
+                           Sigma = Sigma,
                            locations = setup$locations, durations = setup$durations,
                            proportions = setup$proportions)
   if (a != 'default') beta <- adjusted_penalty(a, n = setup$n, p = setup$p)

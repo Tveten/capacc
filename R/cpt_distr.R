@@ -64,36 +64,36 @@ cpt_runs <- function(n_sim = 100) {
   out_file <- "cpt_distr.csv"
 
   #### FIX DURATIONS
-  many_cpt_distr(out_file,
-                 init_data(n = 100, p = 10),
-                 method_params(b = 1),
-                 n_sim = n_sim,
-                 props = c(0.1, 1),
-                 varthetas = c(0.5, 1, 2),
-                 rhos = c(0.7, 0.9, 0.99),
-                 locations = c(10, 50),
-                 precision_est_structs = c("correct", "banded"),
-                 est_bands = 0)
-  many_cpt_distr(out_file,
-                 init_data(n = 100, p = 10),
-                 method_params(b = 0.3),
-                 n_sim = n_sim,
-                 props = c(0.1, 1),
-                 varthetas = c(0.5, 1, 2),
-                 rhos = c(0.7, 0.9, 0.99),
-                 locations = c(10, 50),
-                 precision_est_structs = c("correct", "banded"),
-                 est_bands = 0)
-  many_cpt_distr(out_file,
-                 init_data(n = 200, p = 100),
-                 method_params(b = 1),
-                 n_sim = n_sim,
-                 props = c(0.01, 1),
-                 varthetas = c(0.5, 1, 2),
-                 rhos = c(0.7, 0.9, 0.99),
-                 locations = c(10, 50, 100),
-                 precision_est_structs = c("correct", "banded"),
-                 est_bands = 0)
+  # many_cpt_distr(out_file,
+  #                init_data(n = 100, p = 10),
+  #                method_params(b = 1),
+  #                n_sim = n_sim,
+  #                props = c(0.1, 1),
+  #                varthetas = c(0.5, 1, 2),
+  #                rhos = c(0.7, 0.9, 0.99),
+  #                locations = c(10, 50),
+  #                precision_est_structs = c("correct", "banded"),
+  #                est_bands = 0)
+  # many_cpt_distr(out_file,
+  #                init_data(n = 100, p = 10),
+  #                method_params(b = 0.3),
+  #                n_sim = n_sim,
+  #                props = c(0.1, 1),
+  #                varthetas = c(0.5, 1, 2),
+  #                rhos = c(0.7, 0.9, 0.99),
+  #                locations = c(10, 50),
+  #                precision_est_structs = c("correct", "banded"),
+  #                est_bands = 0)
+  # many_cpt_distr(out_file,
+  #                init_data(n = 200, p = 100),
+  #                method_params(b = 1),
+  #                n_sim = n_sim,
+  #                props = c(0.01, 1),
+  #                varthetas = c(0.5, 1, 2),
+  #                rhos = c(0.7, 0.9, 0.99),
+  #                locations = c(10, 50, 100),
+  #                precision_est_structs = c("correct", "banded"),
+  #                est_bands = 0)
 }
 
 #' @export

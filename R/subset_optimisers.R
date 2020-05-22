@@ -315,12 +315,12 @@ MLE_compare_dt <- function(n = 12, p = 10, r = 2, rho = 0.9, prop = 0.3, mu = 1)
   u_max_aMLE <- unlist(res_dt[method == 'aMLE'][which.max(savings)][, 3:(3 + p - 1)])
   J_max_aMLE <- (1:p)[as.logical(u_max_aMLE)]
   W <- solve(A[J_max, J_max]) %*% A[J_max, -J_max]
-  aMLE_bound(mean_x, J_max, A, W, n)
+  aMLE_bound(mean_x, A, J_max, n)
   # print(rowSums(W))
   res_dt
 }
 
-aMLE_bound <- function(mean_x, Q,  J_hat, n) {
+aMLE_bound <- function(mean_x, Q, J_hat, n) {
   p <- length(mean_x)
   W <- solve(Q[J_hat, J_hat]) %*% Q[J_hat, -J_hat, drop = FALSE]
   W_extended <- matrix(0, nrow = p, ncol = p)

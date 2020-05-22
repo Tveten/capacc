@@ -10,7 +10,7 @@ curve_params <- function(max_dist = 0.2, max_iter = 50, n_sim = 100,
 est_power <- function(data, method, loc_tol, n_sim) {
   power <- mean(unlist(lapply(1:n_sim, function(i) {
     if (method$cost == "cor_exact" && i %% 10 == 0) cat("=")
-    mvcapa_sim <- simulate_detection(data, method, return_anom_only = TRUE)
+    mvcapa_sim <- simulate_detection(data, method, standardise_output = TRUE)
     count_tfp_anom(mvcapa_sim, loc_tol, data)$tp
   })))
   data.table("vartheta" = data$vartheta, "power" = power)
