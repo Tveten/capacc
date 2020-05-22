@@ -27,9 +27,9 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
     fps <- unlist(lapply(1:tuning$tuning_n_sim, function(i) {
       method$b <- b
       if (known) {
-        return(simulate_mvcapa_known(data, method)$S_max > 0)
+        return(simulate_detection_known(data, method)$S_max > 0)
       } else
-        return(!is.na(simulate_mvcapa(data, method, return_anom_only = TRUE)$collective$start[1]))
+        return(!is.na(simulate_detection(data, method, return_anom_only = TRUE)$collective$start[1]))
     }))
     data.table("b" = b, "fp" = mean(fps), "diff" = mean(fps) - tuning$alpha)
   }
@@ -62,7 +62,7 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
     print(res[.N])
   }
   res <- add_setup_info(res[which.min(abs(diff))])
-  if (known) file_name <- "penalties_known_anom.csv"
+  if (known) file_name <- "penalties_known.csv"
   else       file_name <- "penalties.csv"
   fwrite(res, paste0("./results/", file_name), append = TRUE)
 }
@@ -72,7 +72,7 @@ get_tuned_penalty <- function(data = init_data(mu = 0), method = method_params()
                               tuning = tuning_params(), known = FALSE, seed = NA) {
   if (method$cost == "cor_exact") method$cost <- "cor"
   if (known) {
-    file_name <- "penalties_known_anom.csv"
+    file_name <- "penalties_known.csv"
     read_func <- read_penalties_known
   } else {
     file_name <- "penalties.csv"
@@ -125,7 +125,7 @@ plot_penalty <- function(data, method, tuning, known = FALSE, vars_in_title = NA
   ))
   if (known) {
     read_func <- read_penalties_known
-    file_name <- "penalties_known_anom.csv"
+    file_name <- "penalties_known.csv"
   } else {
     read_func <- read_penalties
     file_name <- "penalties.csv"

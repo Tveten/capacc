@@ -74,48 +74,6 @@ failure_period <- function(nr) {
   a[nr]
 }
 
-###############################################
-## explorative statistics
-###############################################
-## data availability
-## number of observations each week
-# data %>%
-#   dplyr::mutate(week = floor_date(x = time, unit = "weeks"),
-#                 week = as_date(week)) %>%
-#   dplyr::group_by(week) %>%
-#   dplyr::summarise(n = n()) %>%
-#   ggvis(x = ~week, y = ~n) %>%
-#   layer_points() %>%
-#   add_axis("x", title = "data") %>%
-#   add_axis("y", title = "count") %>%
-#   add_axis("x", orient = "top", ticks = 0, title = "Data availabily",
-#            properties = axis_props(axis = list(stroke = "white")))
-#
-# ## display daily subsea barrier temp for periods running/not running
-# data %>%
-#   dplyr::select(date, subsea_barrier_temperature, running) %>%
-#   dplyr::group_by(date, running) %>%
-#   dplyr::summarise(mean_temp = mean(subsea_barrier_temperature)) %>%
-#   ggvis(x = ~date, y = ~mean_temp, stroke = ~running) %>%
-#   layer_lines() %>%
-#   add_relative_scales() %>%
-#   add_axis("x", title = "date") %>%
-#   add_axis("x", orient = "top", ticks = 0, title = "Daily mean subsea barrier fluid temperature",
-#            properties = axis_props(axis = list(stroke = "white"))) %>%
-#   add_legend(scales = "stroke",
-#              title = "",
-#              properties = legend_props(
-#                legend = list(
-#                  x = scaled_value("x_rel", 0.45),
-#                  y = scaled_value("y_rel", -0.15))))
-
-###############################################
-## descriptive statistics for running/status combinations
-###############################################
-# data %>%
-#   dplyr::group_by(running, status) %>%
-#   dplyr::summarise(mean(subsea_barrier_temperature))
-
 # Variables: 22
 # $ time
 # $ mpfm_gvf
@@ -244,15 +202,13 @@ mvcapa_pump <- function(x, est_band = 2, b = 1, b_point = 1, minsl = 20, nr = 3,
                         true_anoms = NULL, cost = "cor") {
   n <- nrow(x)
   p <- ncol(x)
-  if (rank_transform) x <- apply(x, 2, function(x_i) qnorm(rank(x_i)/(n + 1)))
-  x <- anomaly::robustscale(x)
-  if (diff) {
-    diff_x <- x[2:n, ] - x[1:(n - 1), ]
-    Q_hat <- 2 * estimate_precision_mat(diff_x, adjacency_mat(banded_neighbours(est_band, ncol(x))))
-  } else
-    Q_hat <- estimate_precision_mat(x, adjacency_mat(banded_neighbours(est_band, p)))
   if (cost == "cor") {
-    res <- mvcapa_cor(x, Q_hat, b = b, b_point = b_point, min_seg_len = minsl)
+    x <- centralise(x)
+    Q_hat <- estimate_precision_mat(x, adjacency_mat(banded_neighbours(est_band, p), sparse = FALSE))
+    res <- mvcapa_cor(x, Q_hat,
+                      b           = b,
+                      b_point     = b_point,
+                      min_seg_len = minsl)
     plot_capa(list("x" = x, "anoms" = res), true_anoms = true_anoms)
   } else if (cost == "iid") {
     beta <- iid_penalty(n, p, b)
@@ -269,15 +225,15 @@ mvcapa_pump <- function(x, est_band = 2, b = 1, b_point = 1, minsl = 20, nr = 3,
 plot_cor_mat <- function(x, est_band, diff = FALSE) {
   n <- nrow(x)
   p <- ncol(x)
-  x <- anomaly::robustscale(x)
-  Q_hat <- estimate_precision_mat(x, adjacency_mat(banded_neighbours(est_band, p)))
+  Q_hat <- estimate_precision_mat(x, adjacency_mat(banded_neighbours(est_band, p), sparse = FALSE))
   # Q_hat_diff <- 2 * estimate_precision_mat(diff_x, adjacency_mat(banded_neighbours(est_band, ncol(x))))
   Sigma <- solve(standardise_precision_mat(Q_hat))
   # Sigma_diff <- solve(standardise_precision_mat(Q_hat_diff))
-  corrplot(Sigma, method = "number", mar = c(0, 0, 0, 0))
+  corrplot(Sigma, method = "number", type = "upper", mar = c(0, 0, 0.5, 0),
+           tl.cex = 1.5, cl.cex = 0.8, number.cex = 2)
 }
 
-save_cor_mat_plot <- function(x, est_band, diff) {
+save_cor_mat_plot <- function(x, est_band) {
   png("./images/candidate_data_cor_mat.png", width = 6, height = 6, units = "in", res = 800)
   plot_cor_mat(x, est_band)
   dev.off()
@@ -394,3 +350,45 @@ residual_plot <- function(pump_daily, var, colour_by = "status", nr = c(3, 4),
                     common.legend = TRUE, legend = "right")
   # pump_daily[[res_name]]
 }
+
+###############################################
+## explorative statistics
+###############################################
+## data availability
+## number of observations each week
+# data %>%
+#   dplyr::mutate(week = floor_date(x = time, unit = "weeks"),
+#                 week = as_date(week)) %>%
+#   dplyr::group_by(week) %>%
+#   dplyr::summarise(n = n()) %>%
+#   ggvis(x = ~week, y = ~n) %>%
+#   layer_points() %>%
+#   add_axis("x", title = "data") %>%
+#   add_axis("y", title = "count") %>%
+#   add_axis("x", orient = "top", ticks = 0, title = "Data availabily",
+#            properties = axis_props(axis = list(stroke = "white")))
+#
+# ## display daily subsea barrier temp for periods running/not running
+# data %>%
+#   dplyr::select(date, subsea_barrier_temperature, running) %>%
+#   dplyr::group_by(date, running) %>%
+#   dplyr::summarise(mean_temp = mean(subsea_barrier_temperature)) %>%
+#   ggvis(x = ~date, y = ~mean_temp, stroke = ~running) %>%
+#   layer_lines() %>%
+#   add_relative_scales() %>%
+#   add_axis("x", title = "date") %>%
+#   add_axis("x", orient = "top", ticks = 0, title = "Daily mean subsea barrier fluid temperature",
+#            properties = axis_props(axis = list(stroke = "white"))) %>%
+#   add_legend(scales = "stroke",
+#              title = "",
+#              properties = legend_props(
+#                legend = list(
+#                  x = scaled_value("x_rel", 0.45),
+#                  y = scaled_value("y_rel", -0.15))))
+
+###############################################
+## descriptive statistics for running/status combinations
+###############################################
+# data %>%
+#   dplyr::group_by(running, status) %>%
+#   dplyr::summarise(mean(subsea_barrier_temperature))

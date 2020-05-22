@@ -96,6 +96,10 @@ init_data_ <- function(data) {
 method_params <- function(cost = "cor", b = 1, minsl = 2, maxsl = 100,
                           precision_est_struct = "correct", est_band = NA,
                           size_mu = NA) {
+  if (cost == "inspect" && !is.na(precision_est_struct)) {
+    if (is.na(est_band) || est_band != 0)
+      precision_est_struct <- "correct"
+  }
   if (grepl("iid", cost)) {
     precision_est_struct <- "banded"
     est_band <- 0
@@ -110,7 +114,6 @@ method_params <- function(cost = "cor", b = 1, minsl = 2, maxsl = 100,
   else {
     if (is.na(size_mu)) stop("size_mu must be specified if cost = cor_dense_optimal")
   }
-  if (grepl("inspect", cost)) b <- NA
   list("cost"                 = cost,
        "b"                    = b,
        "minsl"                = minsl,
@@ -132,10 +135,16 @@ method_params_ <- function(method) {
 
 
 #' @export
-simulate_mvcapa <- function(data = init_data(), method = method_params(),
-                            seed = NULL, return_anom_only = TRUE) {
+simulate_detection <- function(data = init_data(), method = method_params(),
+                               seed = NULL, standardise_output = TRUE) {
+  format_cpt_out <- function(cost, res) {
+    if (cost == "inspect") res$J <- which(res$proj != 0)
+    mean1 <- colMeans(x$x[1:res$cpt, res$J, drop = FALSE])
+    mean2 <- colMeans(x$x[(res$cpt + 1):nrow(x$x), res$J, drop = FALSE])
+    data.table("cpt" = res$cpt, "variate" = res$J, "mean1" = mean1, "mean2" = mean2)
+  }
 
-  get_anom_only_list <- function(cost, res) {
+  format_output <- function(cost, res) {
     if (cost == "cor_exact")
       return(list("collective" = collective_anomaliesR(res),
                   "point"      = point_anomaliesR(res)))
@@ -145,6 +154,8 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
     else if (cost == "iid")
       return(list("collective" = anomaly::collective_anomalies(res),
                   "point"      = anomaly::point_anomalies(res)))
+    else if (cost %in% c("mvlrt", "inspect"))
+      return(format_cpt_out(cost, res))
   }
 
   if (!is.null(seed)) set.seed(seed)
@@ -169,14 +180,23 @@ simulate_mvcapa <- function(data = init_data(), method = method_params(),
                             min_seg_len = method$minsl,
                             max_seg_len = method$maxsl,
                             type        = "mean")
+  } else if (method$cost == "mvlrt") {
+    Q_hat <- get_Q_hat(x$x, data, method)
+    x$x <- centralise(x$x)
+    res <- single_mvnormal_changepoint(x$x, Q_hat,
+                                       b = method$b,
+                                       min_seg_len = method$minsl)
+  } else if (method$cost == "inspect") {
+    Q_hat <- get_Q_hat(x$x, data, method)
+    res <- single_cor_inspect(t(x$x), Q_hat, method$b)
   }
-  if (return_anom_only) return(get_anom_only_list(method$cost, res))
+  if (standardise_output) return(format_output(method$cost, res))
   else return(res)
 }
 
 #' @export
-simulate_mvcapa_known <- function(data = init_data(), method = method_params(),
-                                  seed = NULL) {
+simulate_detection_known <- function(data = init_data(), method = method_params(),
+                                     seed = NULL) {
 
   if (!is.null(seed)) set.seed(seed)
   x <- simulate_cor_(data)
@@ -214,9 +234,14 @@ simulate_mvcapa_known <- function(data = init_data(), method = method_params(),
     } else if (method$cost == "cor_dense_optimal") {
       alpha <- get_penalty("dense", data$n, data$p, method$b)$alpha_const
       mu <- generate_change(method$size_mu, data$p, 0)
-      # mu <- as.vector(x$mu)
       return(list(S_max = optimal_mvnormal_dense_saving(x_anom, Q_hat, mu, alpha)))
     }
+  } else if (method$cost == "inspect") {
+    Q_hat <- get_Q_hat(x$x, data, method)
+    single_cor_inspect_known(data$locations, t(x$x), Q_hat, method$b, standardize.series = TRUE)
+  } else if (method$cost == "mvlrt") {
+    Q_hat <- get_Q_hat(x$x, data, method)
+    return(optimise_mvnormal_lr(data$locations, x$x, Q_hat, method$b))
   }
 }
 

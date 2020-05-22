@@ -22,7 +22,13 @@ get_adj_mat <- function(data, method) {
 get_Q_hat <- function(x, data, method) {
   if (is.na(method$precision_est_struct))
     return(data$Sigma_inv)
-  else
+  else if (method$cost %in% c("mvlrt", "inspect")) {
+    diff_x <- x[2:nrow(x), ] - x[1:(nrow(x) - 1), ]
+    if (method$cost == "inspect" && method$precision_est_struct == "correct")
+      return(2 * solve(robust_cov_mat(diff_x)))
+    else
+      return(2 * estimate_precision_mat(diff_x, get_adj_mat(data, method)))
+  } else
     return(estimate_precision_mat(x, get_adj_mat(data, method)))
 }
 

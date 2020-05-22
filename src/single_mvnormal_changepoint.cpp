@@ -1,6 +1,9 @@
 
 #include "single_mvnormal_changepoint.h"
 
+using namespace bqp;
+using namespace Rcpp;
+
 // namespace
 namespace
 {
@@ -45,6 +48,11 @@ namespace
     return x;
   }
 
+  Rcpp::List format_cpt_results(const BQP_res& res)
+  {
+      return Rcpp::List::create(_["S_max"] = res.max_value,
+                                _["J_max"] = res.max_subset);
+  }
 } // unnamed namespace
 
 namespace ostats {
@@ -96,9 +104,29 @@ namespace ostats {
       return empty_BQP_res;
     }
   }
+
 }
 
 using namespace ostats;
+
+// [[Rcpp::export]]
+Rcpp::List optimise_mvnormal_lr(const int& cpt,
+                                const arma::mat& x,
+                                const arma::sp_mat& Q,
+                                const double& b = 1)
+{
+  int n = x.n_rows;
+  int p = x.n_cols;
+  std::vector<std::vector<int>> nbs = lower_nbs(Q);
+  precision precision_obj(Q, nbs, extended_lower_nbs(nbs));
+  linear_const_penalty penalty = mvnormal_default_penalty(n, p, b);
+  arma::mat x_centered = centralise(x);
+  arma::mat M = cumsum(x_centered, 0).t();
+  arma::mat mean1 = M.col(cpt - 1) / cpt;
+  arma::mat mean2 = (M.col(n - 1) - M.col(cpt - 1)) / (n - cpt);
+  bqp::BQP_res lr = cor_mvnormal_lr(mean1, mean2, cpt, n - cpt, precision_obj, penalty);
+  return(format_cpt_results(lr));
+}
 
 // [[Rcpp::export]]
 Rcpp::List single_mvnormal_changepoint(const arma::mat& x,

@@ -1,7 +1,7 @@
 
 #' A function for generating simulated multivariate data
 #'
-#' @name simulate
+#' @name simulate_cor
 #'
 #' @description Generates multivariate simulated data having n observations and p variates. The data have a standard Gaussian distribution except at
 #' a specified number of locations where there is a change in mean in a proportion of the variates. The function is useful for generating data to demonstrate and assess
