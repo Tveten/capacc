@@ -43,7 +43,8 @@ simulate_mvcapa_1anom2 <- function(setup = init_setup(200, 10, proportions = 0),
   }
 
   Sigma <- get_Sigma(cor_mat_type)
-  sim_data <- simulate_cor(n = setup$n, p = setup$p, mu = setup$mu, Sigma = Sigma$mat,
+  sim_data <- simulate_cor(n = setup$n, p = setup$p, vartheta = vartheta_from_mu(setup$mu),
+                           Sigma = Sigma$mat,
                            locations = setup$locations, durations = setup$durations,
                            proportions = setup$proportions, change_type = setup$change_type)
   mvcapa_1anom2(sim_data, Sigma$inverse, b, l, M, cost_type)

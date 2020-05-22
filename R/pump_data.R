@@ -342,7 +342,7 @@ residual_plot <- function(pump_daily, var, colour_by = "status", nr = c(3, 4),
   failure_nr <- failure_period(nr)
   pump_daily <- pump_daily %>% filter(date %within% failure_nr)
   res_name <- paste0(var, "_residual")
-  pump_daily[[res_name]] <- make_residuals(pump_daily, var, nr, BC)
+  pump_daily[[res_name]] <- make_residuals(pump_daily, var, BC)
   ggpubr::ggarrange(plot_daily_mean(pump_daily, res_name, "density", colour_by = colour_by),
                     plot_daily_mean(pump_daily, res_name, colour_by = colour_by),
                     plot_daily_mean(pump_daily, var, colour_by = colour_by),

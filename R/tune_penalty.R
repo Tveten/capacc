@@ -29,7 +29,7 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
       if (known) {
         return(simulate_detection_known(data, method)$S_max > 0)
       } else
-        return(!is.na(simulate_detection(data, method, return_anom_only = TRUE)$collective$start[1]))
+        return(!is.na(simulate_detection(data, method, standardise_output = TRUE)$collective$start[1]))
     }))
     data.table("b" = b, "fp" = mean(fps), "diff" = mean(fps) - tuning$alpha)
   }
