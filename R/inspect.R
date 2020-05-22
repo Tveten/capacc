@@ -9,13 +9,13 @@
 #' x.rescaled
 #' @export
 rescale.variance <- function(x, by_row = FALSE){
-    p <- dim(x)[1]
-    n <- dim(x)[2]
-    for (j in 1:p){
-        scale <- mad(diff(x[j,]))/sqrt(2)
-        x[j,] <- x[j,] / scale
-    }
-    return(x)
+  p <- dim(x)[1]
+  n <- dim(x)[2]
+  for (j in 1:p){
+    scale <- mad(diff(x[j,]))/sqrt(2)
+    x[j,] <- x[j,] / scale
+  }
+  return(x)
 }
 
 
@@ -33,21 +33,20 @@ rescale.variance <- function(x, by_row = FALSE){
 #' cusum.transform(x)
 #' @export
 cusum.transform <- function(x){
-    x <- as.matrix(x)
-    if (dim(x)[2] == 1) x <- t(x) # treat univariate time series as a row vector
-    p <- dim(x)[1] # dimensionality of the time series
-    n <- dim(x)[2] # time length of the observation
+  x <- as.matrix(x)
+  if (dim(x)[2] == 1) x <- t(x) # treat univariate time series as a row vector
+  p <- dim(x)[1] # dimensionality of the time series
+  n <- dim(x)[2] # time length of the observation
 
-    leftsums <- t(apply(x, 1, cumsum))
-    rightsums <- leftsums[, n] - leftsums
-    leftsums <- t(leftsums)
-    rightsums <- t(rightsums)
-    t <- 1:(n - 1)
+  leftsums <- t(apply(x, 1, cumsum))
+  rightsums <- leftsums[, n] - leftsums
+  leftsums <- t(leftsums)
+  rightsums <- t(rightsums)
+  t <- 1:(n - 1)
 
-    # constructing CUSUM matrix
-    return(t((rightsums[t,] / (n-t) - leftsums[t,] / t) * sqrt(t * (n-t) / n)))
+  # constructing CUSUM matrix
+  return(t((rightsums[t,] / (n-t) - leftsums[t,] / t) * sqrt(t * (n-t) / n)))
 }
-
 
 #' Projection onto the standard simplex
 #' @description The input vector is projected onto the standard simplex, i.e. the set of vectors of the same length as the input vector with non-negative entries that sum to 1.
@@ -60,21 +59,21 @@ cusum.transform <- function(x){
 #' PiW(v)
 #' @export
 PiW <- function(v){
-    # projection of a vector to the standard simplex (non-negative entries
-    # summing to 1)
-    ord = order(v, decreasing = TRUE);
-    v = v[ord]
-    s = 0
-    for (i in 1:length(v)){
-        s = s + v[i]
-        if (i == length(v)) {delta = (s-1)/i; break}
-        d = s - v[i+1]*i
-        if (d >= 1) {delta = (s - 1)/i; break}
-    }
-    v[1:i] = v[1:i] - delta; v[-(1:i)] = 0;
-    w = rep(0, length(v))
-    w[ord] = v
-    w
+  # projection of a vector to the standard simplex (non-negative entries
+  # summing to 1)
+  ord = order(v, decreasing = TRUE);
+  v = v[ord]
+  s = 0
+  for (i in 1:length(v)){
+    s = s + v[i]
+    if (i == length(v)) {delta = (s-1)/i; break}
+    d = s - v[i+1]*i
+    if (d >= 1) {delta = (s - 1)/i; break}
+  }
+  v[1:i] = v[1:i] - delta; v[-(1:i)] = 0;
+  w = rep(0, length(v))
+  w[ord] = v
+  w
 }
 
 
@@ -88,9 +87,9 @@ PiW <- function(v){
 #' PiS(M)
 #' @export
 PiS <- function(M){
-    # projection of a matrix (in Frobenius norm) to the ball of nuclear norm 1
-    tmp = svd(M);
-    tmp$u%*%diag(PiW(tmp$d))%*%t(tmp$v)
+  # projection of a matrix (in Frobenius norm) to the ball of nuclear norm 1
+  tmp = svd(M);
+  tmp$u%*%diag(PiW(tmp$d))%*%t(tmp$v)
 }
 
 
@@ -113,11 +112,11 @@ vector.soft.thresh <- function(x, lambda){
 #' @return the entrywise L_q norm of a vector or a matrix
 #' @export
 vector.norm <- function(v, q=2, na.rm=FALSE){
-    if (na.rm) v <- na.omit(v)
-    if (q > 0) (sum(abs(v)^q))^(1/q)
-    else if (q == 0) sum(v!=0)
-    else if (q == Inf) max(abs(v))
-    else NaN
+  if (na.rm) v <- na.omit(v)
+  if (q > 0) (sum(abs(v)^q))^(1/q)
+  else if (q == 0) sum(v!=0)
+  else if (q == Inf) max(abs(v))
+  else NaN
 }
 
 
@@ -165,34 +164,34 @@ power.method <- function(A, eps = 1e-10, maxiter = 10000){
 #' sparse.svd(Z, lambda)
 #' @export
 sparse.svd <- function(Z, lambda, schatten=c(1, 2), tolerance=1e-5, max.iter=10000){
-    if (missing(schatten)) schatten <- 2
-    if (schatten == 2){
-        # with Frobenius norm constraint, the sparse vector is obtained by soft
-        # thresholding
-        Mhat <- vector.soft.thresh(Z, lambda)
-    } else {
-        # with nuclear norm constraint, the sparse vector is obtained by ADMM
-        p <- dim(Z)[1]; n <- dim(Z)[2]; gamma <- 1;
-        X <- matrix(0,p,n); Y <- matrix(0,p,n); U <- matrix(0,p,n)
-        iter <- 0
-        while ((iter < max.iter) | (max.iter == 0)) {
-            iter <- iter + 1
-            X <- PiS(Y - U + gamma * Z)
-            Y <- vector.soft.thresh(X + U, lambda * gamma)
-            U <- U + (X - Y)
-            if (vector.norm(X - Y) < tolerance) break
-        }
-        Mhat <- X
+  if (missing(schatten)) schatten <- 2
+  if (schatten == 2){
+    # with Frobenius norm constraint, the sparse vector is obtained by soft
+    # thresholding
+    Mhat <- vector.soft.thresh(Z, lambda)
+  } else {
+    # with nuclear norm constraint, the sparse vector is obtained by ADMM
+    p <- dim(Z)[1]; n <- dim(Z)[2]; gamma <- 1;
+    X <- matrix(0,p,n); Y <- matrix(0,p,n); U <- matrix(0,p,n)
+    iter <- 0
+    while ((iter < max.iter) | (max.iter == 0)) {
+      iter <- iter + 1
+      X <- PiS(Y - U + gamma * Z)
+      Y <- vector.soft.thresh(X + U, lambda * gamma)
+      U <- U + (X - Y)
+      if (vector.norm(X - Y) < tolerance) break
     }
+    Mhat <- X
+  }
 
-    if (nrow(Mhat) < ncol(Mhat)){
-        vector.proj <- power.method(Mhat%*%t(Mhat), 1e-5)
-    } else {
-        tmp <- Mhat %*% power.method(t(Mhat)%*%Mhat, 1e-5)
-        vector.proj <- tmp/vector.norm(tmp)
-    }
+  if (nrow(Mhat) < ncol(Mhat)){
+    vector.proj <- power.method(Mhat%*%t(Mhat), 1e-5)
+  } else {
+    tmp <- Mhat %*% power.method(t(Mhat)%*%Mhat, 1e-5)
+    vector.proj <- tmp/vector.norm(tmp)
+  }
 
-    return(vector.proj)
+  return(vector.proj)
 }
 
 
@@ -235,45 +234,49 @@ sparse.svd <- function(Z, lambda, schatten=c(1, 2), tolerance=1e-5, max.iter=100
 #' locate.change(x)
 #' @export
 
-single_cor_inspect <- function(x, Q, b = 1, schatten=2, sample.splitting=FALSE,
-                               standardize.series=FALSE, view.cusum=FALSE)
+single_cor_inspect <- function(x, Q, b = 1, schatten=2, standardize.series=TRUE)
 {
-    x <- as.matrix(x)
-    if (dim(x)[2] == 1) x <- t(x) # treat univariate time series as a row vector
-    p <- dim(x)[1] # dimensionality of the time series
-    n <- dim(x)[2] # time length of the observation
-    lambda <- b * sqrt(log(log(n)*p)/2)
-    threshold <- lambda
-    if (standardize.series) x <- rescale.variance(x)
-    if (sample.splitting){
-        x1 <- x[,seq(1,n,by=2)]
-        x2 <- x[,seq(2,n,by=2)]
-    } else {
-        x1 <- x
-        x2 <- x
-    }
+  x <- as.matrix(x)
+  if (dim(x)[2] == 1) x <- t(x) # treat univariate time series as a row vector
+  p <- dim(x)[1] # dimensionality of the time series
+  n <- dim(x)[2] # time length of the observation
+  lambda <- sqrt(log(log(n)*p)/2)
+  threshold <- b * lambda
+  if (standardize.series) {
+    x <- rescale.variance(x)
+    Q <- standardise_precision_mat(Q)
+  }
 
-    # construct cusum matrix of x
-    cusum.matrix1 <- cusum.transform(x1)
-    if (sample.splitting) {
-        cusum.matrix2 <- cusum.transform(x2)
-    } else {
-        cusum.matrix2 <- cusum.matrix1
-    }
+  cusum.matrix <- cusum.transform(x)
+  if (lambda >= max(abs(cusum.matrix))) lambda <- max(abs(cusum.matrix)) - 1e-10
+  vector.proj <- as.numeric(Q %*% sparse.svd(cusum.matrix, lambda, schatten))
+  cusum.proj <- t(cusum.matrix)%*%vector.proj
 
-    # estimate changepoint
-    if (lambda >= max(abs(cusum.matrix1))) lambda <- max(abs(cusum.matrix1)) - 1e-10
+  list("cpt"   = which.max(abs(cusum.proj)),
+       "value" = max(abs(cusum.proj)) - threshold,
+       "proj"  = vector.proj)
+}
 
-    vector.proj <- as.numeric(Q %*% sparse.svd(cusum.matrix1, lambda, schatten))
-    cusum.proj <- t(cusum.matrix2)%*%vector.proj
+single_cor_inspect_known <- function(cpt, x, Q, b = 1, schatten=2,
+                                     standardize.series=TRUE) {
 
-    if (view.cusum) plot(as.numeric(cusum.proj), ylab='projected cusum', pch=20)
+  x <- as.matrix(x)
+  if (dim(x)[2] == 1) x <- t(x) # treat univariate time series as a row vector
+  p <- dim(x)[1] # dimensionality of the time series
+  n <- dim(x)[2] # time length of the observation
+  lambda <- sqrt(log(log(n)*p)/2)
+  threshold <- b * lambda
+  if (standardize.series) {
+    x <- rescale.variance(x)
+    Q <- standardise_precision_mat(Q)
+  }
 
-    ret <- NULL
-    ret$cpt <- which.max(abs(cusum.proj))
-    if (sample.splitting) ret$changepoint <- ret$changepoint * 2
-    ret$value <- max(abs(cusum.proj))
-    ret$vector.proj <- vector.proj
+  cusum.matrix <- cusum.transform(x)
+  if (lambda >= max(abs(cusum.matrix))) lambda <- max(abs(cusum.matrix)) - 1e-10
+  vector.proj <- as.numeric(Q %*% sparse.svd(cusum.matrix, lambda, schatten))
+  cusum.proj <- t(cusum.matrix) %*% vector.proj
 
-    return(ret)
+  list("cpt"   = cpt,
+       "S_max" = abs(cusum.proj[cpt]) - threshold,
+       "proj"  = vector.proj)
 }

@@ -114,6 +114,20 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
+// optimise_mvnormal_lr
+Rcpp::List optimise_mvnormal_lr(const int& cpt, const arma::mat& x, const arma::sp_mat& Q, const double& b);
+RcppExport SEXP _mvcapaCor_optimise_mvnormal_lr(SEXP cptSEXP, SEXP xSEXP, SEXP QSEXP, SEXP bSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const int& >::type cpt(cptSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const arma::sp_mat& >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< const double& >::type b(bSEXP);
+    rcpp_result_gen = Rcpp::wrap(optimise_mvnormal_lr(cpt, x, Q, b));
+    return rcpp_result_gen;
+END_RCPP
+}
 // single_mvnormal_changepoint
 Rcpp::List single_mvnormal_changepoint(const arma::mat& x, const arma::sp_mat& Q, const double& b, const int& min_seg_len);
 RcppExport SEXP _mvcapaCor_single_mvnormal_changepoint(SEXP xSEXP, SEXP QSEXP, SEXP bSEXP, SEXP min_seg_lenSEXP) {
@@ -139,6 +153,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_mvcapaCor_extended_lower_nbs", (DL_FUNC) &_mvcapaCor_extended_lower_nbs, 1},
     {"_mvcapaCor_test_precision_copy", (DL_FUNC) &_mvcapaCor_test_precision_copy, 1},
     {"_mvcapaCor_test_precision_move", (DL_FUNC) &_mvcapaCor_test_precision_move, 1},
+    {"_mvcapaCor_optimise_mvnormal_lr", (DL_FUNC) &_mvcapaCor_optimise_mvnormal_lr, 4},
     {"_mvcapaCor_single_mvnormal_changepoint", (DL_FUNC) &_mvcapaCor_single_mvnormal_changepoint, 4},
     {NULL, NULL, 0}
 };

@@ -37,6 +37,10 @@ test_precision_move <- function(A) {
     invisible(.Call(`_mvcapaCor_test_precision_move`, A))
 }
 
+optimise_mvnormal_lr <- function(cpt, x, Q, b = 1) {
+    .Call(`_mvcapaCor_optimise_mvnormal_lr`, cpt, x, Q, b)
+}
+
 single_mvnormal_changepoint <- function(x, Q, b = 1, min_seg_len = 2L) {
     .Call(`_mvcapaCor_single_mvnormal_changepoint`, x, Q, b, min_seg_len)
 }

@@ -10,7 +10,7 @@ curve_params <- function(max_dist = 0.2, max_iter = 50, n_sim = 100,
 est_power <- function(data, method, loc_tol, n_sim) {
   power <- mean(unlist(lapply(1:n_sim, function(i) {
     if (method$cost == "cor_exact" && i %% 10 == 0) cat("=")
-    mvcapa_sim <- simulate_mvcapa(data, method, return_anom_only = TRUE)
+    mvcapa_sim <- simulate_detection(data, method, return_anom_only = TRUE)
     count_tfp_anom(mvcapa_sim, loc_tol, data)$tp
   })))
   data.table("vartheta" = data$vartheta, "power" = power)
@@ -24,12 +24,12 @@ est_power_known <- function(data, method, n_sim, cpus = 1) {
     power <- mean(foreach::foreach(i = 1:n_sim,
                                    .packages = "mvcapaCor",
                                    .combine = "c") %dopar% {
-      simulate_mvcapa_known(data, method, seed = seeds[i])$S_max > 0
+      simulate_detection_known(data, method, seed = seeds[i])$S_max > 0
     })
     stop_parallel(comp_cluster)
   } else
     power <- mean(unlist(lapply(1:n_sim, function(i) {
-      simulate_mvcapa_known(data, method)$S_max > 0
+      simulate_detection_known(data, method)$S_max > 0
     })))
   data.table("vartheta" = data$vartheta, "power" = power)
 }
@@ -598,3 +598,90 @@ plot_power_known_dense_anom <- function() {
                    tuning = tuning, curve = curve, known = TRUE, dodge = TRUE)
 }
 
+
+#################
+#### known changepoint runs
+#################
+known_cpt_setup <- function(p = 10, precision_type = "banded",
+                            shape = c(0, 5, 6),
+                            rho = c(0.99, 0.9, 0.7, 0.5, 0.3),
+                            proportions = c(1/p, round(sqrt(p)) / p, 1)) {
+  if (p <= 50) {
+    n <- 100
+    n_sim <- 1000
+  } else {
+    n <- 2 * p
+    n_sim <- 500
+  }
+
+  durations <- 10
+  locations <- n - durations
+  if (precision_type == "banded") {
+    band <- 2
+    precision_est_struct <- c(NA, "correct", "banded")
+    est_band <- c(1, 4)
+  } else if (precision_type == "lattice") {
+    band <- NA
+    precision_est_struct <- c(NA, "correct", "banded")
+    est_band <- c(1, 2, 4)
+  } else if (precision_type == "global_const") {
+    band <- NA
+    precision_est_struct <- "banded"
+    est_band <- c(1, 2, 4)
+  }
+
+  curve <- curve_params(max_dist = 0.1, n_sim = n_sim)
+  out_file <- "power_known_cpt_FINAL.csv"
+  data <- init_data(n = n, p = p, precision_type = precision_type,
+                    band = band, locations = locations, durations = durations)
+  method <- method_params()
+  variables <- list("cost"        = c("inspect", "mvlrt"),
+                    "precision_est_struct" = precision_est_struct,
+                    "est_band"    = est_band,
+                    "rho"         = rho,
+                    "proportions" = proportions,
+                    "shape"       = shape)
+  tuning <- tuning_params(init_b = c(0.1, 1, 10), n_sim = n_sim)
+  list(variables = variables, data = data, method = method,
+       tuning = tuning, curve = curve, out_file = out_file)
+}
+
+#' @export
+known_cpt_power_runs <- function(p = 10, precision_type = "banded",
+                                 shape = c(0, 5, 6),
+                                 rho = c(0.99, 0.9, 0.7, 0.5, 0.3),
+                                 proportions = c(1/p, round(sqrt(p)) / p, 1),
+                                 cpus = 1) {
+  setup <- known_cpt_setup(p, precision_type, shape, rho, proportions)
+  many_power_curves(setup$out_file, setup$variables, setup$data,
+                    setup$method, setup$tuning, setup$curve, known = TRUE,
+                    cpus = cpus)
+}
+
+#' @export
+all_known_cpt_runs10 <- function() {
+  known_cpt_power_runs(10, "banded")
+  known_cpt_power_runs(16, "lattice")
+  known_cpt_power_runs(10, "global_const")
+}
+
+#' @export
+all_known_cpt_runs100 <- function() {
+  known_cpt_power_runs(100, "banded")
+  known_cpt_power_runs(100, "global_const")
+  known_cpt_power_runs(100, "lattice")
+}
+
+#' @export
+grid_plot_power_known_cpt <- function(p = 10, precision_type = "banded",
+                                       shape = 6, rho = c(0.5, 0.7, 0.9),
+                                       proportions = NULL, dodge = TRUE) {
+  setup <- known_anom_setup(p, precision_type, shape)
+  setup$data$shape <- shape
+  if (is.null(proportions)) proportions <- setup$variables$proportions
+  variables <- c(setup$variables[c("cost", "precision_est_struct", "est_band")],
+                 list("rho" = rho, "proportions" = proportions))
+  grid_plot_power(variables, setup$data, setup$method, setup$tuning,
+                  setup$curve, file_name = setup$out_file, known = TRUE,
+                  dodge = dodge)
+}

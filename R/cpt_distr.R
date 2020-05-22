@@ -3,13 +3,13 @@
 sim_cpt_distr <- function(out_file,
                           data = init_data(n = 200, p = 10, rho = 0.8, band = 2,
                                            locations = 80, durations = 120),
-                          params = method_params(cost = "mvlrt"),
+                          method = method_params(cost = "mvlrt"),
                           n_sim = 100, seed = NA) {
   add_setup_info <- function(res) {
     res <- cbind(res,
                  as.data.table(data[!(grepl("Sigma", names(data)) |
                                         names(data) == "changing_vars")]),
-                 as.data.table(params[names(data) != "maxsl"]))
+                 as.data.table(method[names(data) != "maxsl"]))
     res$n_sim <- n_sim
     res$seed <-  seed
     res
@@ -17,7 +17,7 @@ sim_cpt_distr <- function(out_file,
 
   message(paste0("Estimating changepoint distribution for n=", data$n,
                  ", p=", data$p,
-                 ", cost=", params$cost,
+                 ", cost=", method$cost,
                  ", precision=", data$precision_type,
                  ", band=", data$band,
                  ", rho=", data$rho,
@@ -25,14 +25,14 @@ sim_cpt_distr <- function(out_file,
                  ", vartheta=", data$vartheta,
                  ", shape=", data$shape,
                  ", location=", data$locations,
-                 ", precision_est_struct=", params$precision_est_struct,
-                 ", est_band=", params$est_band,
+                 ", precision_est_struct=", method$precision_est_struct,
+                 ", est_band=", method$est_band,
                  "."))
-  all_params <- c(data, params, list("n_sim" = n_sim))
+  all_params <- c(data, method, list("n_sim" = n_sim))
   if (already_estimated(out_file, all_params, read_cpt_distr)) return(NULL)
 
   if (!is.na(seed)) set.seed(seed)
-  res <- data.table(cpt = replicate(n_sim, simulate_mvcpt(data, params)$cpt))
+  res <- data.table(cpt = replicate(n_sim, simulate_detection(data, method, standardise_output = FALSE)$cpt))
   fwrite(add_setup_info(res), paste0("./results/", out_file), append = TRUE)
 }
 

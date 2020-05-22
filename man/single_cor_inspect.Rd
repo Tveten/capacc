@@ -4,15 +4,7 @@
 \alias{single_cor_inspect}
 \title{Single changepoint estimation}
 \usage{
-single_cor_inspect(
-  x,
-  Q,
-  b = 1,
-  schatten = 2,
-  sample.splitting = FALSE,
-  standardize.series = FALSE,
-  view.cusum = FALSE
-)
+single_cor_inspect(x, Q, b = 1, schatten = 2, standardize.series = TRUE)
 }
 \arguments{
 \item{x}{A (p x n) data matrix of multivariate time series, each column
@@ -21,20 +13,20 @@ represents a data point}
 \item{schatten}{The Schatten norm constraint to use in the \code{\link{sparse.svd}}
 function. Default is schatten = 2, i.e. a Frobenius norm constraint.}
 
+\item{standardize.series}{Whether the given time series should be
+standardised before estimating the projection direction. Default is FALSE,
+i.e. the input series is assume to have variance 1 in each coordinate.}
+
+\item{lambda}{Regularisation parameter. If no value is supplied, the dafault
+value is chosen to be sqrt(log(log(n)*p/2)) for p and n number of rows and
+columns of the data matrix x respectively.}
+
 \item{sample.splitting}{Whether the changepoint should be estimated via
 sample splitting. The theoretical result is proven only for the sample
 splitted version of the algorithm. However, the default setting in practice
 is without sample splitting.}
 
-\item{standardize.series}{Whether the given time series should be
-standardised before estimating the projection direction. Default is FALSE,
-i.e. the input series is assume to have variance 1 in each coordinate.}
-
 \item{view.cusum}{Whether to show a plot of the projected CUSUM series}
-
-\item{lambda}{Regularisation parameter. If no value is supplied, the dafault
-value is chosen to be sqrt(log(log(n)*p/2)) for p and n number of rows and
-columns of the data matrix x respectively.}
 }
 \value{
 A list of two items:
