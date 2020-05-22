@@ -616,19 +616,9 @@ known_cpt_setup <- function(p = 10, precision_type = "banded",
 
   durations <- 10
   locations <- n - durations
-  if (precision_type == "banded") {
-    band <- 2
-    precision_est_struct <- c(NA, "correct", "banded")
-    est_band <- c(1, 4)
-  } else if (precision_type == "lattice") {
-    band <- NA
-    precision_est_struct <- c(NA, "correct", "banded")
-    est_band <- c(1, 2, 4)
-  } else if (precision_type == "global_const") {
-    band <- NA
-    precision_est_struct <- "banded"
-    est_band <- c(1, 2, 4)
-  }
+  band <- 2
+  precision_est_struct <- "banded"
+  est_band <- c(0, 4)
 
   curve <- curve_params(max_dist = 0.1, n_sim = n_sim)
   out_file <- "power_known_cpt_FINAL.csv"
