@@ -659,24 +659,24 @@ known_cpt_power_runs <- function(p = 10, precision_type = "banded",
 }
 
 #' @export
-all_known_cpt_runs10 <- function() {
-  known_cpt_power_runs(10, "banded")
-  known_cpt_power_runs(16, "lattice")
-  known_cpt_power_runs(10, "global_const")
+all_known_cpt_runs10 <- function(cpus = 1) {
+  known_cpt_power_runs(10, "banded", cpus = cpus)
+  known_cpt_power_runs(16, "lattice", cpus = cpus)
+  known_cpt_power_runs(10, "global_const", cpus = cpus)
 }
 
 #' @export
-all_known_cpt_runs100 <- function() {
-  known_cpt_power_runs(100, "banded")
-  known_cpt_power_runs(100, "global_const")
-  known_cpt_power_runs(100, "lattice")
+all_known_cpt_runs100 <- function(cpus = 1) {
+  known_cpt_power_runs(100, "banded", cpus = cpus)
+  known_cpt_power_runs(100, "global_const", cpus = cpus)
+  known_cpt_power_runs(100, "lattice", cpus = cpus)
 }
 
 #' @export
 grid_plot_power_known_cpt <- function(p = 10, precision_type = "banded",
                                        shape = 6, rho = c(0.5, 0.7, 0.9),
                                        proportions = NULL, dodge = TRUE) {
-  setup <- known_anom_setup(p, precision_type, shape)
+  setup <- known_cpt_setup(p, precision_type, shape)
   setup$data$shape <- shape
   if (is.null(proportions)) proportions <- setup$variables$proportions
   variables <- c(setup$variables[c("cost", "precision_est_struct", "est_band")],
