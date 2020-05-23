@@ -4,7 +4,14 @@
 \alias{single_cor_inspect}
 \title{Single changepoint estimation}
 \usage{
-single_cor_inspect(x, Q, b = 1, schatten = 2, standardize.series = TRUE)
+single_cor_inspect(
+  x,
+  Q,
+  b = 1,
+  cpt = NA,
+  schatten = 2,
+  standardize.series = TRUE
+)
 }
 \arguments{
 \item{x}{A (p x n) data matrix of multivariate time series, each column
