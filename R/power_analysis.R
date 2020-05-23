@@ -631,7 +631,7 @@ known_cpt_setup <- function(p = 10, precision_type = "banded",
                     "rho"         = rho,
                     "proportions" = proportions,
                     "shape"       = shape)
-  tuning <- tuning_params(init_b = c(0.1, 1, 10), n_sim = n_sim)
+  tuning <- tuning_params(init_b = c(0.1, 1, 3, 15), n_sim = n_sim)
   list(variables = variables, data = data, method = method,
        tuning = tuning, curve = curve, out_file = out_file)
 }

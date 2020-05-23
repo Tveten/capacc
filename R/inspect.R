@@ -233,50 +233,31 @@ sparse.svd <- function(Z, lambda, schatten=c(1, 2), tolerance=1e-5, max.iter=100
 #' x <- obj$x
 #' locate.change(x)
 #' @export
-
-single_cor_inspect <- function(x, Q, b = 1, schatten=2, standardize.series=TRUE)
+single_cor_inspect <- function(x, Q, b = 1, cpt = NA, schatten=2, standardize.series=TRUE)
 {
   x <- as.matrix(x)
   if (dim(x)[2] == 1) x <- t(x) # treat univariate time series as a row vector
   p <- dim(x)[1] # dimensionality of the time series
   n <- dim(x)[2] # time length of the observation
-  lambda <- sqrt(log(log(n)*p)/2)
-  threshold <- b * lambda
   if (standardize.series) {
     x <- rescale.variance(x)
     Q <- standardise_precision_mat(Q)
   }
+  lambda <- sqrt(log(log(n) * p) / 2)
+  threshold <- b * 4 * sqrt(log(n * p))  # Assumes x and Q are standardised.
 
   cusum.matrix <- cusum.transform(x)
   if (lambda >= max(abs(cusum.matrix))) lambda <- max(abs(cusum.matrix)) - 1e-10
   vector.proj <- as.numeric(Q %*% sparse.svd(cusum.matrix, lambda, schatten))
   cusum.proj <- t(cusum.matrix)%*%vector.proj
 
-  list("cpt"   = which.max(abs(cusum.proj)),
-       "value" = max(abs(cusum.proj)) - threshold,
-       "proj"  = vector.proj)
-}
-
-single_cor_inspect_known <- function(cpt, x, Q, b = 1, schatten=2,
-                                     standardize.series=TRUE) {
-
-  x <- as.matrix(x)
-  if (dim(x)[2] == 1) x <- t(x) # treat univariate time series as a row vector
-  p <- dim(x)[1] # dimensionality of the time series
-  n <- dim(x)[2] # time length of the observation
-  lambda <- sqrt(log(log(n)*p)/2)
-  threshold <- b * lambda
-  if (standardize.series) {
-    x <- rescale.variance(x)
-    Q <- standardise_precision_mat(Q)
+  if (is.na(cpt)) {
+    list("cpt"   = which.max(abs(cusum.proj)),
+         "value" = max(abs(cusum.proj)) - threshold,
+         "proj"  = vector.proj)
+  } else {
+    list("cpt"   = cpt,
+         "S_max" = abs(cusum.proj[cpt]) - threshold,
+         "proj"  = vector.proj)
   }
-
-  cusum.matrix <- cusum.transform(x)
-  if (lambda >= max(abs(cusum.matrix))) lambda <- max(abs(cusum.matrix)) - 1e-10
-  vector.proj <- as.numeric(Q %*% sparse.svd(cusum.matrix, lambda, schatten))
-  cusum.proj <- t(cusum.matrix) %*% vector.proj
-
-  list("cpt"   = cpt,
-       "S_max" = abs(cusum.proj[cpt]) - threshold,
-       "proj"  = vector.proj)
 }

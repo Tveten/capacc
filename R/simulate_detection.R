@@ -182,7 +182,6 @@ simulate_detection <- function(data = init_data(), method = method_params(),
                             type        = "mean")
   } else if (method$cost == "mvlrt") {
     Q_hat <- get_Q_hat(x$x, data, method)
-    x$x <- centralise(x$x)
     res <- single_mvnormal_changepoint(x$x, Q_hat,
                                        b = method$b,
                                        min_seg_len = method$minsl)
@@ -238,7 +237,7 @@ simulate_detection_known <- function(data = init_data(), method = method_params(
     }
   } else if (method$cost == "inspect") {
     Q_hat <- get_Q_hat(x$x, data, method)
-    single_cor_inspect_known(data$locations, t(x$x), Q_hat, method$b, standardize.series = TRUE)
+    single_cor_inspect(t(x$x), Q_hat, method$b, data$locations, standardize.series = TRUE)
   } else if (method$cost == "mvlrt") {
     Q_hat <- get_Q_hat(x$x, data, method)
     return(optimise_mvnormal_lr(data$locations, x$x, Q_hat, method$b))
