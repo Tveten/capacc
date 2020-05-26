@@ -24,8 +24,8 @@ est_power_known <- function(data, method, n_sim, cpus = 1) {
     power <- mean(foreach::foreach(i = 1:n_sim,
                                    .packages = "mvcapaCor",
                                    .combine = "c") %dopar% {
-      simulate_detection_known(data, method, seed = seeds[i])$S_max > 0
-    })
+                                     simulate_detection_known(data, method, seed = seeds[i])$S_max > 0
+                                   })
     stop_parallel(comp_cluster)
   } else
     power <- mean(unlist(lapply(1:n_sim, function(i) {
@@ -80,8 +80,8 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
   split_inds <- function(res) {
     # exceeds_max_dist <- adjacent_dist(res[, .(vartheta, power)]) > curve$curve_max_dist
     exceeds_max_dist <- diff(res$power) > curve$curve_max_dist |
-                          (diff(res$power) > curve$curve_max_dist / 2 &
-                             !is_in_interval(res$power[-1], c(0.1, 0.9)))
+      (diff(res$power) > curve$curve_max_dist / 2 &
+         !is_in_interval(res$power[-1], c(0.1, 0.9)))
     ind <- which(exceeds_max_dist) + 1
     ind <- ind[!(res[ind - 1]$power >= 0.98 & res[ind]$power >= 0.98)]
     ind <- ind[!(res[ind - 1]$power <= 0.02 & res[ind]$power <= 0.02)]
@@ -122,58 +122,62 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
   fwrite(add_setup_info(res), paste0("./results/", out_file), append = TRUE)
 }
 
-many_power_curves <- function(out_file = "power.csv",
-                              variables = list("cost" = c("iid", "cor"),
-                                               "rho" = c(0.7, 0.9, 0.99),
-                                               "proportions" = c(0.1, 0.3, 1)),
-                              data   = init_data(),
+many_power_curves <- function(out_file, variables, data = init_data(),
                               method = method_params(),
                               tuning = tuning_params(),
                               curve  = curve_params(max_dist = 0.1, n_sim = 300),
                               known = FALSE, loc_tol = 10, cpus = 1) {
-  params_list <- split_params(
+  params <- split_params(
     expand_list(c(data, method), variables),
     list("data"   = names(data),
          "method" = names(method))
   )
   if (cpus == 1)
     Map(power_curve,
-        data   = params_list$data,
-        method = params_list$method,
-        seed   = get_sim_seeds(params_list, variables),
+        data   = params$data,
+        method = params$method,
+        seed   = get_sim_seeds(params, variables),
         MoreArgs = list("out_file"     = out_file,
                         "tuning"        = tuning,
                         "curve"         = curve,
                         "loc_tol"       = loc_tol,
                         "known"         = known))
   else if (cpus > 1) {
-    seeds <- get_sim_seeds(params_list, variables)
+    seeds <- get_sim_seeds(params, variables)
     comp_cluster <- setup_parallel(cpus)
     `%dopar%` <- foreach::`%dopar%`
-    res <- foreach::foreach(i = 1:length(params_list$data),
+    res <- foreach::foreach(i = 1:length(params$data),
                             .packages = c("anomaly", "mvcapaCor")) %dopar% {
-      power_curve(data     = params_list$data[[i]],
-                  method   = params_list$method[[i]],
-                  seed     = seeds[i],
-                  out_file = out_file,
-                  tuning   = tuning,
-                  curve    = curve,
-                  loc_tol  = loc_tol,
-                  known    = known)
-    }
+                              power_curve(data     = params$data[[i]],
+                                          method   = params$method[[i]],
+                                          seed     = seeds[i],
+                                          out_file = out_file,
+                                          tuning   = tuning,
+                                          curve    = curve,
+                                          loc_tol  = loc_tol,
+                                          known    = known)
+                            }
     stop_parallel(comp_cluster)
   } else stop("Number of cpus must be >= 1")
   NULL
 }
 
 #' @export
-plot_power_curve <- function(file_name, variables, data = init_data(),
+plot_power_curve <- function(file_name, variables,
+                             data = init_data(),
                              method = method_params(),
                              tuning = tuning_params(), curve = curve_params(),
                              loc_tol = 10, known = FALSE, vars_in_title = NA,
                              dodge = FALSE) {
   upper_xlim <- function(res) {
-    res[power >= 0.98, .(vartheta = min(vartheta)), by = cost][, max(vartheta)]
+    if (any(res[, all(.SD$power < 0.98), by = cost]$V1))
+      return(res[, max(vartheta)])
+    else
+      return(res[power >= 0.98, .(vartheta = min(vartheta)), by = cost][, max(vartheta)])
+  }
+
+  set_breaks <- function(res) {
+    res[, unique(cost)]
   }
 
   all_params <- c(data, method, tuning, curve, list("loc_tol" = loc_tol))
@@ -191,25 +195,29 @@ plot_power_curve <- function(file_name, variables, data = init_data(),
                  Map(read_func,
                      params_list,
                      MoreArgs = list(file_name = file_name)))
-  res <- rename_precision_est_struct(res)
+  # res <- rename_precision_est_struct(res)
+  res <- rename_cost(res)
   title <- make_title(all_params, power_curve_title_parts(vars_in_title))
   # pl <- ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power,
   #                                                colour = cost,
   #                                                linetype = precision_est_struct))
   pl <- ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power,
-                                                 colour = precision_est_struct,
-                                                 linetype = cost))
+                                                 colour = cost))
+
   if (dodge) {
     width <- max(res$vartheta) / 50
     pl <- pl + ggplot2::geom_line(position = ggplot2::position_dodge(width = width))
   } else
     pl <- pl + ggplot2::geom_line()
   pl +
-    ggplot2::ggtitle(title) +
-    ggplot2::scale_x_continuous("Signal strength", limits = c(0, upper_xlim(res))) +
+    ggplot2::ggtitle(latex2exp::TeX(title)) +
+    ggplot2::scale_x_continuous(latex2exp::TeX("$\\vartheta$"),
+                                limits = c(0, upper_xlim(res))) +
     ggplot2::scale_y_continuous("Power") +
-    ggplot2::scale_colour_discrete(name = "Precision estimation") +
-    ggplot2::scale_linetype_discrete(name = "Cost")
+    ggplot2::scale_colour_discrete(name = "Cost",
+                                   breaks = set_breaks(res),
+                                   labels = unname(latex2exp::TeX(set_breaks(res))))
+  # ggplot2::scale_linetype_discrete(name = "Cost")
 }
 
 #' @export
@@ -269,9 +277,9 @@ power_runs <- function() {
 
   #### BLOCK
   block_data <- init_data(n = 100, p = 10, precision_type = "banded",
-                                 band = 2, block_size = 9, locations = 50,
-                                 durations = 10, change_type = "custom",
-                                 changing_vars = 10)
+                          band = 2, block_size = 9, locations = 50,
+                          durations = 10, change_type = "custom",
+                          changing_vars = 10)
   block_variables <- list("cost"   = c("iid", "cor"),
                           "rho"    = c(0.5, 0.7, 0.9, 0.99))
   many_power_curves(out_file, block_variables, block_data,
@@ -511,7 +519,7 @@ all_known_power_runs100 <- function() {
 #' @export
 grid_plot_power_known_anom <- function(p = 10, precision_type = "banded",
                                        shape = 6, rho = c(0.5, 0.7, 0.9),
-                                       proportions = NULL, dodge = TRUE) {
+                                       proportions = NULL, dodge = FALSE) {
   setup <- known_anom_setup(p, precision_type, shape)
   setup$data$shape <- shape
   if (is.null(proportions)) proportions <- setup$variables$proportions
@@ -603,7 +611,7 @@ plot_power_known_dense_anom <- function() {
 #### known changepoint runs
 #################
 known_cpt_setup <- function(p = 10, precision_type = "banded",
-                            shape = c(0, 5, 6),
+                            locations = NULL, shape = c(0, 5, 6),
                             rho = c(0.99, 0.9, 0.7, 0.5, 0.3),
                             proportions = c(1/p, round(sqrt(p)) / p, 1)) {
   if (p <= 50) {
@@ -613,9 +621,9 @@ known_cpt_setup <- function(p = 10, precision_type = "banded",
     n <- 2 * p
     n_sim <- 500
   }
+  if (is.null(locations)) locations <- n - 10
 
-  durations <- 10
-  locations <- n - durations
+  durations <- n - locations
   band <- 2
   precision_est_struct <- "banded"
   est_band <- c(0, 4)
@@ -638,35 +646,36 @@ known_cpt_setup <- function(p = 10, precision_type = "banded",
 
 #' @export
 known_cpt_power_runs <- function(p = 10, precision_type = "banded",
-                                 shape = c(0, 5, 6),
+                                 locations = NULL, shape = c(0, 5, 6),
                                  rho = c(0.99, 0.9, 0.7, 0.5, 0.3),
                                  proportions = c(1/p, round(sqrt(p)) / p, 1),
                                  cpus = 1) {
-  setup <- known_cpt_setup(p, precision_type, shape, rho, proportions)
+  setup <- known_cpt_setup(p, precision_type, locations, shape, rho, proportions)
   many_power_curves(setup$out_file, setup$variables, setup$data,
                     setup$method, setup$tuning, setup$curve, known = TRUE,
                     cpus = cpus)
 }
 
 #' @export
-all_known_cpt_runs10 <- function(cpus = 1) {
-  known_cpt_power_runs(10, "banded", cpus = cpus)
-  known_cpt_power_runs(16, "lattice", cpus = cpus)
-  known_cpt_power_runs(10, "global_const", cpus = cpus)
+all_known_cpt_runs10 <- function(locations = NULL, cpus = 1) {
+  known_cpt_power_runs(10, "banded", locations, cpus = cpus)
+  known_cpt_power_runs(16, "lattice", locations, cpus = cpus)
+  known_cpt_power_runs(10, "global_const", locations, cpus = cpus)
 }
 
 #' @export
-all_known_cpt_runs100 <- function(cpus = 1) {
-  known_cpt_power_runs(100, "banded", cpus = cpus)
-  known_cpt_power_runs(100, "global_const", cpus = cpus)
-  known_cpt_power_runs(100, "lattice", cpus = cpus)
+all_known_cpt_runs100 <- function(locations = NULL, cpus = 1) {
+  known_cpt_power_runs(100, "banded", locations, cpus = cpus)
+  known_cpt_power_runs(100, "lattice", locations, cpus = cpus)
+  known_cpt_power_runs(100, "global_const", locations, cpus = cpus)
 }
 
 #' @export
 grid_plot_power_known_cpt <- function(p = 10, precision_type = "banded",
-                                       shape = 6, rho = c(0.5, 0.7, 0.9),
-                                       proportions = NULL, dodge = TRUE) {
-  setup <- known_cpt_setup(p, precision_type, shape)
+                                      locations = NULL,
+                                      shape = 6, rho = c(0.5, 0.7, 0.9),
+                                      proportions = NULL, dodge = FALSE) {
+  setup <- known_cpt_setup(p, precision_type, locations, shape)
   setup$data$shape <- shape
   if (is.null(proportions)) proportions <- setup$variables$proportions
   variables <- c(setup$variables[c("cost", "precision_est_struct", "est_band")],

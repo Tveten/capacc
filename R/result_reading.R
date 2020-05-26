@@ -49,21 +49,22 @@ read_power_curve_known <- function(file_name, all_params) {
                     "alpha", "alpha_tol", "tuning_n_sim",
                     "curve_n_sim", "curve_max_dist",
                     "loc_tol")
-  read_single_result(file_name, query_params, all_params, "A power curve (known anom)")
+  res <- read_single_result(file_name, query_params, all_params, "A power curve (known anom)")
 }
 
 
-read_cpt_distr <- function(file_name, all_params) {
+read_cpt_est <- function(file_name, all_params) {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
                     "vartheta", "shape", "locations", "durations", "change_type",
-                    "cost", "minsl", "maxsl", "b", "precision_est_struct", "est_band", "size_mu",
+                    "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
+                    "alpha", "alpha_tol", "tuning_n_sim",
                     "n_sim")
-  read_single_result(file_name, query_params, all_params, "A changepoint distribution")
+  read_single_result(file_name, query_params, all_params, "Changepoint estimates")
 }
 
 read_penalties <- function(file_name, all_params) {
     query_params <- c("n", "p", "rho", "precision_type", "band", "block_size",
-                      "cost", "minsl", "maxsl", "precision_est_struct", "est_band", "size_mu",
+                      "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
                       "alpha", "alpha_tol", "tuning_n_sim")
     read_single_result(file_name, query_params, all_params, "A penalty")
 }

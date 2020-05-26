@@ -35,7 +35,7 @@ make_title <- function(params,
   if (params$precision_type == "banded")
     precision_text <- paste0(params$band, "-banded")
   else if (params$precision_type == "global_const")
-    precision_text <- "constant cor"
+    precision_text <- "global cor"
   else precision_text <- params$precision_type
   if (params$block_size < params$p)
     precision_text <- paste0(precision_text, ", m=", params$block_size)
@@ -51,14 +51,14 @@ make_title <- function(params,
                       "n"              = paste0("n=", params$n),
                       "locations"      = location_text,
                       "durations"      = paste0("e=", params$locations + params$durations),
-                      "proportions"    = paste0("$pr=", round(params$proportions, 2), "$"),
+                      "proportions"    = paste0("$|J|=", params$proportions * params$p, "$"),
                       "shape"          = paste0("sh=", params$shape),
                       "b"              = paste0("b=", params$b),
                       "alpha"          = alpha_text,
                       "tuning_n_sim"   = paste0("n_{sim}=", params$tuning_n_sim))
   if (any(is.na(which_parts)))
     which_parts <- names(title_parts)
-  latex2exp::TeX(paste0(title_parts[names(title_parts) %in% which_parts], collapse = ", "))
+  paste0(title_parts[names(title_parts) %in% which_parts], collapse = ", ")
 }
 
 power_curve_title_parts <- function(vars_in_title) {
@@ -71,7 +71,7 @@ power_curve_title_parts <- function(vars_in_title) {
 cpt_distr_title_parts <- function(vars_in_title) {
   if (any(is.na(vars_in_title)))
     vars_in_title <- c("precision_type", "rho", "p", "n",
-                       "locations", "proportions", "b")
+                       "locations", "proportions", "shape")
   else vars_in_title
 }
 
@@ -90,20 +90,38 @@ add_iid_costs <- function(res) {
 add_precision_est_struct_to_cost <- function(res) {
   res[grepl("cor", cost) & precision_est_struct == "correct",
       "precision_est_struct" := "correct_adj"]
-  res <- res[grepl("cor", cost) & is.na(precision_est_struct),
-             "cost" := paste0(cost, ".", "true")]
-  res <- res[grepl("cor", cost) & is.na(est_band) & !is.na(precision_est_struct),
-             "cost" := paste0(cost, ".", precision_est_struct)]
-  res <- res[grepl("cor", cost) & !is.na(est_band),
-             "cost" := paste0(cost, ".", est_band, precision_est_struct)]
+  res[grepl("cor", cost) & is.na(precision_est_struct),
+      "cost" := paste0(cost, ".", "true")]
+  res[grepl("cor", cost) & is.na(est_band) & !is.na(precision_est_struct),
+      "cost" := paste0(cost, ".", precision_est_struct)]
+  res[grepl("cor", cost) & !is.na(est_band),
+      "cost" := paste0(cost, ".", est_band, precision_est_struct)]
   res
 }
 
 rename_cost <- function(res) {
-  res <- res[cost == "cor.true", "cost" := "cor(Q)"]
-  res <- res[cost == "cor_exact.true", "cost" := "cor_exact(Q)"]
-  res <- res[cost == "cor.correct_adj", "cost" := "cor(hat(Q))"]
-  res <- res[cost == "cor_exact.correct_adj", "cost" := "cor_exact(hat(Q))"]
+  res[cost == "cor" & is.na(precision_est_struct), "cost" :=
+        "MVCAPA($Q$)"]
+  res[cost == "cor" & precision_est_struct == "correct",
+      "cost" := "MVCAPA($\\hat{Q}(W)$)"]
+  res[cost == "cor" & precision_est_struct == "banded",
+      "cost" := paste0("MVCAPA($\\hat{Q}(W(", est_band, "))$)")]
+  res[cost == "iid",
+      "cost" := paste0("MVCAPA($I$)")]
+  res[cost == "inspect" & is.na(precision_est_struct),
+      "cost" := "inspect($Q$)"]
+  res[cost == "inspect" & precision_est_struct == "correct",
+      "cost" := "inspect($\\hat{Q}$)"]
+  res[cost == "inspect" & precision_est_struct == "banded",
+      "cost" := "inspect($I$)"]
+  res[cost == "mvlrt" & is.na(precision_est_struct), "cost" :=
+        "MVCPT($Q$)"]
+  res[cost == "mvlrt" & precision_est_struct == "correct",
+      "cost" := "MVCPT($\\hat{Q}(W)$)"]
+  res[cost == "mvlrt" & precision_est_struct == "banded" & est_band != 0,
+      "cost" := paste0("MVCPT($\\hat{Q}(W(", est_band, "))$)")]
+  res[cost == "mvlrt" & precision_est_struct == "banded" & est_band == 0,
+      "cost" := "MVCPT($I$)"]
   res
 }
 rename_precision_est_struct <- function(res) {

@@ -7,7 +7,8 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
     if (cost == "cor") x <- object$x
     else if (cost == "iid") x <- object@data
     data_df <- as.data.frame(x)
-    names <- paste("y", 1:ncol(x), sep = "")
+    # names <- paste("y", 1:ncol(x), sep = "")
+    names <- paste(1:ncol(x), sep = "")
     colnames(data_df) <- names
     data_df <- as.data.frame(data_df[, subset, drop = FALSE])
     n <- nrow(data_df)
@@ -16,24 +17,7 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
     data_df <- reshape2::melt(data_df, id = "x")
     out <- ggplot2::ggplot(data = data_df)
     out <- out + ggplot2::aes(x = x, y = value)
-    out <- out + ggplot2::geom_point()
-
-    # Highlight true anomalies if specified.
-    if (!is.null(true_anoms)) {
-      true_anoms_df <- data.frame("variable" = names[rep(1:p, length(true_anoms) / 2)],
-                                  "start"    = rep(true_anoms[c(1, 3)], each = p),
-                                  "end"     = rep(true_anoms[c(2, 4)], each = p))
-      true_anoms_df$ymin <- -Inf
-      true_anoms_df$ymax <- Inf
-      out <- out + ggplot2::geom_rect(data = true_anoms_df,
-                                      inherit.aes = FALSE,
-                                      mapping = ggplot2::aes(xmin = start,
-                                                             xmax = end,
-                                                             ymin = ymin,
-                                                             ymax = ymax,
-                                                             fill = "Known anomaly"),
-                                      alpha = 0.4)
-    }
+    out <- out + ggplot2::geom_point(size = 0.4)
 
     # highlight the collective anomalies
     if (cost == "cor") c_anoms <- collective_anomalies(object)
@@ -52,11 +36,12 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
                                                                xmax = end,
                                                                ymin = ymin,
                                                                ymax = ymax,
-                                                               fill = "Estimated anomaly"),
-                                        alpha=0.4) +
+                                                               fill = "Estimated collective anomaly"),
+                                        alpha=0.5) +
           ggplot2::scale_fill_manual(name = "",
-                                     values = c("Known anomaly" = "green",
-                                                "Estimated anomaly" = "blue"))
+                                     values = c("Estimated collective anomaly" = "red"))
+                                     # values = c("Known anomaly" = "green",
+                                     #            "Estimated anomaly" = "blue"))
     }
 
     # highlight the point anomalies
@@ -70,15 +55,40 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
                 }, p_anoms$variate, p_anoms$location)
             )
             out <- out + ggplot2::geom_point(data = p_anoms_data_df,
-                                             ggplot2::aes(colour = "Point anomaly"),
-                                             size = 1.5) +
+                                             ggplot2::aes(colour = "Estimated point anomaly"),
+                                             size = 0.8) +
               ggplot2::scale_colour_manual(name = "",
-                                           values = c("Point anomaly" = "red"))
+                                           values = c("Estimated point anomaly" = "red"))
 
     }
 
     out <- out + ggplot2::facet_grid(factor(variable, levels = names) ~ .,
                                      scales = "free_y")
+
+    # Highlight true anomalies if specified.
+    if (!is.null(true_anoms)) {
+      n_true_anoms <- length(true_anoms) / 2
+      even <- 2 * 1:n_true_anoms
+      odd <- even - 1
+      true_anoms_df <- data.frame("variable" = names[rep(1:p, n_true_anoms)],
+                                  "start"    = rep(true_anoms[odd], each = p),
+                                  "end"      = rep(true_anoms[even], each = p))
+      true_anoms_df$ymin <- -Inf
+      true_anoms_df$ymax <- Inf
+      out <- out + ggplot2::geom_rect(data = true_anoms_df,
+                                      inherit.aes = FALSE,
+                                      mapping = ggplot2::aes(xmin = start,
+                                                             xmax = end,
+                                                             ymin = ymin,
+                                                             ymax = ymax,
+                                                             linetype = "Known collective anomaly"),
+                                      alpha = 0,
+                                      size = 1,
+                                      colour = "green3") +
+      ggplot2::scale_linetype_manual(name = "",
+                                     values = c("Known collective anomaly" = 1))
+    }
+
     # grey out the data after epoch
     if(epoch != nrow(x))
     {
@@ -104,7 +114,9 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
                                 # Change axis line
                                 axis.line = ggplot2::element_line(colour = "black"),
                                 legend.position = legend_position
-                              )
+                              ) +
+      ggplot2::xlab("t") +
+      ggplot2::ylab("Value")
 
     return(out)
 }
