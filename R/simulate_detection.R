@@ -138,10 +138,15 @@ method_params_ <- function(method) {
 simulate_detection <- function(data = init_data(), method = method_params(),
                                seed = NULL, standardise_output = TRUE) {
   format_cpt_out <- function(cost, res) {
-    if (cost == "inspect") res$J <- which(res$proj != 0)
-    mean1 <- colMeans(x$x[1:res$cpt, res$J, drop = FALSE])
-    mean2 <- colMeans(x$x[(res$cpt + 1):nrow(x$x), res$J, drop = FALSE])
-    data.table("cpt" = res$cpt, "variate" = res$J, "mean1" = mean1, "mean2" = mean2)
+    if (res$value <= 0)
+      return(data.table("cpt" = NA, "variate" = NA, "mean1" = NA, "mean2" = NA))
+    else {
+      if (cost == "inspect") res$J <- which(res$proj != 0)
+      mean1 <- colMeans(x$x[1:res$cpt, res$J, drop = FALSE])
+      mean2 <- colMeans(x$x[(res$cpt + 1):nrow(x$x), res$J, drop = FALSE])
+      return(data.table("cpt" = res$cpt, "variate" = res$J,
+                        "mean1" = mean1, "mean2" = mean2))
+    }
   }
 
   format_output <- function(cost, res) {

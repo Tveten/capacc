@@ -197,9 +197,10 @@ plot_monthly_mean <- function(data, var) {
 }
 
 #' @export
-mvcapa_pump <- function(x, est_band = 2, b = 1, b_point = 1, minsl = 20, nr = 3,
+mvcapa_pump <- function(x, est_band = 2, b = 1, b_point = 1, minsl = 20,
                         vars = "all", diff = FALSE, rank_transform = FALSE,
                         true_anoms = NULL, cost = "cor") {
+  x <- as.matrix(x)
   n <- nrow(x)
   p <- ncol(x)
   if (cost == "cor") {
@@ -250,47 +251,60 @@ save_mvcapa_pump_plot <- function(x, cost, b, b_point = 1, minsl = 20, band = 4,
   ggsave(paste0("./images/", file_name), width = 8, height = 6, units = "in")
 }
 
-promising_plots <- function() {
-  x <- make_all_residuals(pump_daily)
+promising_plots_3to4 <- function() {
+  nr <- 3:4
+  x <- make_all_residuals(pump_daily, nr = nr)
   band <- 4
   plot_cor_mat(x, band)
 
-  true_anoms <- pump_anom_inds(pump_daily)
+  true_anoms <- pump_anom_inds(pump_daily, nr = nr)
   mvcapa_pump(x, est_band = band, b = 7, true_anoms = true_anoms)
   mvcapa_pump(x, est_band = band, b = 10, true_anoms = true_anoms)
   mvcapa_pump(x, est_band = band, b = 25, true_anoms = true_anoms)
   mvcapa_pump(x, est_band = band, b = 20, true_anoms = true_anoms, b_point = 12, minsl = 20)
+  lapply(10:20, function(b) {
+    print(b)
+    show(mvcapa_pump(x, est_band = band, b = b, true_anoms = true_anoms, b_point = 3, minsl = 5))
+    Sys.sleep(3)
+  })
+  mvcapa_pump(x, est_band = band, b = 10, true_anoms = true_anoms, b_point = 3, minsl = 5)
+  mvcapa_pump(x, est_band = band, b = 18, true_anoms = true_anoms, b_point = 3, minsl = 5)
+  mvcapa_pump(x, est_band = band, b = 21, true_anoms = true_anoms, b_point = 3, minsl = 5)
 
   mvcapa_pump(x, est_band = band, b = 10, true_anoms = true_anoms, cost = "iid")
   mvcapa_pump(x, est_band = band, b = 20, true_anoms = true_anoms, cost = "iid")
   mvcapa_pump(x, est_band = band, b = 30, true_anoms = true_anoms, cost = "iid")
   mvcapa_pump(x, est_band = band, b = 30, true_anoms = true_anoms, cost = "iid", b_point = 5, minsl = 20)
+  lapply(15:35, function(b) {
+    print(b)
+    show(mvcapa_pump(x, est_band = band, b = b, true_anoms = true_anoms, cost = "iid", b_point = 3, minsl = 5))
+    Sys.sleep(3)
+  })
+  mvcapa_pump(x, est_band = band, b = 15, true_anoms = true_anoms, cost = "iid", b_point = 3, minsl = 5)
+  mvcapa_pump(x, est_band = band, b = 32, true_anoms = true_anoms, cost = "iid", b_point = 3, minsl = 5)
+  mvcapa_pump(x, est_band = band, b = 33, true_anoms = true_anoms, cost = "iid", b_point = 3, minsl = 5)
 
   save_mvcapa_pump_plot(x, "cor", 7, 1, 10, band, true_anoms)
   save_mvcapa_pump_plot(x, "cor", 10, 1, 10, band, true_anoms)
   save_mvcapa_pump_plot(x, "cor", 25, 1, 10, band, true_anoms)
   save_mvcapa_pump_plot(x, "cor", 20, 12, 20, band, true_anoms)
+  save_mvcapa_pump_plot(x, "cor", 10, 3, 5, band, true_anoms)
+  save_mvcapa_pump_plot(x, "cor", 18, 3, 5, band, true_anoms)
   save_mvcapa_pump_plot(x, "iid", 10, 1, 10, band, true_anoms)
   save_mvcapa_pump_plot(x, "iid", 20, 1, 10, band, true_anoms)
   save_mvcapa_pump_plot(x, "iid", 30, 1, 10, band, true_anoms)
 }
 
+promising_plots_1to4 <- function() {
+  nr <- 1:4
+  x <- make_all_residuals(pump_daily, nr = nr)
+  band <- 4
+  plot_cor_mat(x, band)
 
-# temperatures <- c("discharge_temperature",
-#                   "mpfm_temperature",
-#                   "subsea_barrier_temperature")
-# pressures <- c("discharge_pressure",
-#                "mpfm_pressure",
-#                "subsea_barrier_pressure",
-#                "suction_pressure",
-#                "differential_pressure")
-# other <- c("mpfm_gvf",
-#            "mpfm_gas_flow_rate",
-#            "mpfm_oil_flow_rate",
-#            "mpfm_flow_rate",
-#            "output_current",
-#            "output_power",
-#            "speed")
+  true_anoms <- pump_anom_inds(pump_daily, nr = nr)
+  mvcapa_pump(x, est_band = band, b = 11, true_anoms = true_anoms, b_point = 2, minsl = 5)
+  save_mvcapa_pump_plot(x, "cor", 11, 2, 5, band, true_anoms)
+}
 
 make_residuals <- function(pump_daily, var, BC = FALSE) {
   covariates <- " ~ mpfm_gas_flow_rate + mpfm_oil_flow_rate + output_current + output_power + speed"
@@ -302,10 +316,7 @@ make_residuals <- function(pump_daily, var, BC = FALSE) {
   lm_obj <- lm(model_formula, data = pump_daily)
   pred_name <- paste0(var, "_give_flow_rate")
   pump_daily[[pred_name]] <- predict(lm_obj, newdata = pump_daily)
-  # res_name <- paste0(var, "_residual")
   pump_daily[[var]] - pump_daily[[pred_name]]
-  # pump_daily[[res_name]] <- pump_daily[[var]] - pump_daily[[pred_name]]
-  # pump_daily[res_name]
 }
 
 make_all_residuals <- function(pump_daily, nr = c(3, 4), BC = FALSE) {

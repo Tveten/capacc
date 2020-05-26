@@ -17,7 +17,7 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
     which_data <- !(grepl("Sigma", names(data)) | names(data) == c("changing_vars"))
     res <- cbind(res,
                  as.data.table(data[which_data]),
-                 as.data.table(method[names(method) != "b"]),
+                 as.data.table(method[!names(method) %in% c("b", "size_mu")]),
                  as.data.table(tuning[names(tuning) != "init_b"]))
     res$seed <-  seed
     res
@@ -28,8 +28,11 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
       method$b <- b
       if (known) {
         return(simulate_detection_known(data, method)$S_max > 0)
-      } else
-        return(!is.na(simulate_detection(data, method, standardise_output = TRUE)$collective$start[1]))
+      } else {
+        sim <- simulate_detection(data, method, standardise_output = TRUE)
+        if (is.null(sim$collective)) return(!is.na(sim$cpt)[1])
+        else return(!is.na(sim$collective$start[1]))
+      }
     }))
     data.table("b" = b, "fp" = mean(fps), "diff" = mean(fps) - tuning$alpha)
   }
