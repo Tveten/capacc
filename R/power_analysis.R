@@ -214,7 +214,7 @@ plot_power_curve <- function(file_name, variables,
     ggplot2::scale_x_continuous(latex2exp::TeX("$\\vartheta$"),
                                 limits = c(0, upper_xlim(res))) +
     ggplot2::scale_y_continuous("Power") +
-    ggplot2::scale_colour_discrete(name = "Cost",
+    ggplot2::scale_colour_discrete(name = "Method",
                                    breaks = set_breaks(res),
                                    labels = unname(latex2exp::TeX(set_breaks(res))))
   # ggplot2::scale_linetype_discrete(name = "Cost")
@@ -254,10 +254,13 @@ grid_plot_power <- function(variables = list("rho" = c(-0.3, 0.9),
                                "vars_in_title" = names(variables),
                                "dodge"         = dodge))
   vars_in_title <- names(data)[!names(data) %in% names(variables)]
-  dims <- c(length(grid_variables[[2]]), length(grid_variables[[1]]))
+  n_col <- length(grid_variables[[1]])
+  if (length(grid_variables) < 2) n_row <- 1
+  else n_row <- length(grid_variables[[2]])
+  dims <- c(n_row, n_col)
   pp <- grid_plot(plots, dims,
                   latex2exp::TeX(paste0("Power curves for ", make_title(c(data, method), vars_in_title))))
-  if (!is.null(out_file)) save_grid_plot(pp, out_file, data)
+  if (!is.null(out_file)) save_grid_plot(pp, dims, out_file, data)
   else return(pp)
 }
 
@@ -439,7 +442,7 @@ known_anom_power_runs_MLE <- function(cpus = 1) {
   variables <- list("cost"        = c("cor", "cor_exact"),
                     "precision_est_struct" = c(NA, "correct"),
                     "rho"         = c(0.5, 0.7, 0.9, 0.99),
-                    "proportions" = c(1, 3, 8)/8,
+                    "proportions" = c(1, 3, data$p)/data$p,
                     "shape"       = c(6, 5, 0))
   tuning <- tuning_params(init_b = c(0.1, 1, 2), n_sim = 1000)
   many_power_curves(out_file, variables, data, method_params(),
