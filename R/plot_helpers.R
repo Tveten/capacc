@@ -6,6 +6,24 @@ grid_plot <- function(plots, dims, title) {
   ggpubr::annotate_figure(figure, top = title)
 }
 
+save_grid_plot <- function(pp, prefix, data) {
+  if (data$precision_type == "banded")
+    precision_text <- paste0(data$band, "-banded")
+  else
+    precision_text <- data$precision_type
+  file_name <- paste0("./images/",
+                      prefix,
+                      "_n", data$n,
+                      "_p", data$p,
+                      "_", precision_text,
+                      "_shape", data$shape,
+                      "_loc", data$locations,
+                      "_dur", data$durations,
+                      ".png")
+  show(pp)
+  ggplot2::ggsave(file_name, width = 7, height = 5, units = "in", dpi = 800)
+}
+
 # test_quote <- function() {
 #   rho_expr <- quote(rho)
 #   rho <- 0.9
@@ -33,15 +51,22 @@ make_title <- function(params,
                                        "shape"),
                        type = "anom") {
   if (params$precision_type == "banded")
-    precision_text <- paste0(params$band, "-banded")
+    precision_text <- paste0("$Q(", params$band, ")$")
   else if (params$precision_type == "global_const")
-    precision_text <- "global cor"
+    precision_text <- "$Q_\\text{const}$"
+  else if (params$precision_type == "lattice")
+    precision_text <- "$Q_\\text{lat}$"
   else precision_text <- params$precision_type
   if (params$block_size < params$p)
     precision_text <- paste0(precision_text, ", m=", params$block_size)
 
   if (type == "anom") location_text <- paste0("s=", params$locations + 1)
   else if (type == "cpt") location_text <- paste0("cpt=", params$locations)
+
+  if (params$shape == 0) shape_text <- "equal changes"
+  else if (params$shape == 5) shape_text <- "iid changes"
+  else if (params$shape == 6) shape_text <- "cor changes"
+  else shape_text <- paste0("sh=", params$shape)
 
   alpha_text <- paste0("$\\alpha =", params$alpha, "\\pm ", params$alpha_tol, "$")
 
@@ -52,7 +77,7 @@ make_title <- function(params,
                       "locations"      = location_text,
                       "durations"      = paste0("e=", params$locations + params$durations),
                       "proportions"    = paste0("$|J|=", params$proportions * params$p, "$"),
-                      "shape"          = paste0("sh=", params$shape),
+                      "shape"          = shape_text,
                       "b"              = paste0("b=", params$b),
                       "alpha"          = alpha_text,
                       "tuning_n_sim"   = paste0("n_{sim}=", params$tuning_n_sim))
@@ -100,14 +125,21 @@ add_precision_est_struct_to_cost <- function(res) {
 }
 
 rename_cost <- function(res) {
+  # Anomaly costs
   res[cost == "cor" & is.na(precision_est_struct), "cost" :=
         "MVCAPA($Q$)"]
   res[cost == "cor" & precision_est_struct == "correct",
-      "cost" := "MVCAPA($\\hat{Q}(W)$)"]
+      "cost" := "MVCAPA($\\hat{Q}(W^*)$)"]
   res[cost == "cor" & precision_est_struct == "banded",
       "cost" := paste0("MVCAPA($\\hat{Q}(W(", est_band, "))$)")]
   res[cost == "iid",
       "cost" := paste0("MVCAPA($I$)")]
+  res[cost == "cor_exact" & is.na(precision_est_struct), "cost" :=
+        "ML($Q$)"]
+  res[cost == "cor_exact" & precision_est_struct == "correct",
+      "cost" := "ML(\\hat{Q}(W^*))$)"]
+
+  # Changepoint costs
   res[cost == "inspect" & is.na(precision_est_struct),
       "cost" := "inspect($Q$)"]
   res[cost == "inspect" & precision_est_struct == "correct",
@@ -117,7 +149,7 @@ rename_cost <- function(res) {
   res[cost == "mvlrt" & is.na(precision_est_struct), "cost" :=
         "MVCPT($Q$)"]
   res[cost == "mvlrt" & precision_est_struct == "correct",
-      "cost" := "MVCPT($\\hat{Q}(W)$)"]
+      "cost" := "MVCPT($\\hat{Q}(W^*)$)"]
   res[cost == "mvlrt" & precision_est_struct == "banded" & est_band != 0,
       "cost" := paste0("MVCPT($\\hat{Q}(W(", est_band, "))$)")]
   res[cost == "mvlrt" & precision_est_struct == "banded" & est_band == 0,

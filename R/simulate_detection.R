@@ -43,6 +43,8 @@ init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p,
     else
       stop("If change_type is 'custom', you must provide a changing_vars vector")
   }
+  # if (precision_type == "lattice" && change_type == "adjacent")
+  #   change_type <- "adjacent_lattice"
 
   if (isTRUE(all.equal(1/p, proportions))) shape <- 0
 

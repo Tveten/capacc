@@ -15,9 +15,11 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
 
   add_setup_info <- function(res) {
     which_data <- !(grepl("Sigma", names(data)) | names(data) == c("changing_vars"))
+    if (known) excluded_method_names <- "b"
+    else excluded_method_names <- c("b", "size_mu")
     res <- cbind(res,
                  as.data.table(data[which_data]),
-                 as.data.table(method[!names(method) %in% c("b", "size_mu")]),
+                 as.data.table(method[!names(method) %in% excluded_method_names]),
                  as.data.table(tuning[names(tuning) != "init_b"]))
     res$seed <-  seed
     res
