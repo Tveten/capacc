@@ -408,26 +408,41 @@ plot_single_known_anom_MLE <- function(p = 10, rho = 0.99, proportions = 1/p,
   plot_power_curve(out_file, variables, data, method, tuning, curve, known = TRUE)
 }
 
-grid_plot_p <- function() {
-  grid_plot_power()
+grid_plot_MLE_sparse_highcor <- function(rho = 0.99, proportions = 1/p,
+                                         shape = 0, dodge = FALSE,
+                                         out_file = "power_MLE_sparse_highcor") {
+  read_file <- "power_known_anom_FINAL.csv"
+  n <- 100
+  p <- 15
+  data <- init_data(n = n, p = p, precision_type = "banded",
+                    band = 2, locations = round(n / 2), durations = 10,
+                    change_type = "adjacent", rho = rho,
+                    proportions = proportions, shape = shape)
+  method <- method_params(precision_est_struct = NA)
+  n_sim <- 300
+  tuning <- tuning_params(init_b = c(0.1, 1, 4), n_sim = n_sim)
+  curve <- curve_params(max_dist = 0.1, n_sim = n_sim)
+  variables <- list("cost" = c("cor", "cor_exact"),
+                    "p"    = c(5, 10, 15))
+  plot_power_curve(out_file, variables, data, method, tuning, curve, known = TRUE)
+  grid_plot_power(variables, data, method, tuning, curve,
+                  file_name = read_file, known = TRUE, dodge = dodge,
+                  out_file = out_file)
 }
 
 #' @export
 known_anom_power_runs_MLE <- function() {
   curve <- curve_params(max_dist = 0.1, n_sim = 300)
-  out_file <- "power_known_anom.csv"
-  banded_data <- init_data(n = 100, p = 8, precision_type = "banded",
+  out_file <- "power_known_anom_FINAL.csv"
+  banded_data <- init_data(n = 100, p = 10, precision_type = "banded",
                            band = 2, locations = 50, durations = 10,
                            change_type = "adjacent")
   banded_variables <- list("cost"        = c("cor", "cor_exact"),
-                           "rho"         = c(0.01, 0.2, 0.5, 0.7, 0.9, 0.99),
+                           "precision_est_struct" = c(NA, "correct"),
+                           "rho"         = c(0.5, 0.7, 0.9, 0.99),
                            "proportions" = c(1, 3, 8)/8,
                            "shape"       = c(0, 5, 6))
-  many_power_curves(out_file, banded_variables, banded_data,
-                    method_params(precision_est_struct = NA),
-                    tuning_params(), curve, known = TRUE)
-  many_power_curves(out_file, banded_variables, banded_data,
-                    method_params(precision_est_struct = "correct"),
+  many_power_curves(out_file, variables, data, method_params(),
                     tuning_params(), curve, known = TRUE)
 }
 
