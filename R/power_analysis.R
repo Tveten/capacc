@@ -434,14 +434,14 @@ grid_plot_MLE_sparse_highcor <- function(rho = 0.99, proportions = 1/p,
 known_anom_power_runs_MLE <- function() {
   curve <- curve_params(max_dist = 0.1, n_sim = 300)
   out_file <- "power_known_anom_FINAL.csv"
-  banded_data <- init_data(n = 100, p = 10, precision_type = "banded",
-                           band = 2, locations = 50, durations = 10,
-                           change_type = "adjacent")
-  banded_variables <- list("cost"        = c("cor", "cor_exact"),
-                           "precision_est_struct" = c(NA, "correct"),
-                           "rho"         = c(0.5, 0.7, 0.9, 0.99),
-                           "proportions" = c(1, 3, 8)/8,
-                           "shape"       = c(0, 5, 6))
+  data <- init_data(n = 100, p = 10, precision_type = "banded",
+                    band = 2, locations = 50, durations = 10,
+                    change_type = "adjacent")
+  variables <- list("cost"        = c("cor", "cor_exact"),
+                    "precision_est_struct" = c(NA, "correct"),
+                    "rho"         = c(0.5, 0.7, 0.9, 0.99),
+                    "proportions" = c(1, 3, 8)/8,
+                    "shape"       = c(6, 5, 0))
   many_power_curves(out_file, variables, data, method_params(),
                     tuning_params(), curve, known = TRUE)
 }
