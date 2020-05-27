@@ -6,7 +6,7 @@ grid_plot <- function(plots, dims, title) {
   ggpubr::annotate_figure(figure, top = title)
 }
 
-save_grid_plot <- function(pp, prefix, data) {
+save_grid_plot <- function(pp, dims, prefix, data) {
   if (data$precision_type == "banded")
     precision_text <- paste0(data$band, "-banded")
   else
@@ -20,8 +20,11 @@ save_grid_plot <- function(pp, prefix, data) {
                       "_loc", data$locations,
                       "_dur", data$durations,
                       ".png")
+  width <- min(7, 1 + 2 * dims[2])
+  height <- min(8, 0.5 + 1.5 * dims[1])
   show(pp)
-  ggplot2::ggsave(file_name, width = 7, height = 5, units = "in", dpi = 800)
+  ggplot2::ggsave(file_name, width = width, height = height,
+                  units = "in", dpi = 800)
 }
 
 # test_quote <- function() {

@@ -1,6 +1,6 @@
 
 #' @export
-init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p,
+init_data <- function(n = 100, p = 10, proportions = round(sqrt(p))/p,
                       vartheta = 1, shape = 0, change_seed = NA,
                       locations = 50, durations = 10,
                       change_type = 'adjacent', changing_vars = NA,
@@ -47,6 +47,7 @@ init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p,
   #   change_type <- "adjacent_lattice"
 
   if (isTRUE(all.equal(1/p, proportions))) shape <- 0
+  proportions <- ceiling(proportions * p) / p
 
   block_size <- min(p, block_size)
   Sigma_obj <- get_Sigma(precision_type)
