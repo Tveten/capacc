@@ -424,15 +424,14 @@ grid_plot_MLE_sparse_highcor <- function(rho = 0.99, proportions = 1/p,
   curve <- curve_params(max_dist = 0.1, n_sim = n_sim)
   variables <- list("cost" = c("cor", "cor_exact"),
                     "p"    = c(5, 10, 15))
-  plot_power_curve(out_file, variables, data, method, tuning, curve, known = TRUE)
   grid_plot_power(variables, data, method, tuning, curve,
                   file_name = read_file, known = TRUE, dodge = dodge,
                   out_file = out_file)
 }
 
 #' @export
-known_anom_power_runs_MLE <- function() {
-  curve <- curve_params(max_dist = 0.1, n_sim = 300)
+known_anom_power_runs_MLE <- function(cpus = 1) {
+  curve <- curve_params(max_dist = 0.1, n_sim = 1000)
   out_file <- "power_known_anom_FINAL.csv"
   data <- init_data(n = 100, p = 10, precision_type = "banded",
                     band = 2, locations = 50, durations = 10,
@@ -442,8 +441,9 @@ known_anom_power_runs_MLE <- function() {
                     "rho"         = c(0.5, 0.7, 0.9, 0.99),
                     "proportions" = c(1, 3, 8)/8,
                     "shape"       = c(6, 5, 0))
+  tuning <- tuning_params(init_b = c(0.1, 1, 2), n_sim = 1000)
   many_power_curves(out_file, variables, data, method_params(),
-                    tuning_params(), curve, known = TRUE)
+                    tuning, curve, known = TRUE, cpus = cpus)
 }
 
 #' @export

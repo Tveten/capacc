@@ -48,6 +48,7 @@ init_data <- function(n = 100, p = 10, proportions = sqrt(p)/p,
 
   if (isTRUE(all.equal(1/p, proportions))) shape <- 0
 
+  block_size <- min(p, block_size)
   Sigma_obj <- get_Sigma(precision_type)
   if (precision_type == "lattice") band <- band(Sigma_obj$inverse)
   else if (precision_type == "global_const") band <- p - 1
