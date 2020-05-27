@@ -164,10 +164,8 @@ generate_change <- function(vartheta, J, shape, Sigma, seed = NA) {
   else if (shape == 3) mu_J <- (1:k)^(-1/2)
   else if (shape == 4) mu_J <- rchisq(k, 2)
   else if (shape == 5) mu_J <- rnorm(k)
-  else if (shape == 6) {
-    mu <- MASS::mvrnorm(1, rep(0, p), Sigma)
-    mu_J <- mu[J]
-  }
+  else if (shape == 6)
+    mu_J <- MASS::mvrnorm(1, rep(0, length(J)), Sigma[J, J, drop = FALSE])
   mu <- rep(0, p)
   mu[J] <- mu_J
   mu / vector.norm(mu) * vartheta
