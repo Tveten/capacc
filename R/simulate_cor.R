@@ -149,8 +149,20 @@ get_affected_dims <- function(change_type, prop, p, changing_vars) {
   else if (change_type == 'adjacent_lattice')
     return(unique(c(1, unlist(lattice_neighbours(p))))[1:k])
   else if (change_type == 'scattered')
-    return(round(seq(2, p - 1, length.out = k)))
-  else if (change_type == 'randomised')
+    return(round(seq(1, p, length.out = k)))
+  else if (change_type == "block_scattered") {
+    n_blocks <- min(k, 3)
+    block_sizes <- rep(k %/% n_blocks, n_blocks)
+    n_residual <- k %% n_blocks
+    if (n_residual > 0)
+      block_sizes[1:n_residual] <- block_sizes[1:n_residual] + 1
+    block_starts <- round(seq(1, p - block_sizes[n_blocks] + 1,
+                          length.out = n_blocks))
+    J <- do.call("c", lapply(1:n_blocks, function(i) {
+      block_starts[i]:(block_starts[i] + block_sizes[i] - 1)
+    }))
+    return(J)
+  } else if (change_type == 'randomised')
     return(sample(1:p, k))
 }
 
@@ -164,8 +176,14 @@ generate_change <- function(vartheta, J, shape, Sigma, seed = NA) {
   else if (shape == 3) mu_J <- (1:k)^(-1/2)
   else if (shape == 4) mu_J <- rchisq(k, 2)
   else if (shape == 5) mu_J <- rnorm(k)
-  else if (shape == 6)
-    mu_J <- MASS::mvrnorm(1, rep(0, length(J)), Sigma[J, J, drop = FALSE])
+  else {
+    if      (shape == 6) Sigma_c <- Sigma
+    else if (shape == 7) Sigma_c <- constant_cor_mat(ncol(Sigma), 0.7)
+    else if (shape == 8) Sigma_c <- constant_cor_mat(ncol(Sigma), 0.8)
+    else if (shape == 9) Sigma_c <- constant_cor_mat(ncol(Sigma), 0.9)
+    else if (shape == 10) Sigma_c <- constant_cor_mat(ncol(Sigma), 0.99)
+    mu_J <- MASS::mvrnorm(1, rep(0, length(J)), Sigma_c[J, J, drop = FALSE])
+  }
   mu <- rep(0, p)
   mu[J] <- mu_J
   mu / vector.norm(mu) * vartheta

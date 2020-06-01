@@ -32,6 +32,24 @@ read_single_result <- function(file_name, query_params, all_params, msg) {
   res
 }
 
+read_results <- function(file_name) {
+  res <- fread(paste0("./results/", file_name))
+  res[precision_est_struct == "", precision_est_struct := NA]
+  res
+}
+
+read_single_res <- function(res, query_params, all_params, msg) {
+  i <- 1
+  res_exists <- TRUE
+  while (res_exists && i <= length(query_params)) {
+    sub_res <- subset_and_check(res, query_params[i], all_params, msg)
+    res <- sub_res$res
+    res_exists <- sub_res$exists
+    i <- i + 1
+  }
+  res
+}
+
 read_power_curve <- function(file_name, all_params) {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
                     "shape", "locations", "durations", "change_type",
@@ -53,13 +71,22 @@ read_power_curve_known <- function(file_name, all_params) {
 }
 
 
-read_cpt_est <- function(file_name, all_params) {
+# read_cpt_est <- function(file_name, all_params) {
+#   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
+#                     "vartheta", "shape", "locations", "durations", "change_type",
+#                     "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
+#                     "alpha", "alpha_tol", "tuning_n_sim",
+#                     "n_sim")
+#   read_single_result(file_name, query_params, all_params, "Changepoint estimates")
+# }
+
+read_cpt_est <- function(res, all_params) {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
                     "vartheta", "shape", "locations", "durations", "change_type",
                     "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
                     "alpha", "alpha_tol", "tuning_n_sim",
                     "n_sim")
-  read_single_result(file_name, query_params, all_params, "Changepoint estimates")
+  read_single_res(res, query_params, all_params, "Changepoint estimates")
 }
 
 read_penalties <- function(file_name, all_params) {

@@ -26,7 +26,7 @@ Imports:
     arrow (>= 0.16),
     latex2exp (>= 0.4),
     Rfast (>= 1.9.9),
-    parallelMap (>= 1.5)
+    xtable (>= 1.8)
 Suggests: 
     testthat (>= 2.1.0)
 Remotes:

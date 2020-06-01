@@ -56,9 +56,9 @@ make_title <- function(params,
   if (params$precision_type == "banded")
     precision_text <- paste0("$Q(", params$band, ")$")
   else if (params$precision_type == "global_const")
-    precision_text <- "$Q_\\text{const}$"
+    precision_text <- "$Q_{const}$"
   else if (params$precision_type == "lattice")
-    precision_text <- "$Q_\\text{lat}$"
+    precision_text <- "$Q_{lat}$"
   else precision_text <- params$precision_type
   if (params$block_size < params$p)
     precision_text <- paste0(precision_text, ", m=", params$block_size)
@@ -79,11 +79,12 @@ make_title <- function(params,
                       "n"              = paste0("n=", params$n),
                       "locations"      = location_text,
                       "durations"      = paste0("e=", params$locations + params$durations),
-                      "proportions"    = paste0("$|J|=", params$proportions * params$p, "$"),
+                      "proportions"    = paste0("$J=", params$proportions * params$p, "$"),
+                      "vartheta"       = paste0("$\\vartheta =", params$vartheta, "$"),
                       "shape"          = shape_text,
                       "b"              = paste0("b=", params$b),
                       "alpha"          = alpha_text,
-                      "tuning_n_sim"   = paste0("n_{sim}=", params$tuning_n_sim))
+                      "tuning_n_sim"   = paste0("n_{sim} =", params$tuning_n_sim))
   if (any(is.na(which_parts)))
     which_parts <- names(title_parts)
   paste0(title_parts[names(title_parts) %in% which_parts], collapse = ", ")
@@ -91,22 +92,22 @@ make_title <- function(params,
 
 power_curve_title_parts <- function(vars_in_title) {
   if (any(is.na(vars_in_title)))
-    vars_in_title <- c("precision_type", "rho", "p", "n",
-                       "locations", "durations", "proportions")
-  else vars_in_title
+    return(c("precision_type", "rho", "p", "n",
+             "locations", "durations", "proportions"))
+  else return(vars_in_title)
 }
 
 cpt_distr_title_parts <- function(vars_in_title) {
   if (any(is.na(vars_in_title)))
-    vars_in_title <- c("precision_type", "rho", "p", "n",
-                       "locations", "proportions", "shape")
-  else vars_in_title
+    return(c("precision_type", "rho", "p", "n",
+             "locations", "vartheta", "proportions", "shape"))
+  else return(vars_in_title)
 }
 
 penalties_title_parts <- function(vars_in_title) {
   if (any(is.na(vars_in_title)))
-    vars_in_title <- c("precision_type", "p", "n", "alpha", "tuning_n_sim")
-  else vars_in_title
+    return(c("precision_type", "p", "n", "alpha", "tuning_n_sim"))
+  else return(vars_in_title)
 }
 
 
