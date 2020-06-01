@@ -126,3 +126,9 @@ adjacent_dist <- function(x) {
 is_equal <- function(x_vec, y, tol = sqrt(.Machine$double.eps)) {
   x_vec >= y - tol & x_vec <= y + tol
 }
+
+`..` <- function (..., .env = sys.parent(2))
+{
+  get(deparse(substitute(...)), env = .env)
+}
+
