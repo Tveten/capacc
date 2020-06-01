@@ -52,7 +52,7 @@ many_cpt_est <- function(out_file, variables, data = init_data(),
   Map(sim_cpt_est,
       data = params$data,
       method = params$method,
-      seed = get_sim_seeds(params, variables),
+      seed = get_sim_seeds(variables),
       MoreArgs = list("out_file" = out_file,
                       "tuning"   = tuning,
                       "n_sim"    = n_sim))
