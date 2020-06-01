@@ -1,17 +1,3 @@
-
-get_sim_seeds <- function(params_list, variables) {
-  # Uses structure of output from expand.grid.
-  same_seed_names <- c("cost", "precision_est_struct", "est_band")
-  variable_names <- names(variables)
-  ind_names_present <- which(variable_names %in% same_seed_names)
-  if (length(ind_names_present) != max(ind_names_present))
-    stop("cost, precision_est_struct and est_band must be the first elements of 'variables' for seeds to be correct")
-  n_costs <- Reduce(`*`, vapply(variables[ind_names_present], length, numeric(1)))
-  n_settings <- length(params_list[[1]])
-  n_unique_seeds <- n_settings / n_costs
-  rep(sample(1:10^6, n_unique_seeds), each = n_costs)
-}
-
 get_adj_mat <- function(data, method) {
   if (method$precision_est_struct == "correct")
     return(as.matrix(data$Sigma_inv))
@@ -50,6 +36,60 @@ mu_from_vartheta <- function(vartheta, p, prop) {
 
 vartheta_from_mu <- function(mu, p, prop) {
   mu * sqrt(round(prop * p))
+}
+
+# get_sim_seeds <- function(params_list, variables) {
+#   # Uses structure of output from expand.grid.
+#   same_seed_names <- c("cost", "precision_est_struct", "est_band")
+#   variable_names <- names(variables)
+#   ind_names_present <- which(variable_names %in% same_seed_names)
+#   if (length(ind_names_present) != max(ind_names_present))
+#     stop("cost, precision_est_struct and est_band must be the first elements of 'variables' for seeds to be correct")
+#   n_costs <- Reduce(`*`, vapply(variables[ind_names_present], length, numeric(1)))
+#   n_settings <- length(params_list[[1]])
+#   n_unique_seeds <- n_settings / n_costs
+#   rep(sample(1:10^6, n_unique_seeds), each = n_costs)
+# }
+
+get_sim_seeds <- function(vars, prune = TRUE) {
+  if (prune) var_grid <- cost_pruned_expand_grid(vars)
+  else       var_grid <- as.data.table(expand.grid(vars, stringsAsFactors = FALSE))
+  cost_vars <- c("cost", "precision_est_struct", "est_band")
+  var_grid <- var_grid[, "seed" := sample(1:10^6, 1),
+                       by = c(names(var_grid)[!names(var_grid) %in% cost_vars])]
+  var_grid$seed
+}
+
+expand_list <- function(a, vars, prune = TRUE) {
+  if (prune) var_grid <- as.data.frame(cost_pruned_expand_grid(vars))
+  else       var_grid <- expand.grid(vars, stringsAsFactors = FALSE)
+  var_names <- names(var_grid)
+
+  # For loop to avoid "c" being used on each row of var_grid, which might change
+  # the type of variables.
+  out_list <- list()
+  for (i in 1:nrow(var_grid)) {
+    a_copy <- a
+    for (j in 1:ncol(var_grid)) {
+      a_copy[[var_names[j]]] <- unname(var_grid[i, j])
+    }
+    out_list[[length(out_list) + 1]] <- a_copy
+  }
+  out_list
+}
+
+cost_pruned_expand_grid <- function(vars) {
+  var_grid <- as.data.table(expand.grid(vars, stringsAsFactors = FALSE))
+  # if (!any(vars$cost %in% c("iid", "cor"))) return(var_grid)
+  cost_vars <- c("cost", "precision_est_struct", "est_band")
+  var_grid <- var_grid[, rbind(.SD[cost == "iid"][1],
+                   .SD[cost == "cor" & is.na(precision_est_struct)][1],
+                   .SD[cost == "cor" & precision_est_struct == "correct"][1],
+                   .SD[cost != "iid" &
+                         !(cost == "cor" & is.na(precision_est_struct)) &
+                         !(cost == "cor" & precision_est_struct == "correct")]),
+           by = c(names(var_grid)[!names(var_grid) %in% cost_vars])]
+  var_grid[!is.na(cost)]
 }
 
 split_params <- function(a, grouping) {

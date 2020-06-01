@@ -123,8 +123,7 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
 }
 
 many_power_curves <- function(out_file, variables, data = init_data(),
-                              method = method_params(),
-                              tuning = tuning_params(),
+                              method = method_params(), tuning = tuning_params(),
                               curve  = curve_params(max_dist = 0.1, n_sim = 300),
                               known = FALSE, loc_tol = 10, cpus = 1) {
   params <- split_params(
@@ -132,18 +131,20 @@ many_power_curves <- function(out_file, variables, data = init_data(),
     list("data"   = names(data),
          "method" = names(method))
   )
+  seeds <- get_sim_seeds(variables)
+  if (length(seeds) != length(params$data))
+    stop("Bug: Length of seeds should be equal to number of parameter settings.")
   if (cpus == 1)
     Map(power_curve,
         data   = params$data,
         method = params$method,
-        seed   = get_sim_seeds(params, variables),
+        seed   = seeds,
         MoreArgs = list("out_file"     = out_file,
                         "tuning"        = tuning,
                         "curve"         = curve,
                         "loc_tol"       = loc_tol,
                         "known"         = known))
   else if (cpus > 1) {
-    seeds <- get_sim_seeds(params, variables)
     comp_cluster <- setup_parallel(cpus)
     `%dopar%` <- foreach::`%dopar%`
     res <- foreach::foreach(i = 1:length(params$data),
@@ -221,14 +222,8 @@ plot_power_curve <- function(file_name, variables,
 }
 
 #' @export
-grid_plot_power <- function(variables = list("rho" = c(-0.3, 0.9),
-                                             "proportions" = c(1, 0.3, 0.1)),
-                            data = init_data(n = 100, p = 10,
-                                             precision_type = "banded",
-                                             locations = 50, durations = 10,
-                                             change_type = "adjacent"),
-                            method = method_params(),
-                            tuning = tuning_params(),
+grid_plot_power <- function(variables, data = init_data(),
+                            method = method_params(), tuning = tuning_params(),
                             curve = curve_params(max_dist = 0.1, n_sim = 300),
                             file_name = "power.csv", known = FALSE, loc_tol = 10,
                             dodge = FALSE, out_file = NULL) {
@@ -552,8 +547,8 @@ all_known_power_runs100 <- function() {
 
   known_anom_power_runs(100, "banded", shape = 0, change_type = "block_scattered",
                         rho = c(0.9, 0.7, 0.5), proportions = 0.1)
-  known_anom_power_runs(100, "banded", shape = 8)
-  known_anom_power_runs(100, "lattice", shape = 8)
+  known_anom_power_runs(100, "banded", shape = 8:9, rho = c(0.9, 0.7, 0.5))
+  known_anom_power_runs(100, "lattice", shape = 8:9, rho = c(0.9, 0.7, 0.5))
 }
 
 #' @export
