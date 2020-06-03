@@ -286,7 +286,7 @@ simulate_detection_known <- function(data = init_data(), method = method_params(
       mu <- generate_change(method$size_mu, data$p, 0)
       return(list(S_max = optimal_mvnormal_dense_saving(x_anom, Q_hat, mu, alpha)))
     }
-  } else if (method$cost == "inspect") {
+  } else if (method$cost == "sinspect") {
     Q_hat <- get_Q_hat(x$x, data, method)
     single_cor_inspect(t(x$x), Q_hat, method$b, data$locations, standardize.series = TRUE)
   } else if (method$cost == "mvlrt") {
