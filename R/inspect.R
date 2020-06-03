@@ -463,3 +463,50 @@ cor_inspect <- function(x, Q, lambda, threshold, schatten=c(1, 2), M){
     return(ret)
 }
 
+anomalies_inspect <- function(res, x, tol = sqrt(0.5)) {
+  res <- as.data.table(res)
+  n <- nrow(x)
+  res <- rbind(data.table(location = 0, max.proj.cusum = 0, depth = 0),
+               res,
+               data.table(location = n, max.proj.cusum = 0, depth = 0))
+  res$mean_size <- 0
+  for (i in 2:length(res$location)) {
+    seg_mean <- colMeans(x[(res$location[i - 1] + 1):res$location[i], , drop = FALSE])
+    res$mean_size[i] <- sign(sum(seg_mean)) * sqrt(sum(seg_mean^2))
+  }
+  print(res)
+  starts <- NULL
+  ends <- NULL
+  in_anom <- FALSE
+  curr_start_ind <- 0
+  i <- 2
+  while (i <= nrow(res)) {
+    if (!in_anom && abs(res$mean_size[i]) >= tol) {
+      curr_start_ind <- i - 1
+      starts <- c(starts, res$location[curr_start_ind] + 1)
+      in_anom <- TRUE
+      i <- i + 1
+    } else {
+      if (in_anom) {
+        end_anom <- is_in_interval(res$mean_size[i], c(-tol, tol))
+        switch_anom <- (res$mean_size[curr_start_ind + 1] < 0 && res$mean_size[i] > tol) ||
+          (res$mean_size[curr_start_ind + 1] > 0 && res$mean_size[i] < - tol)
+        if (end_anom) {
+          ends <- c(ends, res$location[i - 1])
+          in_anom <- FALSE
+        } else if (switch_anom) {
+          ends <- c(ends, res$location[i - 1])
+          curr_start_ind <- i - 1
+          starts <- c(starts, res$location[curr_start_ind] + 1)
+        }
+      }
+      i <- i + 1
+    }
+  }
+  if (in_anom) ends <- c(ends, res[.N, location])
+  anoms <- data.table(start = starts, end = ends)
+  point_anoms <- data.table(location = anoms[start == end, start])
+  list("collective" = anoms[start != end],
+       "point"      = point_anoms)
+}
+
