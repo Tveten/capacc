@@ -115,6 +115,7 @@ multiple_anom_setup <- function(p = 10, precision_type = "banded",
        tuning = tuning, out_file = out_file)
 }
 
+#' @export
 multiple_anom_runs <- function(p = 10, precision_type = "banded",
                                location = 300, duration = 10,
                                point_anoms = FALSE, shape = c(5, 6, 8),
@@ -135,6 +136,7 @@ all_multiple_anom_runs10 <- function() {
   multiple_anom_runs(10, "global_const", point_anoms = TRUE)
 }
 
+#' @export
 all_multiple_anom_runs100 <- function() {
   multiple_anom_runs(100, "lattice")
   multiple_anom_runs(100, "lattice", point_anoms = TRUE)
