@@ -342,6 +342,7 @@ write_cpt_mse <- function(p = 10,
             setup$n_sim, loc_tol)
 }
 
+#' @export
 write_all_mses <- function() {
   for (vartheta in 1:3) {
     print(paste0("vartheta = ", vartheta))
