@@ -90,8 +90,6 @@ many_classifications <- function(out_file, variables, data = init_data(),
   NULL
 }
 
-# vary vartheta, shape, precision_type, rho
-
 multiple_anom_setup <- function(p = 10, precision_type = "banded",
                                 location = 300, duration = 10,
                                 point_anoms = FALSE, shape = c(5, 6, 8),

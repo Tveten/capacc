@@ -204,7 +204,7 @@ cpt_est_setup <- function(p = 10, precision_type = "banded",
   data <- init_data(n = n, p = p, precision_type = precision_type, band = band,
                     vartheta = vartheta, locations = locations, durations = durations)
   method <- method_params()
-  tuning <- tuning_params(init_b = c(0.1, 1, 3, 20), n_sim = n_sim)
+  tuning <- tuning_params(init_b = c(0.001, 0.1, 1, 3, 20), n_sim = n_sim)
   variables <- list("cost"        = c("sinspect", "mvlrt"),
                     "precision_est_struct" = precision_est_struct,
                     "est_band"    = est_band,
@@ -306,7 +306,7 @@ write_cpt_mse <- function(p = 10,
              "n_sim" = "n_sim")
       ))
       res <- do.call("rbind",
-                     Map(read_cpt_est,
+                     Map(read_cpt_est_res,
                          params,
                          MoreArgs = list(res = res)))
       res <- rename_cost(res)
