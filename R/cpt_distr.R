@@ -205,7 +205,7 @@ cpt_est_setup <- function(p = 10, precision_type = "banded",
                     vartheta = vartheta, locations = locations, durations = durations)
   method <- method_params()
   tuning <- tuning_params(init_b = c(0.1, 1, 3, 20), n_sim = n_sim)
-  variables <- list("cost"        = c("inspect", "mvlrt"),
+  variables <- list("cost"        = c("sinspect", "mvlrt"),
                     "precision_est_struct" = precision_est_struct,
                     "est_band"    = est_band,
                     "rho"         = rho,

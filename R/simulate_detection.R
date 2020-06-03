@@ -37,7 +37,7 @@ init_data <- function(n = 100, p = 10, proportions = round(sqrt(p))/p,
     }
   }
 
-  if (change_type == "custom") {
+  if (any(change_type == "custom")) {
     if (!is.na(changing_vars))
       proportions <- length(changing_vars) / p
     else
@@ -76,6 +76,39 @@ init_data <- function(n = 100, p = 10, proportions = round(sqrt(p))/p,
        'point_mu'          = point_mu)
 }
 
+init_data_mc <- function(n = 1000, p = 10, vartheta = 1, shape = 6,
+                         location = 300, duration = 10, change_type = 'adjacent',
+                         precision_type = 'banded', rho = 0.9,
+                         point_anoms = FALSE,
+                         band = 2, block_size = p) {
+  locations <- 1:3 * location
+  durations <- sample(1:3, 3) * duration
+  varthetas <- 1:3 * vartheta
+  proportions <- c(1/p, round(sqrt(p)) / p, 3 * round(sqrt(p)) / p)
+  change_types <- c("adjacent", "adjacent", "block_scattered")
+  if (point_anoms) {
+    point_locations <- round(c(5, 10, 50, 200, 350, 370, 660, 700, 800, 950) / 1000 * n)
+    point_proportions <- rep(1/p, length(point_locations))
+    point_mu <- rnorm(length(point_locations), 0, 4 * log(p))
+  } else point_locations <- point_proportions <- point_mu <- NA
+
+  init_data(n                 = n,
+            p                 = p,
+            proportions       = proportions,
+            vartheta          = varthetas,
+            shape             = shape,
+            locations         = locations,
+            durations         = durations,
+            change_type       = change_types,
+            point_locations   = point_locations,
+            point_proportions = point_proportions,
+            point_mu          = point_mu,
+            precision_type    = precision_type,
+            rho               = rho,
+            band              = band,
+            block_size        = block_size)
+}
+
 init_data_ <- function(data) {
   init_data(n                 = data$n,
             p                 = data$p,
@@ -100,7 +133,7 @@ init_data_ <- function(data) {
 method_params <- function(cost = "cor", b = 1, minsl = 2, maxsl = 100,
                           precision_est_struct = "correct", est_band = NA,
                           size_mu = NA) {
-  if (cost == "inspect" && !is.na(precision_est_struct)) {
+  if (grepl("inspect", cost) && !is.na(precision_est_struct)) {
     if (is.na(est_band) || est_band != 0)
       precision_est_struct <- "correct"
   }
@@ -145,12 +178,16 @@ simulate_detection <- function(data = init_data(), method = method_params(),
     if (res$value <= 0)
       return(data.table("cpt" = NA, "variate" = NA, "mean1" = NA, "mean2" = NA))
     else {
-      if (cost == "inspect") res$J <- which(res$proj != 0)
+      if (cost == "sinspect") res$J <- which(res$proj != 0)
       mean1 <- colMeans(x$x[1:res$cpt, res$J, drop = FALSE])
       mean2 <- colMeans(x$x[(res$cpt + 1):nrow(x$x), res$J, drop = FALSE])
       return(data.table("cpt" = res$cpt, "variate" = res$J,
                         "mean1" = mean1, "mean2" = mean2))
     }
+  }
+
+  format_inspect_out <- function(res) {
+
   }
 
   format_output <- function(cost, res) {
@@ -163,8 +200,10 @@ simulate_detection <- function(data = init_data(), method = method_params(),
     else if (cost == "iid")
       return(list("collective" = anomaly::collective_anomalies(res),
                   "point"      = anomaly::point_anomalies(res)))
-    else if (cost %in% c("mvlrt", "inspect"))
+    else if (cost %in% c("mvlrt", "sinspect"))
       return(format_cpt_out(cost, res))
+    else if (cost == "inspect")
+      return(format_inspect_out(res))
   }
 
   if (!is.null(seed)) set.seed(seed)
@@ -194,9 +233,12 @@ simulate_detection <- function(data = init_data(), method = method_params(),
     res <- single_mvnormal_changepoint(x$x, Q_hat,
                                        b = method$b,
                                        min_seg_len = method$minsl)
-  } else if (method$cost == "inspect") {
+  } else if (method$cost == "sinspect") {
     Q_hat <- get_Q_hat(x$x, data, method)
     res <- single_cor_inspect(t(x$x), Q_hat, method$b)
+  } else if (method$cost == "inspect") {
+    Q_hat <- get_Q_hat(x$x, data, method)
+    res <- cor_inspect(t(x$x), Q_hat)$changepoints
   }
   if (standardise_output) return(format_output(method$cost, res))
   else return(res)

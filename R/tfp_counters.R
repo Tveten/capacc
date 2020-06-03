@@ -31,3 +31,116 @@ count_tfp_anom <- function(anom_list, tol, data) {
   return(data.frame("fp" = fp, "tp" = tp, "n_fp" = n_fp, "n_tp" = n_tp))
 }
 
+count_collective_anomalies <- function(anom_list) {
+  collective_anoms <- anom_list$collective
+  if (nrow(collective_anoms) == 0) return(0)
+  else return(length(unique(collective_anoms$start)))
+}
+
+rand_counts_mvcapa <- function(anom_list, data) {
+  true_anoms <- data.frame("start" = data$locations + 1,
+                           "end"   = data$locations + data$durations)
+  est_anoms <- data.frame("start" = unique(anom_list$collective$start),
+                          "end"   = unique(anom_list$collective$end))
+}
+
+label_anom_est <- function(anom_list, data) {
+  labs <- rep(0, data$n)
+  starts <- unique(anom_list$collective$start)
+  ends <- unique(anom_list$collective$end)
+  point_anoms <- anom_list$point$location
+  anom_inds <- c(unlist(lapply(1:length(starts), function(i) {
+    starts[i]:ends[i]
+  })), anom_list$point$location)
+  labs[anom_inds] <- 1
+  labs
+
+}
+
+true_labels <- function(data) {
+  labs <- rep(0, data$n)
+  anom_inds <- c(unlist(lapply(1:length(data$locations), function(i) {
+    (data$locations[i] + 1):(data$locations[i] + data$durations[i])
+  })), data$point_locations)
+  labs[anom_inds] <- 1
+  labs
+}
+
+count_binary_tfp <- function(x, y) {
+  tp <- sum(x & y)
+  tn <- sum(!x & !y)
+  fp <- sum(x & !y)
+  fn <- sum(!x & y)
+  list(tp = tp, tn = tn, fp = fp, fn = fn)
+}
+
+count_rand_tfp <- function(x, y) {
+  # x: Estimated classification labels.
+  # y: True classification labels.
+
+  equal_label <- function(u) {
+    force(u)
+    function(i, j) {
+      u[i] == u[j]
+    }
+  }
+
+  n <- length(unlist(x))
+  inds <- combn(1:n, 2)
+  equal_lab_x <- unlist(Map(equal_label(x), i = inds[1, ], j = inds[2, ]))
+  equal_lab_y <- unlist(Map(equal_label(y), i = inds[1, ], j = inds[2, ]))
+  tp <- sum(equal_lab_x & equal_lab_y)
+  tn <- sum(!equal_lab_x & !equal_lab_y)
+  fp <- sum(equal_lab_x & !equal_lab_y)
+  fn <- sum(!equal_lab_x & equal_lab_y)
+  list(tp_rand = tp, tn_rand = tn, fp_rand = fp, fn_rand = fn)
+}
+
+adjusted_rand_index <- function(x, y) {
+  stopifnot(length(x) == length(y))
+  x_labs <- unique(x)
+  y_labs <- unique(y)
+  n <- matrix(0, nrow = length(x_labs), ncol = length(y_labs))
+  for (i in seq_along(x_labs)) {
+    for (j in seq_along(y_labs)) {
+      n[i, j] <- sum(x == x_labs[i] & y == y_labs[j])
+    }
+  }
+  a <- rowSums(n)
+  b <- colSums(n)
+  m <- length(x)
+  ab_sum <- sum(choose(a, 2)) + sum(choose(b, 2))
+  ab_prod <- sum(choose(a, 2)) * sum(choose(b, 2)) / choose(m, 2)
+  (sum(choose(n, 2)) - ab_prod) / (ab_sum / 2 - ab_prod)
+}
+
+
+perf_metric_texts <- function(postfix = NULL) {
+  list(tp = paste0("tp", postfix),
+       fp = paste0("fp", postfix),
+       tn = paste0("tn", postfix),
+       fn = paste0("fn", postfix))
+}
+
+precision <- function(a, postfix = NULL) {
+  e <- perf_metric_texts(postfix)
+  a[[e$tp]] / (a[[e$tp]] + a[[e$fp]])
+}
+
+recall <- function(a, postfix = NULL) {
+  e <- perf_metric_texts(postfix)
+  a[[e$tp]] / (a[[e$tp]] + a[[e$fn]])
+}
+
+acc <- function(a, postfix = NULL) {
+  e <- perf_metric_texts(postfix)
+  (a[[e$tp]] + a[[e$tn]]) / (a[[e$tp]] + a[[e$tn]] + a[[e$fn]] + a[[e$fp]])
+}
+
+bacc <- function(a, postfix = NULL) {
+  e <- perf_metric_texts(postfix)
+  (a[[e$tp]] / (a[[e$tp]] + a[[e$fn]]) + a[[e$tn]] / (a[[e$tn]] + a[[e$fp]])) / 2
+}
+
+
+

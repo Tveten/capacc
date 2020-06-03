@@ -76,7 +76,7 @@ inds_from_intervals <- function(starts, ends, n) {
 dot_every <- function(n, f) {
   i <- 1
   function(...) {
-    if (i %% n) cat(".")
+    if (i %% n == 0) cat(".")
     i <<- i + 1
     f(...)
   }

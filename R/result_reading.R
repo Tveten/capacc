@@ -50,6 +50,14 @@ read_single_res <- function(res, query_params, all_params, msg) {
   res
 }
 
+read_anom_class <- function(file_name, all_params) {
+  query_params <- c("n", "p", "rho", "precision_type", "band", "block_size",
+                    "shape", "locations", "durations", "vartheta",
+                    "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
+                    "alpha", "alpha_tol", "tuning_n_sim")
+  read_single_result(file_name, query_params, all_params, "Anomaly classification")
+}
+
 read_power_curve <- function(file_name, all_params) {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
                     "shape", "locations", "durations", "change_type",
@@ -69,7 +77,6 @@ read_power_curve_known <- function(file_name, all_params) {
                     "loc_tol")
   res <- read_single_result(file_name, query_params, all_params, "A power curve (known anom)")
 }
-
 
 # read_cpt_est <- function(file_name, all_params) {
 #   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
