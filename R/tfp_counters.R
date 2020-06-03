@@ -48,11 +48,16 @@ label_anom_est <- function(anom_list, data) {
   labs <- rep(0, data$n)
   starts <- unique(anom_list$collective$start)
   ends <- unique(anom_list$collective$end)
+  anom_inds <- integer(0)
+  if (!any(is.na(starts)))
+    anom_inds <- c(anom_inds, unlist(lapply(1:length(starts), function(i) {
+      starts[i]:ends[i]
+    })))
   point_anoms <- anom_list$point$location
-  anom_inds <- c(unlist(lapply(1:length(starts), function(i) {
-    starts[i]:ends[i]
-  })), anom_list$point$location)
-  labs[anom_inds] <- 1
+  if (!any(is.na(point_anoms)))
+    anom_inds <- c(anom_inds, point_anoms)
+  if (length(anom_inds) > 0)
+    labs[anom_inds] <- 1
   labs
 
 }
@@ -124,12 +129,14 @@ perf_metric_texts <- function(postfix = NULL) {
 
 precision <- function(a, postfix = NULL) {
   e <- perf_metric_texts(postfix)
-  a[[e$tp]] / (a[[e$tp]] + a[[e$fp]])
+  if ((a[[e$tp]] + a[[e$fp]]) > 0) return(a[[e$tp]] / (a[[e$tp]] + a[[e$fp]]))
+  else return(0)
 }
 
 recall <- function(a, postfix = NULL) {
   e <- perf_metric_texts(postfix)
-  a[[e$tp]] / (a[[e$tp]] + a[[e$fn]])
+  if (a[[e$tp]] + a[[e$fn]] > 0) return(a[[e$tp]] / (a[[e$tp]] + a[[e$fn]]))
+  else return(0)
 }
 
 acc <- function(a, postfix = NULL) {
