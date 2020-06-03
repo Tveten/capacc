@@ -233,7 +233,7 @@ grid_plot_power <- function(variables, data = init_data(),
   if (length(grid_variables) > 2)
     stop("Maximum two variables in addition to 'cost' and 'precision_est_struct' at a time.")
   params_list <- split_params(
-    expand_list(c(data, method), grid_variables),
+    expand_list(c(data, method), grid_variables, prune = FALSE),
     list("data"   = names(data),
          "method" = names(method))
   )
@@ -248,13 +248,16 @@ grid_plot_power <- function(variables, data = init_data(),
                                "known"         = known,
                                "vars_in_title" = names(variables),
                                "dodge"         = dodge))
-  vars_in_title <- names(data)[!names(data) %in% names(variables)]
+  # vars_in_title <- names(data)[!names(data) %in% names(variables)]
+  vars_in_title <- power_curve_title_parts(NA)
+  vars_in_title <- vars_in_title[!vars_in_title %in% names(variables)]
   n_col <- length(grid_variables[[1]])
   if (length(grid_variables) < 2) n_row <- 1
   else n_row <- length(grid_variables[[2]])
   dims <- c(n_row, n_col)
   pp <- grid_plot(plots, dims,
-                  latex2exp::TeX(paste0("Power curves for ", make_title(c(data, method), vars_in_title))))
+                  latex2exp::TeX(paste0("Power curves for ",
+                                        make_title(c(data, method), vars_in_title))))
   if (!is.null(out_file)) save_grid_plot(pp, dims, out_file, data)
   else return(pp)
 }
@@ -554,9 +557,10 @@ all_known_power_runs100 <- function() {
 #' @export
 grid_plot_power_known_anom <- function(p = 10, precision_type = "banded",
                                        shape = 6, rho = c(0.5, 0.7, 0.9),
+                                       change_type = "adjacent",
                                        proportions = NULL, dodge = FALSE,
                                        out_file = "power_known_anom") {
-  setup <- known_anom_setup(p, precision_type, shape)
+  setup <- known_anom_setup(p, precision_type, shape, change_type = change_type)
   setup$data$shape <- shape
   if (is.null(proportions)) proportions <- setup$variables$proportions
   variables <- c(setup$variables[c("cost", "precision_est_struct", "est_band")],
@@ -736,7 +740,22 @@ make_all_plots <- function() {
       precision_type = precision_types,
       shape          = shapes)
 
+  ps <- rep(100, 4)
+  precision_types <- rep(c("banded", "lattice"), each = 2)
+  shapes <- rep(8:9, 2)
+  Map(grid_plot_power_known_anom,
+      p              = ps,
+      precision_type = precision_types,
+      shape          = shapes)
+
+  grid_plot_power_known_anom(p = 100, precision_type = "banded", shape = 0,
+                             change_type = "block_scattered", proportions = 0.1,
+                             out_file = "power_known_anom_block_scattered")
+
   # Single changepoint plots.
+  ps <- rep(c(10, 16, 10, 100, 100, 100), each = 3)
+  precision_types <- rep(rep(c("banded", "lattice", "global_const"), each = 3), 2)
+  shapes <- rep(c(0, 5, 6), 6)
   Map(grid_plot_power_known_cpt,
       p              = ps,
       precision_type = precision_types,

@@ -69,6 +69,8 @@ make_title <- function(params,
   if (params$shape == 0) shape_text <- "equal changes"
   else if (params$shape == 5) shape_text <- "iid changes"
   else if (params$shape == 6) shape_text <- "cor changes"
+  else if (params$shape == 8) shape_text <- "cor $0.8$ changes"
+  else if (params$shape == 9) shape_text <- "cor $0.9$ changes"
   else shape_text <- paste0("sh=", params$shape)
 
   alpha_text <- paste0("$\\alpha =", params$alpha, "\\pm ", params$alpha_tol, "$")
@@ -93,7 +95,7 @@ make_title <- function(params,
 power_curve_title_parts <- function(vars_in_title) {
   if (any(is.na(vars_in_title)))
     return(c("precision_type", "rho", "p", "n",
-             "locations", "durations", "proportions"))
+             "locations", "durations", "proportions", "shape"))
   else return(vars_in_title)
 }
 
