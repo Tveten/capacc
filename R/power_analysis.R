@@ -642,7 +642,6 @@ plot_power_known_dense_anom <- function() {
                    tuning = tuning, curve = curve, known = TRUE, dodge = TRUE)
 }
 
-
 #################
 #### known changepoint runs
 #################
@@ -657,7 +656,7 @@ known_cpt_setup <- function(p = 10, precision_type = "banded",
     n <- 2 * p
     n_sim <- 500
   }
-  if (is.null(locations)) locations <- n - 10
+  if (is.null(locations)) locations <- n - 30
 
   durations <- n - locations
   band <- 2
@@ -669,7 +668,7 @@ known_cpt_setup <- function(p = 10, precision_type = "banded",
   data <- init_data(n = n, p = p, precision_type = precision_type,
                     band = band, locations = locations, durations = durations)
   method <- method_params()
-  variables <- list("cost"        = c("inspect", "mvlrt"),
+  variables <- list("cost"        = c("sinspect", "mvlrt"),
                     "precision_est_struct" = precision_est_struct,
                     "est_band"    = est_band,
                     "rho"         = rho,

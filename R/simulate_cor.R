@@ -69,6 +69,10 @@ simulate_cor <-function(n=100,p=10,vartheta=1,shape=0,change_seed=NA,
     {
         stop("vartheta must be a scalar or a vector the same size as locations")
     }
+    if(length(change_type) != 1 && length(change_type) != length(locations))
+    {
+        stop("change_type must be a scalar or a vector the same size as locations")
+    }
     if(length(durations) == 1)
     {
         durations <- rep(durations,length(locations))
@@ -80,6 +84,10 @@ simulate_cor <-function(n=100,p=10,vartheta=1,shape=0,change_seed=NA,
     if(length(vartheta) == 1)
     {
         vartheta <- rep(vartheta, length(locations))
+    }
+    if(length(change_type) == 1)
+    {
+        change_type <- rep(change_type, length(locations))
     }
     if(!Reduce("&",locations+durations <= n))
     {
@@ -93,16 +101,15 @@ simulate_cor <-function(n=100,p=10,vartheta=1,shape=0,change_seed=NA,
     for (k in 1:length(s))
     {
       if (vartheta[k] > 0 && proportions[k] > 0) {
-        J <- get_affected_dims(change_type, proportions[k], p, changing_vars)
-        mu[k, ] <- generate_change(vartheta, J, shape, Sigma, change_seed)
-        # mu[k, J] <- mu_J
+        J <- get_affected_dims(change_type[k], proportions[k], p, changing_vars)
+        mu[k, ] <- generate_change(vartheta[k], J, shape, Sigma, change_seed)
         mu_mat <- t(replicate(e[k] - s[k], mu[k, ]))
         X[(s[k] + 1):e[k], ] <- X[(s[k] + 1):e[k], ] + mu_mat
       }
     }
     if (!any(is.na(point_locations))) {
       for (k in 1:length(point_locations)) {
-        J <- get_affected_dims(change_type, point_proportions[k])
+        J <- get_affected_dims("random", point_proportions[k], p, changing_vars)
         X[point_locations[k], J] <- X[point_locations[k], J] + point_mu[k]
       }
     }
@@ -162,7 +169,7 @@ get_affected_dims <- function(change_type, prop, p, changing_vars) {
       block_starts[i]:(block_starts[i] + block_sizes[i] - 1)
     }))
     return(J)
-  } else if (change_type == 'randomised')
+  } else if (change_type == 'random')
     return(sample(1:p, k))
 }
 

@@ -144,11 +144,11 @@ rename_cost <- function(res) {
       "cost" := "ML(\\hat{Q}(W^*))$)"]
 
   # Changepoint costs
-  res[cost == "inspect" & is.na(precision_est_struct),
+  res[grepl("inspect", cost) & is.na(precision_est_struct),
       "cost" := "inspect($Q$)"]
-  res[cost == "inspect" & precision_est_struct == "correct",
+  res[grepl("inspect", cost) & precision_est_struct == "correct",
       "cost" := "inspect($\\hat{Q}$)"]
-  res[cost == "inspect" & precision_est_struct == "banded",
+  res[grepl("inspect", cost) & precision_est_struct == "banded",
       "cost" := "inspect($I$)"]
   res[cost == "mvlrt" & is.na(precision_est_struct), "cost" :=
         "MVCPT($Q$)"]
