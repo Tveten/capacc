@@ -1,8 +1,7 @@
 
 #' @export
 classify_anom <- function(out_file, data = init_data(), method = method_params(),
-                          tuning = tuning_params(), n_sim = 100, seed = NA,
-                          cpus = 1) {
+                          tuning = tuning_params(), n_sim = 100, seed = NA) {
   format_data <- function(data) {
     data$locations <- data$locations[1]
     data$durations <- min(data$durations)
@@ -46,11 +45,12 @@ classify_anom <- function(out_file, data = init_data(), method = method_params()
                   "arand_acc"      = adjusted_rand_index(est_labs, true_labs)))
   }
 
-  message(paste0("Simulating multiple anom classification for n=", data$n,
+  message(paste0("Multiple anomaly classification for n=", data$n,
                  ", p=", data$p,
                  ", precision=", data$precision_type,
                  ", band=", data$band,
                  ", rho=", data$rho,
+                 ", vartheta=", data$vartheta[1],
                  ", shape=", data$shape,
                  ", cost=", method$cost,
                  ", precision_est_struct=", method$precision_est_struct,
@@ -66,7 +66,81 @@ classify_anom <- function(out_file, data = init_data(), method = method_params()
   res <- as.data.table(t(replicate(n_sim, sim_classify_with_progress())))
   cat("\n")
   print(res)
-  # fwrite(add_setup_info(res), paste0("./results/", out_file), append = TRUE)
+  fwrite(add_setup_info(res), paste0("./results/", out_file), append = TRUE)
 }
 
+many_classifications <- function(out_file, variables, data = init_data(),
+                                 method = method_params(),
+                                 tuning = tuning_params(), n_sim = 100) {
+  params <- split_params(
+    expand_list(c(data, method), variables),
+    list("data"   = names(data),
+         "method" = names(method))
+  )
+  seeds <- get_sim_seeds(variables)
+  if (length(seeds) != length(params$data))
+    stop("Bug: Length of seeds should be equal to number of parameter settings.")
+  Map(classify_anom,
+      data   = params$data,
+      method = params$method,
+      seed   = seeds,
+      MoreArgs = list("out_file"      = out_file,
+                      "tuning"        = tuning,
+                      "n_sim"         = n_sim))
+  NULL
+}
+
+# vary vartheta, shape, precision_type, rho
+
+multiple_anom_setup <- function(p = 10, precision_type = "banded",
+                                location = 300, duration = 10,
+                                point_anoms = FALSE, shape = c(5, 6, 8),
+                                rho = c(0.9, 0.7, 0.5),
+                                vartheta = c(2, 1.5, 1)) {
+  data <- init_data_mc(p = p, location = location, duration = duration,
+                       precision_type = precision_type,
+                       point_anoms = point_anoms, band = 2)
+  method <- method_params(b = NA)
+  precision_est_struct <- "banded"
+  est_band <- c(0, 4)
+  variables <- list("cost"        = c("iid", "cor", "inspect"),
+                    "precision_est_struct" = precision_est_struct,
+                    "est_band"    = est_band,
+                    "rho"         = rho,
+                    "vartheta"    = vartheta,
+                    "shape"       = shape)
+  tuning <- tuning_params(init_b = c(0.1, 1, 4), n_sim = 200)
+  out_file <- "multiple_anom_FINAL.csv"
+  list(variables = variables, data = data, method = method,
+       tuning = tuning, out_file = out_file)
+}
+
+multiple_anom_runs <- function(p = 10, precision_type = "banded",
+                               location = 300, duration = 10,
+                               point_anoms = FALSE, shape = c(5, 6, 8),
+                               rho = c(0.9, 0.7, 0.5),
+                               vartheta = c(2, 1.5, 1), n_sim = 100) {
+  setup <- multiple_anom_setup(p, precision_type, location, duration,
+                               point_anoms, shape, rho, vartheta)
+  many_classifications(setup$out_file, setup$variables, setup$data, setup$method,
+                       setup$tuning, n_sim)
+}
+
+all_multiple_anom_runs10 <- function() {
+  multiple_anom_runs(10, "banded")
+  multiple_anom_runs(10, "banded", point_anoms = TRUE)
+  multiple_anom_runs(16, "lattice")
+  multiple_anom_runs(16, "lattice", point_anoms = TRUE)
+  multiple_anom_runs(10, "global_const")
+  multiple_anom_runs(10, "global_const", point_anoms = TRUE)
+}
+
+all_multiple_anom_runs100 <- function() {
+  multiple_anom_runs(100, "lattice")
+  multiple_anom_runs(100, "lattice", point_anoms = TRUE)
+  multiple_anom_runs(100, "banded")
+  multiple_anom_runs(100, "banded", point_anoms = TRUE)
+  multiple_anom_runs(100, "global_const")
+  multiple_anom_runs(100, "global_const", point_anoms = TRUE)
+}
 

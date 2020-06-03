@@ -394,37 +394,6 @@ rename_precision_type <- function(res) {
   res[precision_type == "global_const", "precision_type" := "$Q_const$"]
 }
 
-#' @export
-cpt_mse_table <- function(p = 10, vartheta = 2, shape = 6,
-                          rho = c(0.5, 0.7, 0.9), loc_tol = 10,
-                          latex = FALSE) {
-  v <- list(p = p, vartheta = vartheta, shape = shape)
-  if (p == 10) v$p <- c(10, 16)
-  mse_dt <- fread("./results/cpt_mse_FINAL.csv")
-  mse_dt <- mse_dt[p %in% v$p & vartheta == v$vartheta]
-  proportions <- c(1/p, round(sqrt(p)) / p, 1)
-  precision_type <- c("banded", "lattice", "global_const")
-  layout <- expand.grid(pr = proportions,
-                        rh = rho,
-                        pt = precision_type,
-                        stringsAsFactors = FALSE)
-  if (p == 10) {
-    sparse_ind <- layout$pt == "lattice" & layout$pr == 1/10
-    medparse_ind <- layout$pt == "lattice" & layout$pr == round(sqrt(10)) / 10
-    layout[sparse_ind, "pr"] <- 1 / 16
-    layout[medparse_ind, "pr"] <- round(sqrt(16)) / 16
-  }
-  table <- do.call("rbind", Map(mse_row,
-                                pt = layout$pt,
-                                rh = layout$rh,
-                                pr = layout$pr,
-                                MoreArgs = list(mse_dt = mse_dt,
-                                                sh = shape)))
-  rownames(table) <- NULL
-  if (latex) return(latex_table(table, p, vartheta, shape))
-  else return(as.data.table(table))
-}
-
 latex_table <- function(x, p, vartheta, shape) {
   if (shape == 0) shape_text <- "equal changes"
   else if (shape == 5) shape_text <- "iid changes"
@@ -467,3 +436,34 @@ latex_table <- function(x, p, vartheta, shape) {
   latex_table <- paste0(latex_table, ' \n', end_table)
   cat(latex_table)
 }
+#' @export
+cpt_mse_table <- function(p = 10, vartheta = 2, shape = 6,
+                          rho = c(0.5, 0.7, 0.9), loc_tol = 10,
+                          latex = FALSE) {
+  v <- list(p = p, vartheta = vartheta, shape = shape)
+  if (p == 10) v$p <- c(10, 16)
+  mse_dt <- fread("./results/cpt_mse_FINAL.csv")
+  mse_dt <- mse_dt[p %in% v$p & vartheta == v$vartheta]
+  proportions <- c(1/p, round(sqrt(p)) / p, 1)
+  precision_type <- c("banded", "lattice", "global_const")
+  layout <- expand.grid(pr = proportions,
+                        rh = rho,
+                        pt = precision_type,
+                        stringsAsFactors = FALSE)
+  if (p == 10) {
+    sparse_ind <- layout$pt == "lattice" & layout$pr == 1/10
+    medparse_ind <- layout$pt == "lattice" & layout$pr == round(sqrt(10)) / 10
+    layout[sparse_ind, "pr"] <- 1 / 16
+    layout[medparse_ind, "pr"] <- round(sqrt(16)) / 16
+  }
+  table <- do.call("rbind", Map(mse_row,
+                                pt = layout$pt,
+                                rh = layout$rh,
+                                pr = layout$pr,
+                                MoreArgs = list(mse_dt = mse_dt,
+                                                sh = shape)))
+  rownames(table) <- NULL
+  if (latex) return(latex_table(table, p, vartheta, shape))
+  else return(as.data.table(table))
+}
+

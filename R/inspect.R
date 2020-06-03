@@ -398,14 +398,15 @@ locate.change <- function(x, Q, lambda, schatten=2, sample.splitting=FALSE,
 #' @import stats
 #' @import graphics
 #' @export
-cor_inspect <- function(x, Q, lambda, threshold, schatten=c(1, 2), M){
+cor_inspect <- function(x, Q, b, lambda, schatten=c(1, 2), M){
     # basic parameters and initialise
     x <- as.matrix(x)
     if (dim(x)[2] == 1) x <- t(x) # treat univariate time series as a row vector
     p <- dim(x)[1] # dimensionality of the time series
     n <- dim(x)[2] # time length of the observation
     if (missing(lambda)) lambda <- sqrt(log(log(n)*p)/2)
-    if (missing(threshold)) threshold <- compute.threshold(n, Q)
+    if (missing(b) || is.na(b) || is.null(b)) threshold <- compute.threshold(n, Q)
+    else threshold <- b * 4 * sqrt(log(n * p))  # Assumes x and Q are standardised.
     if (missing(schatten)) schatten <- 2
     if (missing(M)) M <- 0
     x <- rescale.variance(x)
@@ -463,7 +464,7 @@ cor_inspect <- function(x, Q, lambda, threshold, schatten=c(1, 2), M){
     return(ret)
 }
 
-anomalies_inspect <- function(res, x, tol = sqrt(0.5)) {
+anomalies_inspect <- function(res, x, tol = 1) {
   res <- as.data.table(res)
   n <- nrow(x)
   res <- rbind(data.table(location = 0, max.proj.cusum = 0, depth = 0),
@@ -474,7 +475,6 @@ anomalies_inspect <- function(res, x, tol = sqrt(0.5)) {
     seg_mean <- colMeans(x[(res$location[i - 1] + 1):res$location[i], , drop = FALSE])
     res$mean_size[i] <- sign(sum(seg_mean)) * sqrt(sum(seg_mean^2))
   }
-  print(res)
   starts <- NULL
   ends <- NULL
   in_anom <- FALSE
@@ -504,9 +504,17 @@ anomalies_inspect <- function(res, x, tol = sqrt(0.5)) {
     }
   }
   if (in_anom) ends <- c(ends, res[.N, location])
-  anoms <- data.table(start = starts, end = ends)
-  point_anoms <- data.table(location = anoms[start == end, start])
-  list("collective" = anoms[start != end],
-       "point"      = point_anoms)
+  if (is.null(starts))
+    return(list("collective" = data.table(start = NA, end = NA),
+                "point"      = data.table(location = NA)))
+  else {
+    anoms <- data.table(start = starts, end = ends)
+    # print(anoms)
+    point_anoms <- data.table(location = anoms[start == end, start])
+    if (nrow(point_anoms) == 0) point_anoms <- data.table(location = NA)
+    return(list("collective" = anoms[start != end],
+                "point"      = point_anoms))
+
+  }
 }
 

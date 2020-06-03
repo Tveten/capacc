@@ -77,12 +77,12 @@ init_data <- function(n = 100, p = 10, proportions = round(sqrt(p))/p,
 }
 
 init_data_mc <- function(n = 1000, p = 10, vartheta = 1, shape = 6,
-                         location = 300, duration = 10, change_type = 'adjacent',
+                         location = 300, duration = 10,
                          precision_type = 'banded', rho = 0.9,
                          point_anoms = FALSE,
                          band = 2, block_size = p) {
   locations <- 1:3 * location
-  durations <- sample(1:3, 3) * duration
+  durations <- 3:1 * duration
   varthetas <- 1:3 * vartheta
   proportions <- c(1/p, round(sqrt(p)) / p, 3 * round(sqrt(p)) / p)
   change_types <- c("adjacent", "adjacent", "block_scattered")
@@ -231,7 +231,7 @@ simulate_detection <- function(data = init_data(), method = method_params(),
     else if (method$cost == "sinspect")
       res <- single_cor_inspect(t(x$x), Q_hat, method$b)
     else if (method$cost == "inspect")
-      res <- cor_inspect(t(x$x), Q_hat)$changepoints
+      res <- cor_inspect(t(x$x), Q_hat, method$b)$changepoints
   }
   if (standardise_output) return(format_output(method$cost, res))
   else return(res)
