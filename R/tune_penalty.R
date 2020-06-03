@@ -51,6 +51,7 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
   if (!is.na(seed)) set.seed(seed)
   data$mu <- 0
   data$vartheta <- 0
+  data$point_mu <- data$point_locations <- data$point_proportions <- NA
   message(paste0("Tuning ", method$cost,
                  " penalty for n=", data$n,
                  ", p=", data$p,
@@ -82,6 +83,14 @@ get_tuned_penalty <- function(data = init_data(mu = 0), method = method_params()
   } else {
     file_name <- "penalties.csv"
     read_func <- read_penalties
+  }
+  if (data$n >= 200) {
+    if (data$p == 10) data$n <- 100
+    else if (data$p == 100) data$n <- 200
+    data$locations <- data$durations <- 2
+    data$change_type <- "adjacent"
+    data$proportions <- data$vartheta <- data$mu <- 0
+    data$point_mu <- data$point_locations <- data$point_proportions <- NA
   }
   if (!file.exists(paste0("./results/", file_name))) {
     message(paste0("File does not exist. Making file ", file_name, " in ./results/"))
