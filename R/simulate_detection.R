@@ -170,7 +170,6 @@ method_params_ <- function(method) {
                 size_mu              = method$size_mu)
 }
 
-
 #' @export
 simulate_detection <- function(data = init_data(), method = method_params(),
                                seed = NULL, standardise_output = TRUE) {
@@ -186,10 +185,6 @@ simulate_detection <- function(data = init_data(), method = method_params(),
     }
   }
 
-  format_inspect_out <- function(res) {
-
-  }
-
   format_output <- function(cost, res) {
     if (cost == "cor_exact")
       return(list("collective" = collective_anomaliesR(res),
@@ -203,22 +198,12 @@ simulate_detection <- function(data = init_data(), method = method_params(),
     else if (cost %in% c("mvlrt", "sinspect"))
       return(format_cpt_out(cost, res))
     else if (cost == "inspect")
-      return(format_inspect_out(res))
+      return(anomalies_inspect(res, x$x))
   }
 
   if (!is.null(seed)) set.seed(seed)
   x <- simulate_cor_(data)
-  if (grepl("cor", method$cost)) {
-    Q_hat <- get_Q_hat(x$x, data, method)
-    x$x <- centralise(x$x)
-    if (method$cost == "cor_exact") mvcapa_func <- mvcapa_cor_exact
-    else if(method$cost == "cor")   mvcapa_func <- mvcapa_cor
-    res <- mvcapa_func(x$x, Q_hat,
-                       b                = method$b,
-                       b_point          = max(0.05, method$b),
-                       min_seg_len      = method$minsl,
-                       max_seg_len      = method$maxsl)
-  } else if (method$cost == "iid") {
+  if (method$cost == "iid") {
     x$x <- robust_scale(x$x)
     beta <- iid_penalty(data$n, data$p, method$b)
     beta_tilde <- iid_point_penalty(data$n, data$p, max(0.05, method$b))
@@ -228,17 +213,25 @@ simulate_detection <- function(data = init_data(), method = method_params(),
                             min_seg_len = method$minsl,
                             max_seg_len = method$maxsl,
                             type        = "mean")
-  } else if (method$cost == "mvlrt") {
+  } else {
     Q_hat <- get_Q_hat(x$x, data, method)
-    res <- single_mvnormal_changepoint(x$x, Q_hat,
-                                       b = method$b,
-                                       min_seg_len = method$minsl)
-  } else if (method$cost == "sinspect") {
-    Q_hat <- get_Q_hat(x$x, data, method)
-    res <- single_cor_inspect(t(x$x), Q_hat, method$b)
-  } else if (method$cost == "inspect") {
-    Q_hat <- get_Q_hat(x$x, data, method)
-    res <- cor_inspect(t(x$x), Q_hat)$changepoints
+    if (grepl("cor", method$cost)) {
+      x$x <- centralise(x$x)
+      if (method$cost == "cor_exact") mvcapa_func <- mvcapa_cor_exact
+      else if(method$cost == "cor")   mvcapa_func <- mvcapa_cor
+      res <- mvcapa_func(x$x, Q_hat,
+                         b                = method$b,
+                         b_point          = max(0.05, method$b),
+                         min_seg_len      = method$minsl,
+                         max_seg_len      = method$maxsl)
+    } else if (method$cost == "mvlrt")
+      res <- single_mvnormal_changepoint(x$x, Q_hat,
+                                         b = method$b,
+                                         min_seg_len = method$minsl)
+    else if (method$cost == "sinspect")
+      res <- single_cor_inspect(t(x$x), Q_hat, method$b)
+    else if (method$cost == "inspect")
+      res <- cor_inspect(t(x$x), Q_hat)$changepoints
   }
   if (standardise_output) return(format_output(method$cost, res))
   else return(res)
