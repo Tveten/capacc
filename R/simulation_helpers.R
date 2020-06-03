@@ -80,14 +80,14 @@ expand_list <- function(a, vars, prune = TRUE) {
 
 cost_pruned_expand_grid <- function(vars) {
   var_grid <- as.data.table(expand.grid(vars, stringsAsFactors = FALSE))
-  # if (!any(vars$cost %in% c("iid", "cor"))) return(var_grid)
   cost_vars <- c("cost", "precision_est_struct", "est_band")
   var_grid <- var_grid[, rbind(.SD[cost == "iid"][1],
                    .SD[cost == "cor" & is.na(precision_est_struct)][1],
                    .SD[cost == "cor" & precision_est_struct == "correct"][1],
                    .SD[cost != "iid" &
                          !(cost == "cor" & is.na(precision_est_struct)) &
-                         !(cost == "cor" & precision_est_struct == "correct")]),
+                         !(cost == "cor" & precision_est_struct == "correct") &
+                         !(cost == "cor" & precision_est_struct == "banded" & est_band == 0)]),
            by = c(names(var_grid)[!names(var_grid) %in% cost_vars])]
   var_grid[!is.na(cost)]
 }
