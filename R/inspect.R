@@ -45,7 +45,8 @@ cusum.transform <- function(x){
   t <- 1:(n - 1)
 
   # constructing CUSUM matrix
-  return(t((rightsums[t,] / (n-t) - leftsums[t,] / t) * sqrt(t * (n-t) / n)))
+  return(t((rightsums[t, , drop = FALSE] / (n-t) - leftsums[t, , drop = FALSE] / t) *
+             sqrt(t * (n-t) / n)))
 }
 
 #' Projection onto the standard simplex
@@ -408,7 +409,7 @@ cor_inspect <- function(x, Q, b, lambda, schatten=c(1, 2), M){
     if (missing(b) || is.na(b) || is.null(b)) threshold <- compute.threshold(n, Q)
     else threshold <- b * 4 * sqrt(log(n * p))  # Assumes x and Q are standardised.
     if (missing(schatten)) schatten <- 2
-    if (missing(M)) M <- 0
+    if (missing(M)) M <- 100
     x <- rescale.variance(x)
     Q <- standardise_precision_mat(Q)
 
@@ -433,7 +434,7 @@ cor_inspect <- function(x, Q, b, lambda, schatten=c(1, 2), M){
                 s_m <- window_s[m]
                 e_m <- window_e[m]
             }
-            obj <- locate.change(x[,(s_m+1):e_m], Q)
+            obj <- locate.change(x[,(s_m+1):e_m, drop = FALSE], Q)
             if (obj$cusum > max.val) {
                 max.val <- obj$cusum
                 cp <- s_m + obj$changepoint

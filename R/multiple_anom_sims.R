@@ -61,7 +61,7 @@ classify_anom <- function(out_file, data = init_data(), method = method_params()
   if (already_estimated(all_res, all_params, read_anom_class)) return(NULL)
 
   if (!is.na(seed)) set.seed(seed)
-  if (is.na(method$b))
+  if (is.na(method$b) && !is.null(method$b))
     method$b <- get_tuned_penalty(data, method, tuning, FALSE, seed + 2)$b
   sim_classify_with_progress <- dot_every(5, sim_classify)
   res <- as.data.table(t(replicate(n_sim, sim_classify_with_progress())))
