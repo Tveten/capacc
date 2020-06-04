@@ -102,7 +102,7 @@ multiple_anom_setup <- function(p = 10, precision_type = "banded",
   method <- method_params(b = NA)
   precision_est_struct <- "banded"
   est_band <- c(0, 4)
-  variables <- list("cost"        = c("cor", "iid", "inspect"),
+  variables <- list("cost"        = c("iid", "cor", "inspect"),
                     "precision_est_struct" = precision_est_struct,
                     "est_band"    = est_band,
                     "rho"         = rho,
