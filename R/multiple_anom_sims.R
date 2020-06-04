@@ -71,8 +71,8 @@ classify_anom <- function(out_file, data = init_data(), method = method_params()
 }
 
 many_classifications <- function(out_file, variables, data = init_data(),
-                                 method = method_params(),
-                                 tuning = tuning_params(), n_sim = 100) {
+                                 method = method_params(), tuning = tuning_params(),
+                                 n_sim = 100, cpus = 1) {
   params <- split_params(
     expand_list(c(data, method), variables),
     list("data"   = names(data),
@@ -81,13 +81,25 @@ many_classifications <- function(out_file, variables, data = init_data(),
   seeds <- get_sim_seeds(variables)
   if (length(seeds) != length(params$data))
     stop("Bug: Length of seeds should be equal to number of parameter settings.")
-  Map(classify_anom,
-      data   = params$data,
-      method = params$method,
-      seed   = seeds,
-      MoreArgs = list("out_file"      = out_file,
-                      "tuning"        = tuning,
-                      "n_sim"         = n_sim))
+  NULL
+  if (cpus == 1)
+    Map(classify_anom,
+        data   = params$data,
+        method = params$method,
+        seed   = seeds,
+        MoreArgs = list("out_file"      = out_file,
+                        "tuning"        = tuning,
+                        "n_sim"         = n_sim))
+  else if (cpus > 1) {
+    comp_cluster <- setup_parallel(cpus)
+    `%dopar%` <- foreach::`%dopar%`
+    res <- foreach::foreach(i = 1:length(params$data),
+                            .packages = c("anomaly", "mvcapaCor")) %dopar% {
+      classify_anom(out_file, params$data[[i]], params$method[[i]],
+                    tuning, n_sim, seeds[i])
+    }
+    stop_parallel(comp_cluster)
+  } else stop("Number of cpus must be >= 1")
   NULL
 }
 
@@ -119,29 +131,29 @@ multiple_anom_runs <- function(p = 10, precision_type = "banded",
                                location = 300, duration = 10,
                                point_anoms = FALSE, shape = c(5, 6, 8),
                                rho = c(0.9, 0.7, 0.5),
-                               vartheta = c(2, 1.5, 1), n_sim = 100) {
+                               vartheta = c(2, 1.5, 1), n_sim = 100, cpus = 1) {
   setup <- multiple_anom_setup(p, precision_type, location, duration,
                                point_anoms, shape, rho, vartheta)
   many_classifications(setup$out_file, setup$variables, setup$data, setup$method,
-                       setup$tuning, n_sim)
+                       setup$tuning, n_sim, cpus)
 }
 
-all_multiple_anom_runs10 <- function() {
-  multiple_anom_runs(10, "banded")
-  multiple_anom_runs(10, "banded", point_anoms = TRUE)
-  multiple_anom_runs(16, "lattice")
-  multiple_anom_runs(16, "lattice", point_anoms = TRUE)
-  multiple_anom_runs(10, "global_const")
-  multiple_anom_runs(10, "global_const", point_anoms = TRUE)
+all_multiple_anom_runs10 <- function(cpus = 1) {
+  multiple_anom_runs(10, "banded", cpus = cpus)
+  multiple_anom_runs(10, "banded", point_anoms = TRUE, cpus = cpus)
+  multiple_anom_runs(16, "lattice", cpus = cpus)
+  multiple_anom_runs(16, "lattice", point_anoms = TRUE, cpus = cpus)
+  multiple_anom_runs(10, "global_const", cpus = cpus)
+  multiple_anom_runs(10, "global_const", point_anoms = TRUE, cpus = cpus)
 }
 
 #' @export
-all_multiple_anom_runs100 <- function() {
-  multiple_anom_runs(100, "lattice")
-  multiple_anom_runs(100, "lattice", point_anoms = TRUE)
-  multiple_anom_runs(100, "banded")
-  multiple_anom_runs(100, "banded", point_anoms = TRUE)
-  multiple_anom_runs(100, "global_const")
-  multiple_anom_runs(100, "global_const", point_anoms = TRUE)
+all_multiple_anom_runs100 <- function(cpus = 1) {
+  multiple_anom_runs(100, "lattice", cpus = cpus)
+  multiple_anom_runs(100, "lattice", point_anoms = TRUE, cpus = cpus)
+  multiple_anom_runs(100, "banded", cpus = cpus)
+  multiple_anom_runs(100, "banded", point_anoms = TRUE, cpus = cpus)
+  multiple_anom_runs(100, "global_const", cpus = cpus)
+  multiple_anom_runs(100, "global_const", point_anoms = TRUE, cpus = cpus)
 }
 
