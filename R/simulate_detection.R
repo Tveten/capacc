@@ -300,3 +300,13 @@ test_optim <- function(data, method) {
                            penalty$alpha_const, penalty$beta,
                            penalty$alpha_lin)
 }
+
+#' @export
+test_runtime <- function(cost, b = 1, est_band = 2, times = 5) {
+  data <- init_data(p = 100, n = 200, vartheta = 0, rho = 0.9)
+  method <- method_params(cost, b, precision_est_struct = "banded", est_band = est_band)
+  print(microbenchmark::microbenchmark(
+    simulate_detection(data, method, standardise_output = TRUE),
+    times = times
+  ))
+}

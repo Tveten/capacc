@@ -31,6 +31,7 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
       if (known) {
         return(simulate_detection_known(data, method)$S_max > 0)
       } else {
+        # print(microbenchmark::microbenchmark(simulate_detection(data, method, standardise_output = TRUE), times = 5))
         sim <- simulate_detection(data, method, standardise_output = TRUE)
         if (is.null(sim$collective)) return(!is.na(sim$cpt)[1])
         else return(!is.na(sim$collective$start[1]))
@@ -61,6 +62,11 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
                  ", rho=", data$rho,
                  ", precision_est_struct=", method$precision_est_struct,
                  ", est_band=", method$est_band))
+  # method2 <- method
+  # method2$b <- tuning$init_b[3]
+  # print(method2)
+  # print(microbenchmark::microbenchmark(simulate_detection(data, method2, standardise_output = TRUE), times = 5))
+  # test_runtime(method2$cost, method2$b)
   res <- do.call('rbind', Map(fp_rate, tuning$init_b))
   print(res)
   while (!any(abs(res$diff) <= tuning$alpha_tol + 1e-6) && nrow(res) <= tuning$tuning_max_iter) {
@@ -97,7 +103,8 @@ get_tuned_penalty <- function(data = init_data(mu = 0), method = method_params()
     tune_penalty(data, method, tuning, known, seed)
     return(get_tuned_penalty(data, method, tuning, known, seed))
   } else {
-    res <- read_func(file_name, c(data, method, tuning))
+    all_pen <- read_results(file_name)
+    res <- read_func(all_pen, c(data, method, tuning))
     if (nrow(res) == 0) {
       tune_penalty(data, method, tuning, known, seed)
       return(get_tuned_penalty(data, method, tuning, known, seed))
@@ -138,16 +145,16 @@ plot_penalty <- function(data, method, tuning, known = FALSE, vars_in_title = NA
          "tuning"  = names(tuning))
   ))
   if (known) {
+    all_pen <- read_results("penalties_known.csv")
     read_func <- read_penalties_known
-    file_name <- "penalties_known.csv"
   } else {
+    all_pen <- read_results("penalties.csv")
     read_func <- read_penalties
-    file_name <- "penalties.csv"
   }
   res <- do.call("rbind",
                  Map(read_func,
                      params_list,
-                     MoreArgs = list(file_name = file_name)))
+                     MoreArgs = list(res = all_pen)))
   res <- rename_precision_est_struct(res)
   print(res[cost == "cor", .(rho, b, cost, precision_est_struct)])
   print(res[cost == "iid", .(rho, b, cost, precision_est_struct)])

@@ -106,7 +106,8 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
   all_params <- c(data, method, tuning, curve, list("loc_tol" = loc_tol))
   if (known) read_func <- read_power_curve_known
   else       read_func <- read_power_curve
-  if (already_estimated(out_file, all_params, read_func)) return(NULL)
+  all_res <- read_results(out_file)
+  if (already_estimated(all_res, all_params, read_func)) return(NULL)
 
   if (!is.na(seed)) set.seed(seed)
   res <- init_power_est(curve$init_values)
@@ -192,10 +193,11 @@ plot_power_curve <- function(file_name, variables,
   ))
   if (known) read_func <- read_power_curve_known
   else       read_func <- read_power_curve
+  all_res <- read_results(out_file)
   res <- do.call("rbind",
                  Map(read_func,
                      params_list,
-                     MoreArgs = list(file_name = file_name)))
+                     MoreArgs = list(res = all_res)))
   # res <- rename_precision_est_struct(res)
   res <- rename_cost(res)
   title <- make_title(all_params, power_curve_title_parts(vars_in_title))
