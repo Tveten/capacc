@@ -33,7 +33,7 @@ count_tfp_anom <- function(anom_list, tol, data) {
 
 count_collective_anomalies <- function(anom_list) {
   collective_anoms <- anom_list$collective
-  if (nrow(collective_anoms) == 0) return(0)
+  if (is.na(collectie_anoms$start[1])) return(0)
   else return(length(unique(collective_anoms$start)))
 }
 

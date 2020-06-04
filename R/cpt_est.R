@@ -380,7 +380,7 @@ mse_row <- function(mse_dt, pt, rh, pr, sh) {
                      ncol = length(mse_vec) + 3)
   if (wide_mse[1, 1] == "banded") wide_mse[1, 1] <- "$\\mathbf{Q}(2)$"
   else if (wide_mse[1, 1] == "lattice") wide_mse[1, 1] <- "$\\mathbf{Q}_\\text{lat}$"
-  else if (wide_mse[1, 1] == "global_const") wide_mse[1, 1] <- "$\\mathbf{Q}_\\text{const}$"
+  else if (wide_mse[1, 1] == "global_const") wide_mse[1, 1] <- "$\\mathbf{Q}_\\text{con}$"
   colnames(wide_mse) <- c("$\\mathbf{Q}$", "$\\rho$", "$J$", mse_dt$cost)
   wide_mse[, c(1:3, 7:4)]
 }
@@ -388,10 +388,10 @@ mse_row <- function(mse_dt, pt, rh, pr, sh) {
 rename_precision_type <- function(res) {
   res[precision_type == "banded", "precision_type" := "$Q(2)$"]
   res[precision_type == "lattice", "precision_type" := "$Q_lat$"]
-  res[precision_type == "global_const", "precision_type" := "$Q_const$"]
+  res[precision_type == "global_const", "precision_type" := "$Q_con$"]
 }
 
-latex_table <- function(x, p, vartheta, shape) {
+latex_mse_table <- function(x, p, vartheta, shape) {
   if (shape == 0) shape_text <- "equal changes"
   else if (shape == 5) shape_text <- "iid changes"
   else if (shape == 6) shape_text <- "cor changes"
@@ -433,6 +433,7 @@ latex_table <- function(x, p, vartheta, shape) {
   latex_table <- paste0(latex_table, ' \n', end_table)
   cat(latex_table)
 }
+
 #' @export
 cpt_mse_table <- function(p = 10, vartheta = 2, shape = 6,
                           rho = c(0.5, 0.7, 0.9), loc_tol = 10,
@@ -460,7 +461,7 @@ cpt_mse_table <- function(p = 10, vartheta = 2, shape = 6,
                                 MoreArgs = list(mse_dt = mse_dt,
                                                 sh = shape)))
   rownames(table) <- NULL
-  if (latex) return(latex_table(table, p, vartheta, shape))
+  if (latex) return(latex_mse_table(table, p, vartheta, shape))
   else return(as.data.table(table))
 }
 
