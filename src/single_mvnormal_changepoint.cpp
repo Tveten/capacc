@@ -147,7 +147,10 @@ Rcpp::List single_mvnormal_changepoint(const arma::mat& x,
   std::vector<int> T = seq_int(min_seg_len, n - min_seg_len);
   #ifdef _OPENMP
     std::vector<bqp::BQP_res> lr(n);
-    #pragma omp parallel for
+    int n_threads = std::thread::hardware_concurrency();
+    if (n_threads > 16) n_threads = n_threads / 2;
+    else if (n_threads > 8 && n_threads <= 16) n_threads = 8;
+    #pragma omp parallel for num_threads(n_threads)
     for (int i = 0; i < T.size(); i++)
     {
       int t = T[i];

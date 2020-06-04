@@ -223,8 +223,8 @@ all_cpt_est_runs <- function() {
   cpt_est_runs(16, "lattice")
   cpt_est_runs(10, "global_const")
   cpt_est_runs(100, "banded")
-  cpt_est_runs(100, "global_const")
   cpt_est_runs(100, "lattice")
+  cpt_est_runs(100, "global_const")
 }
 
 #' @export
