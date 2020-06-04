@@ -62,11 +62,6 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
                  ", rho=", data$rho,
                  ", precision_est_struct=", method$precision_est_struct,
                  ", est_band=", method$est_band))
-  # method2 <- method
-  # method2$b <- tuning$init_b[3]
-  # print(method2)
-  # print(microbenchmark::microbenchmark(simulate_detection(data, method2, standardise_output = TRUE), times = 5))
-  # test_runtime(method2$cost, method2$b)
   res <- do.call('rbind', Map(fp_rate, tuning$init_b))
   print(res)
   while (!any(abs(res$diff) <= tuning$alpha_tol + 1e-6) && nrow(res) <= tuning$tuning_max_iter) {

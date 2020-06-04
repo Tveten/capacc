@@ -6,17 +6,31 @@ grid_plot <- function(plots, dims, title) {
   ggpubr::annotate_figure(figure, top = title)
 }
 
-save_grid_plot <- function(pp, dims, prefix, data) {
-  if (data$precision_type == "banded")
-    precision_text <- paste0(data$band, "-banded")
-  else
-    precision_text <- data$precision_type
+save_grid_plot <- function(pp, dims, prefix, const_vars, data) {
+  potential_const_vars <- c("precision_type", "rho", "proportions", "shape")
+  ids <- c()
+  if (any(names(const_vars) == "precision_type")) {
+    if (const_vars$precision_type == "banded")
+      precision_text <- paste0(data$band, "-banded")
+    else
+      precision_text <- const_vars$precision_type
+    ids[[length(ids) + 1]] <- precision_text
+  }
+  if (any(names(const_vars) == "shape"))
+    ids[[length(ids) + 1]] <- paste0("shape", const_vars$shape)
+  if (any(names(const_vars) == "rho")) {
+    rho_parts <- strsplit(as.character(const_vars$rho), "[.]")[[1]]
+    ids[[length(ids) + 1]] <- paste0("rho", rho_parts[1], rho_parts[2])
+  }
+  if (any(names(const_vars) == "proportions"))
+    ids[[length(ids) + 1]] <- paste0("J", const_vars$proportions * data$p)
+
   file_name <- paste0("./images/",
                       prefix,
                       "_n", data$n,
                       "_p", data$p,
-                      "_", precision_text,
-                      "_shape", data$shape,
+                      "_", ids[[1]],
+                      "_", ids[[2]],
                       "_loc", data$locations,
                       "_dur", data$durations,
                       ".png")
@@ -56,7 +70,7 @@ make_title <- function(params,
   if (params$precision_type == "banded")
     precision_text <- paste0("$Q(", params$band, ")$")
   else if (params$precision_type == "global_const")
-    precision_text <- "$Q_{const}$"
+    precision_text <- "$Q_{con}$"
   else if (params$precision_type == "lattice")
     precision_text <- "$Q_{lat}$"
   else precision_text <- params$precision_type
@@ -66,11 +80,11 @@ make_title <- function(params,
   if (type == "anom") location_text <- paste0("s=", params$locations + 1)
   else if (type == "cpt") location_text <- paste0("cpt=", params$locations)
 
-  if (params$shape == 0) shape_text <- "equal changes"
-  else if (params$shape == 5) shape_text <- "iid changes"
-  else if (params$shape == 6) shape_text <- "cor changes"
-  else if (params$shape == 8) shape_text <- "cor $0.8$ changes"
-  else if (params$shape == 9) shape_text <- "cor $0.9$ changes"
+  if (params$shape == 0) shape_text <- "equal"
+  else if (params$shape == 5) shape_text <- "iid"
+  else if (params$shape == 6) shape_text <- "cor"
+  else if (params$shape == 8) shape_text <- "$0.8$"
+  else if (params$shape == 9) shape_text <- "$0.9$"
   else shape_text <- paste0("sh=", params$shape)
 
   alpha_text <- paste0("$\\alpha =", params$alpha, "\\pm ", params$alpha_tol, "$")
@@ -89,6 +103,8 @@ make_title <- function(params,
                       "tuning_n_sim"   = paste0("n_{sim} =", params$tuning_n_sim))
   if (any(is.na(which_parts)))
     which_parts <- names(title_parts)
+  if (is_equal(params$proportions * params$p, 1))
+    which_parts <- which_parts[which_parts != "shape"]
   paste0(title_parts[names(title_parts) %in% which_parts], collapse = ", ")
 }
 

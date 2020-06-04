@@ -66,6 +66,9 @@ classify_anom <- function(out_file, data = init_data(), method = method_params()
   sim_classify_with_progress <- dot_every(5, sim_classify)
   res <- as.data.table(t(replicate(n_sim, sim_classify_with_progress())))
   cat("\n")
+  print(paste0("Results for cost=", method$cost,
+               ", precision_est_struct=", method$precision_est_struct,
+               ", est_band=", method$est_band))
   print(res)
   fwrite(add_setup_info(res), paste0("./results/", out_file), append = TRUE)
 }
@@ -157,3 +160,49 @@ all_multiple_anom_runs100 <- function(cpus = 1) {
   multiple_anom_runs(100, "global_const", point_anoms = TRUE, cpus = cpus)
 }
 
+ari_table <- function() {
+
+}
+
+latex_ari_table <- function(x, p, vartheta, shape) {
+  if (shape == 0) shape_text <- "equal changes"
+  else if (shape == 5) shape_text <- "iid changes"
+  else if (shape == 6) shape_text <- "cor changes"
+  caption <- paste0("RMSE for ",
+                    "$p = ", p,
+                    "$, $\\vartheta = ", vartheta,
+                    "$ and ", shape_text,
+                    ". The smallest value is given in bold.")
+  label <- paste0("tab:mse_p", p, "_vartheta", vartheta, "_shape", shape)
+
+  date_line <- paste0('% ', date())
+  begin_table <- paste('\\begin{table}[htb]',
+                       paste0('\\caption{', caption, '}'),
+                       paste0('\\label{', label ,'}'),
+                       '\\centering',
+                       paste0('\\begin{tabular}{',
+                              paste(rep('c', ncol(x)), collapse = ""),
+                              '}'),
+                       '\\toprule', sep = ' \n')
+  end_table <- paste('\\bottomrule',
+                     '\\end{tabular}',
+                     '\\end{table}', sep = ' \n')
+
+  mid_sep <- ' \n\\midrule'
+  colnames(x) <- c("$\\bQ$", "$\\rho$", "$J$",
+                   "MVCPT($\\hat{\\bQ}(\\bW(4))$)",
+                   "inspect($\\hat{\\bQ}$)",
+                   "MVCPT($\\bI$)",
+                   "inspect($\\bI$)")
+  heading <- paste(colnames(x), collapse = " & ")
+
+  latex_table <- paste(date_line, begin_table, heading, sep = ' \n')
+  latex_table <- paste0(latex_table, " \\\\", mid_sep)
+  for (i in 1:nrow(x)) {
+    table_line <- paste(x[i, ], collapse = " & ")
+    table_line <- paste0(table_line, " \\\\")
+    latex_table <- paste(latex_table, table_line, sep = " \n")
+  }
+  latex_table <- paste0(latex_table, ' \n', end_table)
+  cat(latex_table)
+}
