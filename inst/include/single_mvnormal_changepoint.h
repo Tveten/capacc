@@ -5,6 +5,7 @@
 
 #include <RcppArmadillo.h>
 #include <limits>
+#include <thread>
 #ifdef _OPENMP
 #include <omp.h>
 #endif

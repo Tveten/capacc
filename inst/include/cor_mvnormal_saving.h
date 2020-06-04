@@ -12,6 +12,7 @@
 #include <list>
 #include <limits>
 // #include <iostream>
+#include <thread>
 #include <algorithm>
 #include <boost/functional/hash.hpp>
 #ifdef _OPENMP
@@ -43,7 +44,10 @@ namespace ostats
       auto n = S.M1.size() - 1;
       #ifdef _OPENMP
         std::vector<bqp::BQP_res> saving(n);
-        #pragma omp parallel for
+        int n_threads = std::thread::hardware_concurrency();
+        if (n_threads > 16) n_threads = n_threads / 2;
+        else if (n_threads > 8 && n_threads <= 16) n_threads = 8;
+        #pragma omp parallel for num_threads(n_threads)
         for (int i = 0; i < S.T.size(); i++)
         {
           int t = S.T[i];
