@@ -141,6 +141,7 @@ multiple_anom_runs <- function(p = 10, precision_type = "banded",
                        setup$tuning, n_sim, cpus)
 }
 
+#' @export
 all_multiple_anom_runs10 <- function(cpus = 1) {
   multiple_anom_runs(10, "banded", cpus = cpus)
   multiple_anom_runs(10, "banded", point_anoms = TRUE, cpus = cpus)
