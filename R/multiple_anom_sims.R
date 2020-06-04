@@ -57,7 +57,8 @@ classify_anom <- function(out_file, data = init_data(), method = method_params()
                  ", est_band=", method$est_band,
                  "."))
   all_params <- c(format_data(data), method, tuning)
-  if (already_estimated(out_file, all_params, read_anom_class)) return(NULL)
+  all_res <- read_results(out_file)
+  if (already_estimated(all_res, all_params, read_anom_class)) return(NULL)
 
   if (!is.na(seed)) set.seed(seed)
   if (is.na(method$b))
@@ -101,7 +102,7 @@ multiple_anom_setup <- function(p = 10, precision_type = "banded",
   method <- method_params(b = NA)
   precision_est_struct <- "banded"
   est_band <- c(0, 4)
-  variables <- list("cost"        = c("iid", "cor", "inspect"),
+  variables <- list("cost"        = c("cor", "iid", "inspect"),
                     "precision_est_struct" = precision_est_struct,
                     "est_band"    = est_band,
                     "rho"         = rho,

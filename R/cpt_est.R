@@ -32,7 +32,8 @@ sim_cpt_est <- function(out_file,
                  ", est_band=", method$est_band,
                  "."))
   all_params <- c(data, method, tuning, list("n_sim" = n_sim))
-  if (already_estimated(out_file, all_params, read_cpt_est)) return(NULL)
+  all_res <- read_results(out_file)
+  if (already_estimated(all_res, all_params, read_cpt_est)) return(NULL)
 
   if (!is.na(seed)) set.seed(seed)
   method$b <- get_tuned_penalty(data, method, tuning, FALSE, seed + 2)$b
@@ -77,10 +78,11 @@ plot_cpt_distr <- function(file_name, variables,
          "tuning"  = names(tuning),
          "n_sim" = "n_sim")
   ))
+  all_res <- read_results(out_file)
   res <- do.call("rbind",
                  Map(read_cpt_est,
                      params,
-                     MoreArgs = list(file_name = file_name)))
+                     MoreArgs = list(res = all_res)))
   res <- rename_cost(res)
   print(mse_cpt_est(res))
 
@@ -119,26 +121,15 @@ boxplot_cpt_est <- function(file_name, variables,
          "tuning"  = names(tuning),
          "n_sim" = "n_sim")
   ))
+  all_res <- read_results(out_file)
   res <- do.call("rbind",
                  Map(read_cpt_est,
                      params,
-                     MoreArgs = list(file_name = file_name)))
+                     MoreArgs = list(res = all_res)))
   res <- rename_cost(res)
-  # res <- res[value > 0]
-  # print(dim(res))
+  print(mse_cpt_est(res))
   loc_tol <- 10
 
-  summaries <- cbind(res[, .(rho  = rho[1],
-                             size_J = p[1] * proportions[1],
-                             # p_detect = sum(value >= 0) / n_sim[1],
-                             power = sum(value >= 0 & is_in_interval(cpt, c(locations[1] - loc_tol, locations[1] + loc_tol))) / n_sim[1],
-                             rmse = sqrt(mean((cpt - locations)^2))),
-                         by = cost],
-                     res[value >= 0 & is_in_interval(cpt, c(locations[1] - loc_tol, locations[1] + loc_tol)),
-                         .(rmse_given_tp = sqrt(mean((cpt - locations)^2))),
-                         by = cost][, .(rmse_given_tp)])
-  print(summaries)
-  # res <- res[ "all_detect" := .SD[all(value > 0)], by = seed][all_detect]
   title <- make_title(c(data, method), cpt_distr_title_parts(vars_in_title), "cpt")
   ggplot2::ggplot(res, ggplot2::aes(x = cost, y = cpt)) +
     ggplot2::geom_boxplot() +

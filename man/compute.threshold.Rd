@@ -4,7 +4,7 @@
 \alias{compute.threshold}
 \title{Computing threshold used in \code{inspect}}
 \usage{
-\method{compute}{threshold}(n, Q, alpha = 0.05, nrep = 100)
+compute.threshold(n, Q, alpha = 0.05, nrep = 100)
 }
 \arguments{
 \item{n}{Time length of the observation.}

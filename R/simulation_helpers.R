@@ -64,6 +64,8 @@ expand_list <- function(a, vars, prune = TRUE) {
   if (prune) var_grid <- as.data.frame(cost_pruned_expand_grid(vars))
   else       var_grid <- expand.grid(vars, stringsAsFactors = FALSE)
   var_names <- names(var_grid)
+  # var_grid <- var_grid[c(3, 1:2, 4:nrow(var_grid)), ]
+  # print(var_grid)
 
   # For loop to avoid "c" being used on each row of var_grid, which might change
   # the type of variables.
