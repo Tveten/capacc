@@ -49,7 +49,7 @@ label_anom_est <- function(anom_list, data) {
   starts <- unique(anom_list$collective$start)
   ends <- unique(anom_list$collective$end)
   anom_inds <- integer(0)
-  if (!any(is.na(starts)))
+  if (!any(is.na(starts) | is.na(ends)))
     anom_inds <- c(anom_inds, unlist(lapply(1:length(starts), function(i) {
       starts[i]:ends[i]
     })))
