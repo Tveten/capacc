@@ -28,7 +28,8 @@ read_results <- function(file_name) {
 read_single_result <- function(res, query_params, all_params, msg) {
   if (!is.data.table(res)) stop("res must be a data.table.")
   i <- 1
-  res_exists <- TRUE
+  if (nrow(res) == 0) res_exists <- FALSE
+  else res_exists <- TRUE
   while (res_exists && i <= length(query_params)) {
     sub_res <- subset_and_check(res, query_params[i], all_params, msg)
     res <- sub_res$res
