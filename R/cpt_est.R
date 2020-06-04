@@ -181,8 +181,13 @@ cpt_est_setup <- function(p = 10, precision_type = "banded",
                           vartheta = 1.5, shape = c(0, 5, 6),
                           rho = c(0.99, 0.9, 0.7, 0.5, 0.3),
                           proportions = c(1/p, round(sqrt(p)) / p, 1)) {
-  if (p <= 50) n <- 100
-  else n <- 2 * p
+  if (p <= 50) {
+    n <- 100
+    p_type <- "lowp"
+  } else {
+    n <- 2 * p
+    p_type <- "highp"
+  }
   n_sim <- 1000
 
   locations <- round(7 / 10 * n)
@@ -191,7 +196,7 @@ cpt_est_setup <- function(p = 10, precision_type = "banded",
   precision_est_struct <- "banded"
   est_band <- c(0, 4)
 
-  out_file <- "cpt_est_FINAL.csv"
+  out_file <- paste0("cpt_est_", p_type, "_FINAL.csv")
   data <- init_data(n = n, p = p, precision_type = precision_type, band = band,
                     vartheta = vartheta, locations = locations, durations = durations)
   method <- method_params()
