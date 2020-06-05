@@ -175,7 +175,8 @@ simulate_detection <- function(data = init_data(), method = method_params(),
                                seed = NULL, standardise_output = TRUE) {
   format_cpt_out <- function(cost, res) {
     if (res$value <= 0)
-      return(data.table("cpt" = NA, "variate" = NA, "mean1" = NA, "mean2" = NA))
+      return(data.table("cpt" = integer(0), "variate" = integer(0),
+                        "mean1" = numeric(0), "mean2" = numeric(0)))
     else {
       if (cost == "sinspect") res$J <- which(res$proj != 0)
       mean1 <- colMeans(x$x[1:res$cpt, res$J, drop = FALSE])

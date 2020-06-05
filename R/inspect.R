@@ -476,8 +476,8 @@ anomalies_inspect <- function(res, x, tol = 1) {
     seg_mean <- colMeans(x[(res$location[i - 1] + 1):res$location[i], , drop = FALSE])
     res$mean_size[i] <- sign(sum(seg_mean)) * sqrt(sum(seg_mean^2))
   }
-  starts <- NULL
-  ends <- NULL
+  starts <- integer(0)
+  ends <- integer(0)
   in_anom <- FALSE
   curr_start_ind <- 0
   i <- 2
@@ -510,20 +510,8 @@ anomalies_inspect <- function(res, x, tol = 1) {
     print(ends)
     stop("Bug when extracting inspect anomalies. Unequal number of start and end points.")
   }
-  collective_null_table <- data.table(start = NA, end = NA)
-  point_null_table <- data.table(location = NA)
-  if (is.null(starts))
-    return(list("collective" = collective_null_table,
-                "point"      = point_null_table))
-  else {
-    anoms <- data.table(start = starts, end = ends)
-    # print(anoms)
-    point_anoms <- data.table(location = anoms[start == end, start])
-    collective_anoms <- anoms[start != end]
-    if (nrow(point_anoms) == 0) point_anoms <- point_null_table
-    if (nrow(collective_anoms) == 0) collective_anoms <- collective_null_table
-    return(list("collective" = collective_anoms,
-                "point"      = point_anoms))
-  }
+  anoms <- data.table(start = starts, end = ends)
+  return(list("collective" = anoms[start != end],
+              "point"      = data.table(location = anoms[start == end, start])))
 }
 

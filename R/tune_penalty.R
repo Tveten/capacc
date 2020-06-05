@@ -33,8 +33,8 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
       } else {
         # print(microbenchmark::microbenchmark(simulate_detection(data, method, standardise_output = TRUE), times = 5))
         sim <- simulate_detection(data, method, standardise_output = TRUE)
-        if (is.null(sim$collective)) return(!is.na(sim$cpt)[1])
-        else return(!is.na(sim$collective$start[1]))
+        if (is.null(sim$collective)) return(nrow(sim$cpt) > 0)
+        else return(nrow(sim$collective) > 0)
       }
     }))
     data.table("b" = b, "fp" = mean(fps), "diff" = mean(fps) - tuning$alpha)
