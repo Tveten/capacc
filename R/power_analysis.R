@@ -756,6 +756,8 @@ make_all_plots <- function() {
       p              = ps,
       precision_type = precision_types,
       shape          = shapes)
+  grid_plot_power_known_anom(p = 100, c("banded", "lattice", "global_const"),
+                             shape = c(5, 6, 8, 0), rho = 0.9, proportions = 1)
 
   grid_plot_power_known_anom(p = 100, precision_type = "banded", shape = 0,
                              change_type = "block_scattered", proportions = 0.1,

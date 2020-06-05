@@ -48,6 +48,7 @@ label_anom_est <- function(anom_list, data) {
   labs <- rep(0, data$n)
   starts <- unique(anom_list$collective$start)
   ends <- unique(anom_list$collective$end)
+  print(rbind(starts, ends))
   anom_inds <- integer(0)
   if (!any(is.na(starts) | is.na(ends)))
     anom_inds <- c(anom_inds, unlist(lapply(1:length(starts), function(i) {
@@ -59,7 +60,6 @@ label_anom_est <- function(anom_list, data) {
   if (length(anom_inds) > 0)
     labs[anom_inds] <- 1
   labs
-
 }
 
 true_labels <- function(data) {
