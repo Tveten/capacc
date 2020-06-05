@@ -86,8 +86,9 @@ get_tuned_penalty <- function(data = init_data(mu = 0), method = method_params()
     read_func <- read_penalties
   }
   if (data$n >= 200) {
-    if (data$p == 10) data$n <- 100
-    else if (data$p == 100) data$n <- 200
+    data$n <- 200
+    if (data$p <= 100) data$n <- 200
+    else if (data$p > 100) data$n <- 2 * data$p
     data$locations <- data$durations <- 2
     data$change_type <- "adjacent"
     data$proportions <- data$vartheta <- data$mu <- 0

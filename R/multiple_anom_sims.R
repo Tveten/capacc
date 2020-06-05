@@ -52,6 +52,7 @@ classify_anom <- function(out_file, data = init_data(), method = method_params()
                  ", rho=", data$rho,
                  ", vartheta=", data$vartheta[1],
                  ", shape=", data$shape,
+                 ", point_anom=", data$point_locations[1],
                  ", cost=", method$cost,
                  ", precision_est_struct=", method$precision_est_struct,
                  ", est_band=", method$est_band,
