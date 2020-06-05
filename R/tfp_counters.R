@@ -4,12 +4,12 @@ count_tfp_anom <- function(anom_list, tol, data) {
   est_anoms <- data.frame("start" = unique(anom_list$collective$start),
                           "end"   = unique(anom_list$collective$end))
   n_anom <- nrow(true_anoms)
-  if (is.na(est_anoms$start[1])) {
+  n_est_anom <- nrow(est_anoms)
+  if (n_est_anom > 0) {
     n_est_anom <- 0
     n_tp <- 0
     tp <- 0
   } else {
-    n_est_anom <- nrow(est_anoms)
     n_tp <- 0
     for (i in 1:nrow(true_anoms)) {
       correct_start <- is_in_interval(est_anoms$start, true_anoms$start[i] + c(- tol, tol))
@@ -32,9 +32,7 @@ count_tfp_anom <- function(anom_list, tol, data) {
 }
 
 count_collective_anomalies <- function(anom_list) {
-  collective_anoms <- anom_list$collective
-  if (is.na(collective_anoms$start[1])) return(0)
-  else return(length(unique(collective_anoms$start)))
+  length(unique(anom_list$collective$start))
 }
 
 rand_counts_mvcapa <- function(anom_list, data) {
@@ -48,15 +46,12 @@ label_anom_est <- function(anom_list, data) {
   labs <- rep(0, data$n)
   starts <- unique(anom_list$collective$start)
   ends <- unique(anom_list$collective$end)
-  print(rbind(starts, ends))
   anom_inds <- integer(0)
-  if (!any(is.na(starts) | is.na(ends)))
+  if (length(starts) > 0)
     anom_inds <- c(anom_inds, unlist(lapply(1:length(starts), function(i) {
       starts[i]:ends[i]
     })))
-  point_anoms <- anom_list$point$location
-  if (!any(is.na(point_anoms)))
-    anom_inds <- c(anom_inds, point_anoms)
+  anom_inds <- c(anom_inds, anom_list$point$location)
   if (length(anom_inds) > 0)
     labs[anom_inds] <- 1
   labs

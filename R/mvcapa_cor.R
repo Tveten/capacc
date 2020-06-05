@@ -1,26 +1,17 @@
 #### C++ helpers #####
 
 collective_anomalies <- function(mvcapa_cor_res) {
-
-  if (nrow(mvcapa_cor_res$anoms) == 0)
-    return(data.frame('start' = NA, 'end' = NA, 'variate' = NA, 'mean_change' = NA))
-  else {
-    res_dt <- as.data.table(mvcapa_cor_res$anoms)
-    res_dt <- res_dt[start != end]
-    names(res_dt)[4] <- "mean_change"
-    return(res_dt)
-  }
+  res_dt <- as.data.table(mvcapa_cor_res$anoms)
+  res_dt <- res_dt[start != end]
+  names(res_dt)[4] <- "mean_change"
+  res_dt
 }
 
 point_anomalies <- function(mvcapa_cor_res) {
-  if (nrow(mvcapa_cor_res$anoms) == 0)
-    return(data.frame('location' = NA, 'variate' = NA, 'strength' = NA))
-  else {
-    res_dt <- as.data.table(mvcapa_cor_res$anoms)
-    res_dt <- res_dt[start == end][, 2:4]
-    names(res_dt)[c(1, 3)] <- c("location", "strength")
-    return(res_dt)
-  }
+  res_dt <- as.data.table(mvcapa_cor_res$anoms)
+  res_dt <- res_dt[start == end][, 2:4]
+  names(res_dt)[c(1, 3)] <- c("location", "strength")
+  res_dt
 }
 
 
@@ -241,10 +232,10 @@ collective_anomaliesR <- function(mvcapa_cor_res) {
     }
   }
   if (length(anom_list) == 0)
-    return(data.frame('start' = NA, 'end' = NA, 'variate' = NA, 'mean_change' = NA))
+    return(data.frame('start' = integer(0), 'end' = integer(0),
+                      'variate' = integer(0), 'mean_change' = integer(0)))
   else {
-    anom_df <- do.call('rbind', anom_list)
-    anom_dt <- data.table::as.data.table(anom_df)
+    anom_dt <- data.table::as.data.table(do.call('rbind', anom_list))
     anom_dt <- anom_dt[order(start)][, .SD[order(variate)], by = start]
     return(as.data.frame(anom_dt))
   }
@@ -269,10 +260,10 @@ point_anomaliesR <- function(mvcapa_cor_res) {
     m <- mvcapa_cor_res$anom[m, 1]
   }
   if (length(anom_list) == 0)
-      return(data.frame('location' = NA, 'variate' = NA, 'strength' = NA))
+    return(data.frame('location' = integer(0), 'variate' = integer(0),
+                      'mean_change' = numeric(0)))
   else {
-    anom_df <- do.call('rbind', anom_list)
-    anom_dt <- data.table::as.data.table(anom_df)
+    anom_dt <- data.table::as.data.table(do.call('rbind', anom_list))
     anom_dt <- anom_dt[order(location)][, .SD[order(variate)], by = location]
     return(as.data.frame(anom_dt))
   }
