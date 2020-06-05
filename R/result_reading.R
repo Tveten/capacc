@@ -41,7 +41,7 @@ read_single_result <- function(res, query_params, all_params, msg) {
 
 read_anom_class <- function(res, all_params) {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size",
-                    "shape", "locations", "durations", "vartheta",
+                    "shape", "locations", "durations", "vartheta", "point_locations",
                     "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
                     "alpha", "alpha_tol", "tuning_n_sim")
   read_single_result(res, query_params, all_params, "Anomaly classification")
