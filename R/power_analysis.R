@@ -518,7 +518,7 @@ known_anom_setup <- function(p = 10, precision_type = "banded",
   # rho <- rev(c(0.3, 0.5, 0.7, 0.9, 0.99))
   curve <- curve_params(max_dist = 0.1, n_sim = n_sim)
   out_file <- "power_known_anom_FINAL.csv"
-  data <- init_data(n = n, p = p, precision_type = precision_type,
+  data <- init_data(n = n, p = p, precision_type = precision_type[1],
                     band = band, locations = locations, durations = durations,
                     change_type = change_type, shape = shape[1],
                     rho = rho[1], proportions = proportions[1])
@@ -528,7 +528,8 @@ known_anom_setup <- function(p = 10, precision_type = "banded",
                     "est_band"    = est_band,
                     "shape"       = shape,
                     "rho"         = rho,
-                    "proportions" = proportions)
+                    "proportions" = proportions,
+                    "precision_type" = precision_type)
   tuning <- tuning_params(init_b = c(0.1, 1, 4), n_sim = n_sim)
   list(variables = variables, data = data, method = method,
        tuning = tuning, curve = curve, out_file = out_file)
@@ -564,7 +565,7 @@ all_known_power_runs100 <- function() {
                         rho = c(0.9, 0.7, 0.5), proportions = 0.1)
   known_anom_power_runs(100, "banded", shape = 8:9, rho = c(0.9, 0.7, 0.5))
   known_anom_power_runs(100, "lattice", shape = 8:9, rho = c(0.9, 0.7, 0.5))
-  known_anom_power_runs(100, "lattice", shape = c(0, 5, 6, 8), change_type = "adjacent_lattice", rho = c(0.9, 0.7, 0.5))
+  known_anom_power_runs(100, "lattice", shape = c(0, 5, 6, 8), proportions = c(0.1, 1), change_type = "adjacent_lattice", rho = c(0.9, 0.7, 0.5))
   known_anom_power_runs(100, "global_const", shape = 8, rho = c(0.9, 0.7, 0.5))
 }
 
@@ -575,8 +576,7 @@ grid_plot_power_known_anom <- function(p = 10, precision_type = "banded",
                                        proportions = c(1/p, round(sqrt(p)) / p, 1),
                                        dodge = FALSE,
                                        out_file = "power_known_anom") {
-  setup <- known_anom_setup(p, precision_type[1], shape, rho, proportions, change_type)
-  setup$variables$precision_type <- precision_type
+  setup <- known_anom_setup(p, precision_type, shape, rho, proportions, change_type)
   grid_plot_power(setup$variables, setup$data, setup$method, setup$tuning,
                   setup$curve, file_name = setup$out_file, known = TRUE,
                   dodge = dodge, out_file = out_file)
@@ -680,15 +680,18 @@ known_cpt_setup <- function(p = 10, precision_type = "banded",
 
   curve <- curve_params(max_dist = 0.1, n_sim = n_sim)
   out_file <- "power_known_cpt_FINAL.csv"
-  data <- init_data(n = n, p = p, precision_type = precision_type,
-                    band = band, locations = locations, durations = durations)
+  data <- init_data(n = n, p = p, precision_type = precision_type[1],
+                    band = band, locations = locations, durations = durations,
+                    shape = shape[1], rho = rho[1], proportions = proportions[1])
   method <- method_params()
   variables <- list("cost"        = c("sinspect", "mvlrt"),
                     "precision_est_struct" = precision_est_struct,
                     "est_band"    = est_band,
                     "rho"         = rho,
                     "proportions" = proportions,
-                    "shape"       = shape)
+                    "shape"       = shape,
+                    "precision_type" = precision_type)
+  print(variables)
   tuning <- tuning_params(init_b = c(0.001, 0.1, 1, 3, 15), n_sim = n_sim)
   list(variables = variables, data = data, method = method,
        tuning = tuning, curve = curve, out_file = out_file)
@@ -718,20 +721,21 @@ all_known_cpt_runs100 <- function(locations = NULL, cpus = 1) {
   known_cpt_power_runs(100, "banded", locations, cpus = cpus)
   known_cpt_power_runs(100, "lattice", locations, cpus = cpus)
   known_cpt_power_runs(100, "global_const", locations, cpus = cpus)
+  known_cpt_power_runs(100, c("banded", "lattice", "global_const"),
+                       locations, shape = 8, rho = c(0.5, 0.7, 0.9),
+                       proportions = c(0.1, 1), cpus = cpus)
 }
 
 #' @export
 grid_plot_power_known_cpt <- function(p = 10, precision_type = "banded",
                                       locations = NULL,
                                       shape = 6, rho = c(0.5, 0.7, 0.9),
-                                      proportions = NULL, dodge = FALSE,
-                                      out_file = "power_known_cpt") {
-  setup <- known_cpt_setup(p, precision_type, locations, shape)
-  setup$data$shape <- shape
-  if (is.null(proportions)) proportions <- setup$variables$proportions
-  variables <- c(setup$variables[c("cost", "precision_est_struct", "est_band")],
-                 list("rho" = rho, "proportions" = proportions))
-  grid_plot_power(variables, setup$data, setup$method, setup$tuning,
+                                      proportions = c(1/p, round(sqrt(p)) / p, 1),
+                                      dodge = FALSE, out_file = "power_known_cpt") {
+  # setup <- known_cpt_setup(p, precision_type[1], locations, shape, rho, proportions)
+  # setup$variables$precision_type <- precision_type
+  setup <- known_cpt_setup(p, precision_type, locations, shape, rho, proportions)
+  grid_plot_power(setup$variables, setup$data, setup$method, setup$tuning,
                   setup$curve, file_name = setup$out_file, known = TRUE,
                   dodge = dodge, out_file = out_file)
 }
@@ -761,11 +765,14 @@ make_all_plots <- function() {
   grid_plot_power_known_anom(p = 100, c("banded", "lattice", "global_const"),
                              proportions = 1/100, rho = c(0.5, 0.7, 0.9),
                              shape = 0)
-  grid_plot_power_known_anom(p = 100, c("banded", "lattice", "global_const"),
-                             shape = c(5, 6, 8, 0), rho = 0.9, proportions = 0.1)
-  grid_plot_power_known_anom(p = 100, c("banded", "lattice", "global_const"),
-                             shape = c(5, 6, 8, 0), rho = 0.9, proportions = 1)
-
+  rhos <- rep(c(0.5, 0.7, 0.9), 2)
+  proportions <- rep(c(0.1, 1), each = 3)
+  Map(grid_plot_power_known_anom,
+      rho         = rhos,
+      proportions = proportions,
+      MoreArgs = list(p = 100, shape = c(5, 6, 8, 0),
+                      precision_type = c("banded", "lattice", "global_const")))
+  # Different change_types.
   grid_plot_power_known_anom(p = 100, precision_type = "banded", shape = 0,
                              change_type = "block_scattered", proportions = 0.1,
                              out_file = "power_known_anom_block_scattered")
@@ -781,4 +788,14 @@ make_all_plots <- function() {
       p              = ps,
       precision_type = precision_types,
       shape          = shapes)
+  grid_plot_power_known_cpt(p = 100, c("banded", "lattice", "global_const"),
+                            proportions = 1/100, rho = c(0.5, 0.7, 0.9),
+                            shape = 0)
+  rhos <- rep(c(0.5, 0.7, 0.9), 2)
+  proportions <- rep(c(0.1, 1), each = 3)
+  Map(grid_plot_power_known_cpt,
+      rho         = rhos,
+      proportions = proportions,
+      MoreArgs = list(p = 100, shape = c(5, 6, 0),
+                      precision_type = c("banded", "lattice", "global_const")))
 }
