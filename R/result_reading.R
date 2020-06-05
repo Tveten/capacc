@@ -82,7 +82,7 @@ read_cpt_est_res <- function(res, all_params) {
                     "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
                     "alpha", "alpha_tol", "tuning_n_sim",
                     "n_sim")
-  read_single_res(res, query_params, all_params, "Changepoint estimates")
+  read_single_result(res, query_params, all_params, "Changepoint estimates")
 }
 
 read_penalties <- function(res, all_params) {

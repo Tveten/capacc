@@ -295,7 +295,7 @@ write_cpt_mse <- function(p = 10,
                                  n_sim = 1000, loc_tol = 10) {
       all_params <- c(data, method, tuning, list("n_sim" = n_sim))
       params <- combine_lists(split_params(
-        expand_list(all_params, variables),
+        expand_list(all_params, variables, prune = FALSE),
         list("data"    = names(data),
              "method"  = names(method),
              "tuning"  = names(tuning),
@@ -313,7 +313,7 @@ write_cpt_mse <- function(p = 10,
     node_variables <- variables[names(variables) %in% node_var_names]
     grid_variables <- variables[!names(variables) %in% node_var_names]
     params <- split_params(
-      expand_list(c(data, method), grid_variables),
+      expand_list(c(data, method), grid_variables, prune = FALSE),
       list("data"   = names(data),
            "method" = names(method))
     )
@@ -463,5 +463,14 @@ cpt_mse_table <- function(p = 10, vartheta = 2, shape = 6,
   rownames(table) <- NULL
   if (latex) return(latex_mse_table(table, p, vartheta, shape))
   else return(as.data.table(table))
+}
+
+most_relevant_tables <- function() {
+  cpt_mse_table(100, 2, 5, latex = TRUE)
+  cpt_mse_table(100, 2, 6, latex = TRUE)
+  cpt_mse_table(100, 2, 0, latex = TRUE)
+  cpt_mse_table(100, 3, 5, latex = TRUE)
+  cpt_mse_table(100, 3, 6, latex = TRUE)
+  cpt_mse_table(100, 3, 0, latex = TRUE)
 }
 
