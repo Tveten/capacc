@@ -95,7 +95,6 @@ cost_pruned_expand_grid <- function(vars) {
   if (any(names(var_grid) == "est_band"))
     var_grid <- var_grid[, .SD[!(cost == "cor" & precision_est_struct == "banded" & est_band == 0)],
                          by = c(names(var_grid)[!names(var_grid) %in% cost_vars])]
-
   var_grid[!is.na(cost)]
 }
 

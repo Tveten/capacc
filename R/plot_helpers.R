@@ -80,11 +80,11 @@ make_title <- function(params,
   if (type == "anom") location_text <- paste0("s=", params$locations + 1)
   else if (type == "cpt") location_text <- paste0("cpt=", params$locations)
 
-  if (params$shape == 0) shape_text <- "equal"
-  else if (params$shape == 5) shape_text <- "iid"
-  else if (params$shape == 6) shape_text <- "cor"
-  else if (params$shape == 8) shape_text <- "$0.8$"
-  else if (params$shape == 9) shape_text <- "$0.9$"
+  if (params$shape == 0) shape_text <- "$\\mu_{(1)}$"
+  else if (params$shape == 5) shape_text <- "$\\mu_{(0)}$"
+  else if (params$shape == 6) shape_text <- "$\\mu_{(\\Sigma)}$"
+  else if (params$shape == 8) shape_text <- "$\\mu_{(0.8)}$"
+  else if (params$shape == 9) shape_text <- "$\\mu_{(0.9)}$"
   else shape_text <- paste0("sh=", params$shape)
 
   alpha_text <- paste0("$\\alpha =", params$alpha, "\\pm ", params$alpha_tol, "$")
