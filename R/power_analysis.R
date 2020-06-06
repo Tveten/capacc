@@ -165,12 +165,10 @@ many_power_curves <- function(out_file, variables, data = init_data(),
 }
 
 #' @export
-plot_power_curve <- function(file_name, variables,
-                             data = init_data(),
-                             method = method_params(),
-                             tuning = tuning_params(), curve = curve_params(),
-                             loc_tol = 10, known = FALSE, vars_in_title = NA,
-                             dodge = FALSE) {
+plot_power_curve <- function(file_name, variables, data = init_data(),
+                             method = method_params(), tuning = tuning_params(),
+                             curve = curve_params(), loc_tol = 10, known = FALSE,
+                             vars_in_title = NA, dodge = FALSE) {
   upper_xlim <- function(res) {
     ylim <- 0.9
     if (any(res[, all(.SD$power < ylim), by = cost]$V1))
@@ -184,10 +182,6 @@ plot_power_curve <- function(file_name, variables,
     step_length <- 1
     if (upper > 6) step_length <- 2
     seq(0, upper, step_length)
-  }
-
-  set_breaks <- function(res) {
-    res[, unique(cost)]
   }
 
   all_params <- c(data, method, tuning, curve, list("loc_tol" = loc_tol))
@@ -206,12 +200,8 @@ plot_power_curve <- function(file_name, variables,
                  Map(read_func,
                      params_list,
                      MoreArgs = list(res = all_res)))
-  # res <- rename_precision_est_struct(res)
   res <- rename_cost(res)
   title <- make_title(all_params, power_curve_title_parts(vars_in_title))
-  # pl <- ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power,
-  #                                                colour = cost,
-  #                                                linetype = precision_est_struct))
   pl <- ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power,
                                                  colour = cost))
 
@@ -220,16 +210,22 @@ plot_power_curve <- function(file_name, variables,
     pl <- pl + ggplot2::geom_line(position = ggplot2::position_dodge(width = width))
   } else
     pl <- pl + ggplot2::geom_line()
-  pl +
-    ggplot2::ggtitle(latex2exp::TeX(title)) +
-    ggplot2::scale_x_continuous(latex2exp::TeX("$\\vartheta$"),
-                                limits = c(0, upper_xlim(res)),
-                                breaks = xbreaks()) +
-    ggplot2::scale_y_continuous("Power", breaks = c(0, 0.5, 1), limits = c(0, 1)) +
-    ggplot2::scale_colour_discrete(name = "Method",
-                                   breaks = set_breaks(res),
-                                   labels = unname(latex2exp::TeX(set_breaks(res))))
-  # ggplot2::scale_linetype_discrete(name = "Cost")
+  col_name_dt <- cost_names_colours()[name %in% res[, unique(cost)]]
+  cols <- col_name_dt$colour
+  names(cols) <- col_name_dt$name
+  list(
+    "plot" = pl +
+      ggplot2::ggtitle(latex2exp::TeX(title)) +
+      ggplot2::scale_x_continuous(latex2exp::TeX("$\\vartheta$"),
+                                  limits = c(0, upper_xlim(res)),
+                                  breaks = xbreaks()) +
+      ggplot2::scale_y_continuous("Power", breaks = c(0, 0.5, 1), limits = c(0, 1)) +
+      ggplot2::scale_colour_manual(name = "Method",
+                                   breaks = col_name_dt$name,
+                                   labels = unname(latex2exp::TeX(col_name_dt$name)),
+                                   values = cols),
+    "cost_names" = col_name_dt$name
+  )
 }
 
 #' @export
@@ -238,6 +234,10 @@ grid_plot_power <- function(variables, data = init_data(),
                             curve = curve_params(max_dist = 0.1, n_sim = 300),
                             file_name = "power.csv", known = FALSE, loc_tol = 10,
                             dodge = FALSE, out_file = NULL) {
+  get_title <- function() {
+    paste0("Power curves for ", make_title(c(data, method), vars_in_title))
+  }
+
   plot_var_names <- c("cost", "precision_est_struct", "est_band")
   plot_variables <- variables[names(variables) %in% plot_var_names]
   grid_variables <- variables[!names(variables) %in% plot_var_names]
@@ -260,14 +260,18 @@ grid_plot_power <- function(variables, data = init_data(),
                                "known"         = known,
                                "vars_in_title" = names(grid_variables)[lengths > 1],
                                "dodge"         = dodge))
-  # vars_in_title <- names(data)[!names(data) %in% names(variables)]
+  costs <- extract_nested_element("cost_names", plots)
+  plots <- extract_nested_element("plot", plots)
+
   vars_in_title <- power_curve_title_parts(NA)
   vars_in_title <- vars_in_title[!vars_in_title %in% names(grid_variables)[lengths > 1]]
   n_col <- length(grid_variables[lengths > 1][[1]])
   if (length(grid_variables[lengths > 1]) < 2) n_row <- 1
   else n_row <- length(grid_variables[lengths > 1][[2]])
   dims <- c(n_row, n_col)
-  pp <- grid_plot(plots, dims, latex2exp::TeX(paste0("Power curves for ", make_title(c(data, method), vars_in_title))))
+  n_costs <- unlist(lapply(costs, length))
+  pp <- grid_plot(plots, dims, latex2exp::TeX(get_title()), which.max(n_costs))
+
   if (!is.null(out_file))
     save_grid_plot(pp, dims, out_file, grid_variables[lengths == 1], data)
   else return(pp)
@@ -477,6 +481,8 @@ grid_plot_power_MLE <- function(p = 10, rho = "high", shape = 6, dodge = FALSE,
   if (rho == "low") variables$rho <- c(0.01, 0.2, 0.5)
   else if (rho == "high") variables$rho <- c(0.7, 0.9, 0.99)
   variables$proportions <- c(1/p, 3 / p, 1)
+  variables$precision_type <- "banded"
+  variables$shape <- shape
   grid_plot_power(variables, data, method_params(), tuning, curve,
                   file_name = read_file, known = TRUE, dodge = dodge,
                   out_file = out_file)
@@ -504,7 +510,7 @@ known_anom_setup <- function(p = 10, precision_type = "banded",
   if (precision_type == "banded") {
     band <- 2
     precision_est_struct <- c(NA, "correct", "banded")
-    est_band <- c(1, 4)
+    est_band <- c(1, 2, 4)
   } else if (precision_type == "lattice") {
     band <- NA
     precision_est_struct <- c(NA, "correct", "banded")
@@ -565,7 +571,8 @@ all_known_power_runs100 <- function() {
                         rho = c(0.9, 0.7, 0.5), proportions = 0.1)
   known_anom_power_runs(100, "banded", shape = 8:9, rho = c(0.9, 0.7, 0.5))
   known_anom_power_runs(100, "lattice", shape = 8:9, rho = c(0.9, 0.7, 0.5))
-  known_anom_power_runs(100, "lattice", shape = c(0, 5, 6, 8), proportions = c(0.1, 1), change_type = "adjacent_lattice", rho = c(0.9, 0.7, 0.5))
+  known_anom_power_runs(100, "lattice", shape = c(0, 5, 6, 8), proportions = c(0.1, 1),
+                        change_type = "adjacent_lattice", rho = c(0.9, 0.7, 0.5))
   known_anom_power_runs(100, "global_const", shape = 8, rho = c(0.9, 0.7, 0.5))
 }
 
@@ -691,7 +698,6 @@ known_cpt_setup <- function(p = 10, precision_type = "banded",
                     "proportions" = proportions,
                     "shape"       = shape,
                     "precision_type" = precision_type)
-  print(variables)
   tuning <- tuning_params(init_b = c(0.001, 0.1, 1, 3, 15), n_sim = n_sim)
   list(variables = variables, data = data, method = method,
        tuning = tuning, curve = curve, out_file = out_file)
@@ -741,12 +747,12 @@ grid_plot_power_known_cpt <- function(p = 10, precision_type = "banded",
 }
 
 make_all_plots <- function() {
-  # MLE vs. approx plots.
+  ### MLE vs. approx plots.
   grid_plot_MLE_sparse_highcor()
   shapes <- c(0, 5, 6)
   Map(grid_plot_power_MLE, shape = shapes)
 
-  # Single known anomaly plots.
+  ### Single known anomaly plots.
   ps <- rep(c(10, 16, 10, 100, 100, 100), each = 3)
   precision_types <- rep(rep(c("banded", "lattice", "global_const"), each = 3), 2)
   shapes <- rep(c(0, 5, 6), 6)
@@ -754,7 +760,6 @@ make_all_plots <- function() {
       p              = ps,
       precision_type = precision_types,
       shape          = shapes)
-
   ps <- rep(100, 4)
   precision_types <- rep(c("banded", "lattice"), each = 2)
   shapes <- rep(8:9, 2)
@@ -762,9 +767,11 @@ make_all_plots <- function() {
       p              = ps,
       precision_type = precision_types,
       shape          = shapes)
+  # precision_type vs. rho
   grid_plot_power_known_anom(p = 100, c("banded", "lattice", "global_const"),
                              proportions = 1/100, rho = c(0.5, 0.7, 0.9),
                              shape = 0)
+  # Shape vs. precision_type plots.
   rhos <- rep(c(0.5, 0.7, 0.9), 2)
   proportions <- rep(c(0.1, 1), each = 3)
   Map(grid_plot_power_known_anom,
@@ -779,8 +786,13 @@ make_all_plots <- function() {
   grid_plot_power_known_anom(p = 100, precision_type = "banded", shape = 0,
                              change_type = "adjacent", proportions = 0.1,
                              out_file = "power_known_anom_adjacent")
+  Map(grid_plot_power_known_anom, shape = c(0, 5, 6, 8),
+      MoreArgs = list(p = 100, precision_type = "lattice",
+                      change_type = "adjacent_lattice",
+                      out_file = "power_known_anom_adjlat"))
 
-  # Single changepoint plots.
+
+  ### Single changepoint plots.
   ps <- rep(c(10, 16, 10, 100, 100, 100), each = 3)
   precision_types <- rep(rep(c("banded", "lattice", "global_const"), each = 3), 2)
   shapes <- rep(c(0, 5, 6), 6)
@@ -788,14 +800,16 @@ make_all_plots <- function() {
       p              = ps,
       precision_type = precision_types,
       shape          = shapes)
+  # precision_type vs. rho
   grid_plot_power_known_cpt(p = 100, c("banded", "lattice", "global_const"),
                             proportions = 1/100, rho = c(0.5, 0.7, 0.9),
                             shape = 0)
+  # Shape vs. precision_type plots.
   rhos <- rep(c(0.5, 0.7, 0.9), 2)
   proportions <- rep(c(0.1, 1), each = 3)
   Map(grid_plot_power_known_cpt,
       rho         = rhos,
       proportions = proportions,
-      MoreArgs = list(p = 100, shape = c(5, 6, 0),
+      MoreArgs = list(p = 100, shape = c(5, 6, 8, 0),
                       precision_type = c("banded", "lattice", "global_const")))
 }
