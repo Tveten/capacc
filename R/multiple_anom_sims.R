@@ -162,20 +162,95 @@ all_multiple_anom_runs100 <- function(cpus = 1) {
   multiple_anom_runs(100, "global_const", point_anoms = TRUE, cpus = cpus)
 }
 
-ari_table <- function() {
+multi_anom_row <- function(pm_dt, perf_metric, pt, rh, sh, pa) {
+  pm_dt <- pm_dt[precision_type == pt & rho == rh & shape == sh & point_anom == pa]
+  pm_dt <- pm_dt[, .(pt = pt,
+                     rh = rh,
+                     sh = sh,
+                     pa = pa,
+                     pm = mean(eval(parse(text = perf_metric)))),
+                 by = cost]
+  pm_dt <- pm_dt[order(cost)]
 
+  pm_vec <- pm_dt$pm
+  which_max <- which.max(pm_vec)
+  which_notmax <- (1:length(pm_vec))[-which_max]
+  pm_vec <- round(pm_vec, 2)
+  pm_vec <- vapply(pm_vec, function(x) sprintf("%.2f", x), character(1))
+  pm_vec[which_max] <- paste0("$\\mathbf{", pm_vec[which_max] , "}$")
+  pm_vec[which_notmax] <- paste0("$", pm_vec[which_notmax], "$")
+  wide_pm <- matrix(c(pt, rh, sh, pa, pm_vec), ncol = length(pm_vec) + 4)
+  colnames(wide_pm) <- c("$\\mathbf{Q}$", "$\\rho$", "shape",
+                          "pt_anoms", pm_dt$cost)
+
+  if (wide_pm[1, 1] == "banded") wide_pm[1, 1] <- "$\\mathbf{Q}(2)$"
+  else if (wide_pm[1, 1] == "lattice") wide_pm[1, 1] <- "$\\mathbf{Q}_\\text{lat}$"
+  else if (wide_pm[1, 1] == "global_const") wide_pm[1, 1] <- "$\\mathbf{Q}_\\text{con}$"
+
+  wide_pm[, c(1:4, 6, 5, 8, 7)]
 }
 
-latex_ari_table <- function(x, p, vartheta, shape) {
-  if (shape == 0) shape_text <- "equal changes"
-  else if (shape == 5) shape_text <- "iid changes"
-  else if (shape == 6) shape_text <- "cor changes"
-  caption <- paste0("RMSE for ",
+# Varying cost, rho, vartheta shape and precision_type in sims.
+# Table:
+# given p, vartheta or not.
+# precision_type rho, shape, point_anom, cost1 ... cost4
+multi_anom_table <- function(p = 10, vartheta = 2, perf_metric = "arand_acc",
+                             precision_type = c("banded", "lattice", "global_const"),
+                             rho = c(0.5, 0.7, 0.9),
+                             shape = c(5, 6, 8),
+                             point_anom = c(FALSE, TRUE),
+                             latex = FALSE) {
+  v <- list(p = p, vartheta = vartheta)
+  if (p == 10) v$p <- c(10, 16)
+  pm_dt <- fread("./results/multiple_anom_FINAL.csv")
+  pm_dt[, "point_anom" := !is.na(point_locations)]
+  pm_dt <- pm_dt[p %in% v$p & vartheta == v$vartheta]
+  pm_dt <- rename_cost(pm_dt)
+  layout <- expand.grid(rh = rho,
+                        sh = shape,
+                        pa = point_anom,
+                        pt = precision_type,
+                        stringsAsFactors = FALSE)
+  table <- do.call("rbind", Map(multi_anom_row,
+                                pt = layout$pt,
+                                rh = layout$rh,
+                                sh = layout$sh,
+                                pa = layout$pa,
+                                MoreArgs = list(pm_dt = pm_dt,
+                                                perf_metric = perf_metric)))
+  rownames(table) <- NULL
+  table <- as.data.table(table)
+  if (latex) return(latex_ari_table(table, p, vartheta))
+  else return(table)
+}
+
+
+latex_ari_table <- function(x, p, vartheta) {
+  rename_shape <- function(shape) {
+    # if (shape == 0) shape_text <- "$\\mu_{(1)}$"
+    # else if (shape == 5) shape_text <- "$\\mu_{(0)}$"
+    # else if (shape == 6) shape_text <- "$\\mu_{(\\Sigma)}$"
+    # else if (shape == 8) shape_text <- "$\\mu_{(0.8)}$"
+    # else if (shape == 9) shape_text <- "$\\mu_{(0.9)}$"
+    # else shape_text <- paste0("sh=", shape)
+    if (shape == 0) shape_text <- "$1$"
+    else if (shape == 5) shape_text <- "$0$"
+    else if (shape == 6) shape_text <- "$\\Sigma$"
+    else if (shape == 8) shape_text <- "$0.8$"
+    else if (shape == 9) shape_text <- "$0.9$"
+    else shape_text <- shape
+    return(shape_text)
+  }
+
+  x[, shape := unlist(lapply(shape, rename_shape))]
+  x[pt_anoms == TRUE, pt_anoms := "\\checkmark"]
+  x[pt_anoms == FALSE, pt_anoms := "--"]
+
+  caption <- paste0("ARI for ",
                     "$p = ", p,
                     "$, $\\vartheta = ", vartheta,
-                    "$ and ", shape_text,
-                    ". The smallest value is given in bold.")
-  label <- paste0("tab:mse_p", p, "_vartheta", vartheta, "_shape", shape)
+                    "$. The largest value is given in bold.")
+  label <- paste0("tab:ari_p", p, "_vartheta", vartheta)
 
   date_line <- paste0('% ', date())
   begin_table <- paste('\\begin{table}[htb]',
@@ -191,10 +266,10 @@ latex_ari_table <- function(x, p, vartheta, shape) {
                      '\\end{table}', sep = ' \n')
 
   mid_sep <- ' \n\\midrule'
-  colnames(x) <- c("$\\bQ$", "$\\rho$", "$J$",
+  colnames(x) <- c("$\\bQ$", "$\\rho$", "$\\mu_{(\\cdot)}$", "Pt. anoms",
                    "MVCPT($\\hat{\\bQ}(\\bW(4))$)",
-                   "inspect($\\hat{\\bQ}$)",
                    "MVCPT($\\bI$)",
+                   "inspect($\\hat{\\bQ}$)",
                    "inspect($\\bI$)")
   heading <- paste(colnames(x), collapse = " & ")
 
@@ -208,3 +283,14 @@ latex_ari_table <- function(x, p, vartheta, shape) {
   latex_table <- paste0(latex_table, ' \n', end_table)
   cat(latex_table)
 }
+
+plots_to_show <- function() {
+  multi_anom_table(p = 10, vartheta = 1.5)
+  multi_anom_table(p = 10, vartheta = 1.5, shape = c(5, 8), rho = c(0.5, 0.9), latex = TRUE)
+  multi_anom_table(p = 100, vartheta = 1.5)
+  multi_anom_table(p = 100, vartheta = 1.5, shape = c(5, 8), rho = c(0.5, 0.9))
+}
+
+
+
+

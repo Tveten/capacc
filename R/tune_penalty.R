@@ -31,7 +31,6 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
       if (known) {
         return(simulate_detection_known(data, method)$S_max > 0)
       } else {
-        # print(microbenchmark::microbenchmark(simulate_detection(data, method, standardise_output = TRUE), times = 5))
         sim <- simulate_detection(data, method, standardise_output = TRUE)
         if (is.null(sim$collective)) return(nrow(sim$cpt) > 0)
         else return(nrow(sim$collective) > 0)

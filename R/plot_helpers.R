@@ -1,7 +1,9 @@
 
-grid_plot <- function(plots, dims, title) {
+grid_plot <- function(plots, dims, title, legend_ind = 1) {
   figure <- ggpubr::ggarrange(plotlist = plots, nrow = dims[1], ncol = dims[2],
-                              common.legend = TRUE, legend = "right")
+                              common.legend = TRUE,
+                              legend.grob = ggpubr::get_legend(plots[[legend_ind]]),
+                              legend = "right")
   title <- ggpubr::text_grob(title, face = "bold", size = 14)
   ggpubr::annotate_figure(figure, top = title)
 }
@@ -146,37 +148,104 @@ add_precision_est_struct_to_cost <- function(res) {
   res
 }
 
+cost_names_colours <- function() {
+  mvcor_cols <- RColorBrewer::brewer.pal(9, "Reds")
+  mviid_cols <- RColorBrewer::brewer.pal(9, "Blues")
+  # ml_cols <- c("cyan3", "dodgerblue2")
+  ml_cols <- c("darkorange2", "gold2")
+  inspect_cols <- RColorBrewer::brewer.pal(9, "Greens")
+  rbind(
+    data.table(cost = "cor", precision_est_struct = NA, est_band = NA,
+               name = "MVCAPA($Q$)", colour = mvcor_cols[9]),
+    data.table(cost = "cor", precision_est_struct = "correct", est_band = NA,
+               name = "MVCAPA($\\hat{Q}(W^*)$)", colour = mvcor_cols[7]),
+    data.table(cost = "cor", precision_est_struct = "banded", est_band = 4,
+               name = "MVCAPA($\\hat{Q}(4)$)", colour = mvcor_cols[6]),
+    data.table(cost = "cor", precision_est_struct = "banded", est_band = 2,
+               name = "MVCAPA($\\hat{Q}(2)$)", colour = mvcor_cols[5]),
+    data.table(cost = "cor", precision_est_struct = "banded", est_band = 1,
+               name = "MVCAPA($\\hat{Q}(1)$)", colour = mvcor_cols[4]),
+    data.table(cost = "iid", precision_est_struct = "banded", est_band = 0,
+               name = "MVCAPA($I$)", colour = mviid_cols[6]),
+    data.table(cost = "cor_exact", precision_est_struct = NA, est_band = NA,
+               name = "ML($Q$)", colour = ml_cols[2]),
+    data.table(cost = "cor_exact", precision_est_struct = "correct", est_band = NA,
+               name = "ML(\\hat{Q}(W^*))$)", colour = ml_cols[1]),
+    data.table(cost = "inspect", precision_est_struct = NA, est_band = NA,
+               name = "inspect($Q$)", colour = inspect_cols[8]),
+    data.table(cost = "inspect", precision_est_struct = "correct", est_band = NA,
+               name = "inspect($\\hat{Q}$)", colour = inspect_cols[6]),
+    data.table(cost = "inspect", precision_est_struct = "banded", est_band = 0,
+               name = "inspect($I$)", colour = inspect_cols[4]),
+    data.table(cost = "mvlrt", precision_est_struct = NA, est_band = NA,
+               name = "MVCPT($Q$)", colour = mvcor_cols[9]),
+    data.table(cost = "mvlrt", precision_est_struct = "correct", est_band = NA,
+               name = "MVCPT($\\hat{Q}(W^*)$)", colour = mvcor_cols[8]),
+    data.table(cost = "mvlrt", precision_est_struct = "banded", est_band = 0,
+               name = "MVCPT($I$)", colour = mviid_cols[6]),
+    data.table(cost = "mvlrt", precision_est_struct = "banded", est_band = 1,
+               name = "MVCPT($\\hat{Q}(1)$)", colour = mvcor_cols[4]),
+    data.table(cost = "mvlrt", precision_est_struct = "banded", est_band = 2,
+               name = "MVCPT($\\hat{Q}(2)$)", colour = mvcor_cols[5]),
+    data.table(cost = "mvlrt", precision_est_struct = "banded", est_band = 4,
+               name = "MVCPT($\\hat{Q}(4)$)", colour = mvcor_cols[6])
+  )
+}
+
 rename_cost <- function(res) {
   # Anomaly costs
-  res[cost == "cor" & is.na(precision_est_struct), "cost" :=
-        "MVCAPA($Q$)"]
-  res[cost == "cor" & precision_est_struct == "correct",
-      "cost" := "MVCAPA($\\hat{Q}(W^*)$)"]
-  res[cost == "cor" & precision_est_struct == "banded",
-      "cost" := paste0("MVCAPA($\\hat{Q}(W(", est_band, "))$)")]
-  res[cost == "iid",
-      "cost" := paste0("MVCAPA($I$)")]
-  res[cost == "cor_exact" & is.na(precision_est_struct), "cost" :=
-        "ML($Q$)"]
-  res[cost == "cor_exact" & precision_est_struct == "correct",
-      "cost" := "ML(\\hat{Q}(W^*))$)"]
+  cost_names <- cost_names_colours()
+  calls <- c(
+    'cost == "cor" & is.na(precision_est_struct)',
+    'cost == "cor" & precision_est_struct == "correct"',
+    'cost == "cor" & precision_est_struct == "banded" & est_band == 1',
+    'cost == "cor" & precision_est_struct == "banded" & est_band == 2',
+    'cost == "cor" & precision_est_struct == "banded" & est_band == 4',
+    'cost == "iid"',
+    'cost == "cor_exact" & is.na(precision_est_struct)',
+    'cost == "cor_exact" & precision_est_struct == "correct"',
+    'grepl("inspect", cost) & is.na(precision_est_struct)',
+    'grepl("inspect", cost) & precision_est_struct == "correct"',
+    'grepl("inspect", cost) & precision_est_struct == "banded"',
+    'cost == "mvlrt" & is.na(precision_est_struct)',
+    'cost == "mvlrt" & precision_est_struct == "correct"',
+    'cost == "mvlrt" & precision_est_struct == "banded" & est_band == 0',
+    'cost == "mvlrt" & precision_est_struct == "banded" & est_band == 1',
+    'cost == "mvlrt" & precision_est_struct == "banded" & est_band == 2',
+    'cost == "mvlrt" & precision_est_struct == "banded" & est_band == 4'
+  )
+  for (call in calls) {
+    res[eval(parse(text = call)), "cost" := cost_names[eval(parse(text = call)), name]]
+  }
+  res
+
+  # res[cost == "cor" & precision_est_struct == "correct",
+  #     "cost" := "MVCAPA($\\hat{Q}(W^*)$)"]
+  # res[cost == "cor" & precision_est_struct == "banded",
+  #     "cost" := paste0("MVCAPA($\\hat{Q}(W(", est_band, "))$)")]
+  # res[cost == "iid",
+  #     "cost" := paste0("MVCAPA($I$)")]
+  # res[cost == "cor_exact" & is.na(precision_est_struct), "cost" :=
+  #       "ML($Q$)"]
+  # res[cost == "cor_exact" & precision_est_struct == "correct",
+  #     "cost" := "ML(\\hat{Q}(W^*))$)"]
 
   # Changepoint costs
-  res[grepl("inspect", cost) & is.na(precision_est_struct),
-      "cost" := "inspect($Q$)"]
-  res[grepl("inspect", cost) & precision_est_struct == "correct",
-      "cost" := "inspect($\\hat{Q}$)"]
-  res[grepl("inspect", cost) & precision_est_struct == "banded",
-      "cost" := "inspect($I$)"]
-  res[cost == "mvlrt" & is.na(precision_est_struct), "cost" :=
-        "MVCPT($Q$)"]
-  res[cost == "mvlrt" & precision_est_struct == "correct",
-      "cost" := "MVCPT($\\hat{Q}(W^*)$)"]
-  res[cost == "mvlrt" & precision_est_struct == "banded" & est_band != 0,
-      "cost" := paste0("MVCPT($\\hat{Q}(W(", est_band, "))$)")]
-  res[cost == "mvlrt" & precision_est_struct == "banded" & est_band == 0,
-      "cost" := "MVCPT($I$)"]
-  res
+  # res[grepl("inspect", cost) & is.na(precision_est_struct),
+  #     "cost" := "inspect($Q$)"]
+  # res[grepl("inspect", cost) & precision_est_struct == "correct",
+  #     "cost" := "inspect($\\hat{Q}$)"]
+  # res[grepl("inspect", cost) & precision_est_struct == "banded",
+  #     "cost" := "inspect($I$)"]
+  # res[cost == "mvlrt" & is.na(precision_est_struct), "cost" :=
+  #       "MVCPT($Q$)"]
+  # res[cost == "mvlrt" & precision_est_struct == "correct",
+  #     "cost" := "MVCPT($\\hat{Q}(W^*)$)"]
+  # res[cost == "mvlrt" & precision_est_struct == "banded" & est_band != 0,
+  #     "cost" := paste0("MVCPT($\\hat{Q}(W(", est_band, "))$)")]
+  # res[cost == "mvlrt" & precision_est_struct == "banded" & est_band == 0,
+  #     "cost" := "MVCPT($I$)"]
+  # res
 }
 rename_precision_est_struct <- function(res) {
   res <- res[is.na(precision_est_struct), precision_est_struct := "true"]

@@ -20,7 +20,7 @@ Imports:
     doParallel (>= 1.0),
     RColorBrewer (>= 1.1),
     assertthat (>= 0.2.1),
-    ggpubr (>= 0.2.4),
+    ggpubr (>= 0.3.0),
     Rcpp (>= 1.0.3),
     glassoFast (>= 1.0),
     arrow (>= 0.16),

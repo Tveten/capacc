@@ -365,6 +365,7 @@ mse_row <- function(mse_dt, pt, rh, pr, sh) {
   unique_costs <- unique(mse_dt$cost)
   if (nrow(mse_dt) > length(unique_costs))
     mse_dt <- mse_dt[1:length(unique_costs)]
+  mse_dt <- mse_dt[order(cost)]
 
   mse_vec <- mse_dt$rmse
   which_min <- which.min(mse_vec)
@@ -382,7 +383,7 @@ mse_row <- function(mse_dt, pt, rh, pr, sh) {
   else if (wide_mse[1, 1] == "lattice") wide_mse[1, 1] <- "$\\mathbf{Q}_\\text{lat}$"
   else if (wide_mse[1, 1] == "global_const") wide_mse[1, 1] <- "$\\mathbf{Q}_\\text{con}$"
   colnames(wide_mse) <- c("$\\mathbf{Q}$", "$\\rho$", "$J$", mse_dt$cost)
-  wide_mse[, c(1:3, 7:4)]
+  wide_mse[, c(1:3, 5, 4, 7, 6)]
 }
 
 rename_precision_type <- function(res) {
@@ -418,8 +419,8 @@ latex_mse_table <- function(x, p, vartheta, shape) {
   mid_sep <- ' \n\\midrule'
   colnames(x) <- c("$\\bQ$", "$\\rho$", "$J$",
                    "MVCPT($\\hat{\\bQ}(\\bW(4))$)",
-                   "inspect($\\hat{\\bQ}$)",
                    "MVCPT($\\bI$)",
+                   "inspect($\\hat{\\bQ}$)",
                    "inspect($\\bI$)")
   heading <- paste(colnames(x), collapse = " & ")
 
@@ -444,9 +445,9 @@ cpt_mse_table <- function(p = 10, vartheta = 2, shape = 6,
   mse_dt <- mse_dt[p %in% v$p & vartheta == v$vartheta]
   proportions <- c(1/p, round(sqrt(p)) / p, 1)
   precision_type <- c("banded", "lattice", "global_const")
-  layout <- expand.grid(pr = proportions,
-                        rh = rho,
+  layout <- expand.grid(rh = rho,
                         pt = precision_type,
+                        pr = proportions,
                         stringsAsFactors = FALSE)
   if (p == 10) {
     sparse_ind <- layout$pt == "lattice" & layout$pr == 1/10
