@@ -13,6 +13,19 @@ format_data <- function(data) {
   data[which_data]
 }
 
+correct_res <- function() {
+  file_name <- "./results/multiple_anom_FINAL.csv"
+  res <- fread(file_name)
+  print(dim(res))
+  print(res[, length(unique(seed)), by = .(p, precision_type, shape, rho, vartheta, point_locations)]$V1)
+  print(res[, .N, by = .(p, precision_type, shape, rho, vartheta, point_locations)]$N)
+  res <- res[, seed := .SD[cost == "iid", seed][1],
+             by = .(p, precision_type, shape, rho, vartheta, point_locations)]
+  print(dim(res))
+  print(res[, length(unique(seed)), by = .(p, precision_type, shape, rho, vartheta, point_locations)]$V1)
+  print(res[, .N, by = .(p, precision_type, shape, rho, vartheta, point_locations)]$N)
+}
+
 #' @export
 classify_anom <- function(out_file, data = init_data(), method = method_params(),
                           tuning = tuning_params(), n_sim = 100, seed = NA) {
@@ -74,7 +87,8 @@ classify_anom <- function(out_file, data = init_data(), method = method_params()
   all_res <- read_results(out_file)
   if (already_estimated(all_res, all_params, read_anom_class)) return(NULL)
 
-  if (!is.na(seed)) set.seed(get_seed())
+  seed <- get_seed()
+  if (!is.na(seed)) set.seed(seed)
   if (is.na(method$b) && !is.null(method$b))
     method$b <- get_tuned_penalty(data, method, tuning, FALSE, seed + 2)$b
   sim_classify_with_progress <- dot_every(5, sim_classify)
@@ -176,6 +190,11 @@ all_multiple_anom_runs100 <- function(cpus = 1) {
 
 multi_anom_row <- function(pm_dt, perf_metric, pt, rh, sh, pa) {
   pm_dt <- pm_dt[precision_type == pt & rho == rh & shape == sh & point_anom == pa]
+  seeds <- unique(pm_dt$seed)
+  if (length(seeds) > 1) {
+    warning("Number of seeds is greater than 1. Picking the first one.")
+    pm_dt <- pm_dt[seed == seeds[1]]
+  }
   pm_dt <- pm_dt[, .(pt = pt,
                      rh = rh,
                      sh = sh,
@@ -296,7 +315,7 @@ latex_ari_table <- function(x, p, vartheta) {
   cat(latex_table)
 }
 
-plots_to_show <- function() {
+tables_to_show <- function() {
   multi_anom_table(p = 10, vartheta = 1.5)
   multi_anom_table(p = 10, vartheta = 1.5, shape = c(5, 8), rho = c(0.5, 0.9), latex = TRUE)
   multi_anom_table(p = 100, vartheta = 1.5)
