@@ -39,11 +39,13 @@ read_single_result <- function(res, query_params, all_params, msg) {
   res
 }
 
-read_anom_class <- function(res, all_params) {
+read_anom_class <- function(res, all_params, exclude = "none") {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size",
                     "shape", "locations", "durations", "vartheta", "point_locations",
                     "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
-                    "alpha", "alpha_tol", "tuning_n_sim")
+                    "alpha", "alpha_tol", "tuning_n_sim",
+                    "n_sim")
+  query_params <- query_params[!query_params %in% exclude]
   read_single_result(res, query_params, all_params, "Anomaly classification")
 }
 
@@ -100,10 +102,6 @@ read_penalties_known <- function(res, all_params) {
 }
 
 already_estimated <- function(res, all_params, read_func, out = TRUE) {
-  # if (!file.exists(paste0("./results/", file_name))) {
-  #   message(paste0("File does not exist. Making file ", file_name, " in ./results/"))
-  #   return(FALSE)
-  # }
   if (!is.data.table(res)) stop("res must be a data.table.")
   res <- read_func(res, all_params)
   if (nrow(res) > 0) {

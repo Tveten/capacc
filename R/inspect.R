@@ -467,6 +467,10 @@ cor_inspect <- function(x, Q, b, lambda, schatten=c(1, 2), M){
 
 anomalies_inspect <- function(res, x, tol = 1) {
   res <- as.data.table(res)
+  if (nrow(res) == 0) {
+    return(list("collective" = data.table(start = integer(0), end = integer(0)),
+                "point"      = data.table(location = integer(0))))
+  }
   n <- nrow(x)
   res <- rbind(data.table(location = 0, max.proj.cusum = 0, depth = 0),
                res,
