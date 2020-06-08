@@ -124,7 +124,7 @@ multiple_anom_setup <- function(p = 10, precision_type = "banded",
                     "rho"         = rho,
                     "vartheta"    = vartheta,
                     "shape"       = shape)
-  tuning <- tuning_params(init_b = c(0.1, 1, 20, 200), n_sim = 200)
+  tuning <- tuning_params(init_b = c(0.1, 1, 20, 200, 10000), n_sim = 200)
   out_file <- "multiple_anom_FINAL.csv"
   list(variables = variables, data = data, method = method,
        tuning = tuning, out_file = out_file)
@@ -267,8 +267,8 @@ latex_ari_table <- function(x, p, vartheta) {
 
   mid_sep <- ' \n\\midrule'
   colnames(x) <- c("$\\bQ$", "$\\rho$", "$\\mu_{(\\cdot)}$", "Pt. anoms",
-                   "MVCPT($\\hat{\\bQ}(\\bW(4))$)",
-                   "MVCPT($\\bI$)",
+                   "MVCAPA($\\hat{\\bQ}(4)$)",
+                   "MVCAPA($\\bI$)",
                    "inspect($\\hat{\\bQ}$)",
                    "inspect($\\bI$)")
   heading <- paste(colnames(x), collapse = " & ")
