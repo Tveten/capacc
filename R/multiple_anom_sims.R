@@ -1,21 +1,21 @@
 
+format_data <- function(data) {
+  data$locations <- data$locations[1]
+  data$durations <- min(data$durations)
+  data$vartheta <- data$vartheta[1]
+  data$mu <- data$mu[1]
+  data$proportions <- data$proportions[1]
+  data$change_type <- data$change_type[1]
+  data$point_locations <- data$point_locations[1]
+  data$point_proportions <- data$point_proportions[1]
+  data$point_mu <- data$point_mu[1]
+  which_data <- !(grepl("Sigma", names(data)) | names(data) == c("changing_vars"))
+  data[which_data]
+}
+
 #' @export
 classify_anom <- function(out_file, data = init_data(), method = method_params(),
                           tuning = tuning_params(), n_sim = 100, seed = NA) {
-  format_data <- function(data) {
-    data$locations <- data$locations[1]
-    data$durations <- min(data$durations)
-    data$vartheta <- data$vartheta[1]
-    data$mu <- data$mu[1]
-    data$proportions <- data$proportions[1]
-    data$change_type <- data$change_type[1]
-    data$point_locations <- data$point_locations[1]
-    data$point_proportions <- data$point_proportions[1]
-    data$point_mu <- data$point_mu[1]
-    which_data <- !(grepl("Sigma", names(data)) | names(data) == c("changing_vars"))
-    data[which_data]
-  }
-
   add_setup_info <- function(res) {
     res <- cbind(res,
                  as.data.table(format_data(data)),
@@ -45,6 +45,19 @@ classify_anom <- function(out_file, data = init_data(), method = method_params()
                   "arand_acc"      = adjusted_rand_index(est_labs, true_labs)))
   }
 
+  get_seed <- function() {
+    all_params <- c(format_data(data), method, tuning, list(n_sim = n_sim))
+    all_res <- read_results(out_file)
+    exclude <- c("cost", "precision_est_struct", "est_band")
+    prev_res <- read_anom_class(all_res, all_params, exclude = exclude)
+    prev_seed <- unique(prev_res$seed)
+    if (length(prev_seed) > 0) {
+      message(paste0("Overriding input seed with the same seed used for other costs: ",
+                     paste(prev_seed, collapse = ", ")))
+      return(prev_seed[1])
+    } else return(seed)
+  }
+
   message(paste0("Multiple anomaly classification for n=", data$n,
                  ", p=", data$p,
                  ", precision=", data$precision_type,
@@ -57,11 +70,11 @@ classify_anom <- function(out_file, data = init_data(), method = method_params()
                  ", precision_est_struct=", method$precision_est_struct,
                  ", est_band=", method$est_band,
                  "."))
-  all_params <- c(format_data(data), method, tuning)
+  all_params <- c(format_data(data), method, tuning, list(n_sim = n_sim))
   all_res <- read_results(out_file)
   if (already_estimated(all_res, all_params, read_anom_class)) return(NULL)
 
-  if (!is.na(seed)) set.seed(seed)
+  if (!is.na(seed)) set.seed(get_seed())
   if (is.na(method$b) && !is.null(method$b))
     method$b <- get_tuned_penalty(data, method, tuning, FALSE, seed + 2)$b
   sim_classify_with_progress <- dot_every(5, sim_classify)
@@ -85,7 +98,6 @@ many_classifications <- function(out_file, variables, data = init_data(),
   seeds <- get_sim_seeds(variables)
   if (length(seeds) != length(params$data))
     stop("Bug: Length of seeds should be equal to number of parameter settings.")
-  NULL
   if (cpus == 1)
     Map(classify_anom,
         data   = params$data,
@@ -124,7 +136,7 @@ multiple_anom_setup <- function(p = 10, precision_type = "banded",
                     "rho"         = rho,
                     "vartheta"    = vartheta,
                     "shape"       = shape)
-  tuning <- tuning_params(init_b = c(0.1, 1, 20, 200, 10000), n_sim = 200)
+  tuning <- tuning_params(init_b = c(0.001, 0.1, 1, 3, 30), n_sim = 200)
   out_file <- "multiple_anom_FINAL.csv"
   list(variables = variables, data = data, method = method,
        tuning = tuning, out_file = out_file)
