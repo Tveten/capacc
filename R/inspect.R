@@ -186,9 +186,9 @@ sparse.svd <- function(Z, lambda, schatten=c(1, 2), tolerance=1e-5, max.iter=100
   }
 
   if (nrow(Mhat) < ncol(Mhat)){
-    vector.proj <- power.method(Mhat%*%t(Mhat), 1e-8)
+    vector.proj <- power.method(Mhat%*%t(Mhat), 1e-6)
   } else {
-    tmp <- Mhat %*% power.method(t(Mhat)%*%Mhat, 1e-8)
+    tmp <- Mhat %*% power.method(t(Mhat)%*%Mhat, 1e-6)
     vector.proj <- tmp/vector.norm(tmp)
   }
 
