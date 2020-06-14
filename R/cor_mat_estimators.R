@@ -24,6 +24,7 @@ reg_mat <- function(adj_mat) {
   reg_mat
 }
 
+#' @export
 estimate_precision_mat <- function(x, adj_mat, sparse = TRUE) {
   S <- robust_cov_mat(x)
   S_inv <- glassoFast::glassoFast(S, rho = reg_mat(adj_mat))$wi

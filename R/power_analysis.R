@@ -180,7 +180,10 @@ plot_power_curve <- function(file_name, variables, data = init_data(),
   xbreaks <- function() {
     upper <- max(upper_xlim(res), 0)
     step_length <- 1
-    if (upper > 6) step_length <- 2
+    if (upper <= 0.5) step_length <- 0.125
+    else if (upper <= 1) step_length <- 0.25
+    else if (upper <= 2) step_length <- 0.5
+    else if (upper > 6) step_length <- 2
     seq(0, upper, step_length)
   }
 
@@ -223,7 +226,10 @@ plot_power_curve <- function(file_name, variables, data = init_data(),
       ggplot2::scale_colour_manual(name = "Method",
                                    breaks = col_name_dt$name,
                                    labels = unname(latex2exp::TeX(col_name_dt$name)),
-                                   values = cols),
+                                   values = cols) +
+      ggplot2::theme_classic() +
+      ggplot2::theme(panel.grid.major = ggplot2::element_line(colour = "grey90"),
+                     panel.grid.minor = ggplot2::element_line(colour = "grey95")),
     "cost_names" = col_name_dt$name
   )
 }
@@ -270,7 +276,8 @@ grid_plot_power <- function(variables, data = init_data(),
   else n_row <- length(grid_variables[lengths > 1][[2]])
   dims <- c(n_row, n_col)
   n_costs <- unlist(lapply(costs, length))
-  pp <- grid_plot(plots, dims, latex2exp::TeX(get_title()), which.max(n_costs))
+  # pp <- grid_plot(plots, dims, latex2exp::TeX(get_title()), which.max(n_costs))
+  pp <- grid_plot(plots, dims, NULL, which.max(n_costs))
 
   if (!is.null(out_file))
     save_grid_plot(pp, dims, out_file, grid_variables[lengths == 1], data)
@@ -439,7 +446,9 @@ grid_plot_MLE_sparse_highcor <- function(rho = 0.99, proportions = 1/p,
   tuning <- tuning_params(init_b = c(0.1, 1, 4), n_sim = n_sim)
   curve <- curve_params(max_dist = 0.1, n_sim = n_sim)
   variables <- list("cost" = c("cor", "cor_exact"),
-                    "p"    = c(5, 10, 15))
+                    "p"    = c(5, 10, 15),
+                    "precision_type" = "banded",
+                    "shape"          = shape)
   grid_plot_power(variables, data, method, tuning, curve,
                   file_name = read_file, known = TRUE, dodge = dodge,
                   out_file = out_file)

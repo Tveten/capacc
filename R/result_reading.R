@@ -69,6 +69,16 @@ read_power_curve_known <- function(res, all_params) {
   res <- read_single_result(res, query_params, all_params, "A power curve (known anom)")
 }
 
+read_subset_est <- function(res, all_params) {
+  query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
+                    "vartheta", "shape", "locations", "durations", "change_type",
+                    "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
+                    "alpha", "alpha_tol", "tuning_n_sim",
+                    "n_sim")
+  read_single_result(res, query_params, all_params, "Subset estimates")
+}
+
+
 read_cpt_est <- function(res, all_params) {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
                     "vartheta", "shape", "locations", "durations", "change_type",

@@ -4,8 +4,11 @@ grid_plot <- function(plots, dims, title, legend_ind = 1) {
                               common.legend = TRUE,
                               legend.grob = ggpubr::get_legend(plots[[legend_ind]]),
                               legend = "right")
-  title <- ggpubr::text_grob(title, face = "bold", size = 14)
-  ggpubr::annotate_figure(figure, top = title)
+  if (!is.null(title)) {
+    title <- ggpubr::text_grob(title, face = "bold", size = 14)
+    ggpubr::annotate_figure(figure, top = title)
+  }
+  figure
 }
 
 save_grid_plot <- function(pp, dims, prefix, const_vars, data) {
@@ -152,7 +155,7 @@ cost_names_colours <- function() {
   mvcor_cols <- RColorBrewer::brewer.pal(9, "Reds")
   mviid_cols <- RColorBrewer::brewer.pal(9, "Blues")
   # ml_cols <- c("cyan3", "dodgerblue2")
-  ml_cols <- c("darkorange2", "gold2")
+  ml_cols <- c("darkorange2", "gold3")
   inspect_cols <- RColorBrewer::brewer.pal(9, "Greens")
   rbind(
     data.table(cost = "cor", precision_est_struct = NA, est_band = NA,

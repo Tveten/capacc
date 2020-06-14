@@ -1,6 +1,6 @@
 
 capa_line_plot <- function(object, epoch = dim(object$x)[1],
-                           subset = 1:ncol(object$x), variate_names = TRUE,
+                           subset = 1:ncol(object$x), variate_names = NULL,
                            true_anoms = NULL, cost = "cor") {
     # creating null entries for ggplot global variables so as to pass CRAN checks
     x <- value <- ymin <- ymax <- x1 <- x2 <- y1 <- y2 <- x1 <- x2 <- y1 <- y2 <- NULL
@@ -8,7 +8,9 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
     else if (cost == "iid") x <- object@data
     data_df <- as.data.frame(x)
     # names <- paste("y", 1:ncol(x), sep = "")
-    names <- paste(1:ncol(x), sep = "")
+    if (is.null(variate_names)) {
+      names <- as.character(1:ncol(x))
+    } else names <- variate_names
     colnames(data_df) <- names
     data_df <- as.data.frame(data_df[, subset, drop = FALSE])
     n <- nrow(data_df)
@@ -25,23 +27,23 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
     c_anoms <- c_anoms[c_anoms$variate %in% subset, ]
     if(!any(is.na(c_anoms)) & nrow(c_anoms) > 0)
     {
-        c_anoms_data_df <- c_anoms[, 1:3]
-        names(c_anoms_data_df) <- c(names(c_anoms_data_df)[1:2], "variable")
-        c_anoms_data_df$variable <- names[c_anoms_data_df$variable]
-        c_anoms_data_df$ymin <- -Inf
-        c_anoms_data_df$ymax <- Inf
-        out <- out + ggplot2::geom_rect(data = c_anoms_data_df,
-                                        inherit.aes = FALSE,
-                                        mapping = ggplot2::aes(xmin = start,
-                                                               xmax = end,
-                                                               ymin = ymin,
-                                                               ymax = ymax,
-                                                               fill = "Estimated collective anomaly"),
-                                        alpha=0.5) +
-          ggplot2::scale_fill_manual(name = "",
-                                     values = c("Estimated collective anomaly" = "red"))
-                                     # values = c("Known anomaly" = "green",
-                                     #            "Estimated anomaly" = "blue"))
+      c_anoms_data_df <- c_anoms[, 1:3]
+      names(c_anoms_data_df) <- c(names(c_anoms_data_df)[1:2], "variable")
+      c_anoms_data_df$variable <- names[c_anoms_data_df$variable]
+      c_anoms_data_df$ymin <- -Inf
+      c_anoms_data_df$ymax <- Inf
+      out <- out + ggplot2::geom_rect(data = c_anoms_data_df,
+                                      inherit.aes = FALSE,
+                                      mapping = ggplot2::aes(xmin = start,
+                                                             xmax = end,
+                                                             ymin = ymin,
+                                                             ymax = ymax,
+                                                             fill = "Estimated collective anomaly"),
+                                      alpha=0.5) +
+        ggplot2::scale_fill_manual(name = "",
+                                   values = c("Estimated collective anomaly" = "red"))
+      # values = c("Known anomaly" = "green",
+      #            "Estimated anomaly" = "blue"))
     }
 
     # highlight the point anomalies
@@ -49,16 +51,16 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
     else if (cost == "iid") p_anoms <- anomaly::point_anomalies(object)
     p_anoms <- p_anoms[p_anoms$variate %in% subset,]
     if(!any(is.na(p_anoms)) & nrow(p_anoms) > 0)
-        {
-            p_anoms_data_df <- Reduce(rbind, Map(function(a,b) {
-                    data_df[data_df$variable == names[a] & data_df$x == b, ]
-                }, p_anoms$variate, p_anoms$location)
-            )
-            out <- out + ggplot2::geom_point(data = p_anoms_data_df,
-                                             ggplot2::aes(colour = "Estimated point anomaly"),
-                                             size = 0.8) +
-              ggplot2::scale_colour_manual(name = "",
-                                           values = c("Estimated point anomaly" = "red"))
+    {
+      p_anoms_data_df <- Reduce(rbind, Map(function(a,b) {
+        data_df[data_df$variable == names[a] & data_df$x == b, ]
+      }, p_anoms$variate, p_anoms$location)
+      )
+      out <- out + ggplot2::geom_point(data = p_anoms_data_df,
+                                       ggplot2::aes(colour = "Estimated point anomaly"),
+                                       size = 0.8) +
+        ggplot2::scale_colour_manual(name = "",
+                                     values = c("Estimated point anomaly" = "red"))
 
     }
 
@@ -85,23 +87,19 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
                                       alpha = 0,
                                       size = 1,
                                       colour = "green3") +
-      ggplot2::scale_linetype_manual(name = "",
-                                     values = c("Known collective anomaly" = 1))
+        ggplot2::scale_linetype_manual(name = "",
+                                       values = c("Known collective anomaly" = 1))
     }
 
     # grey out the data after epoch
     if(epoch != nrow(x))
     {
-	      d <- data.frame(variable = names[subset], x1 = epoch, x2 = n,
-	                    y1 = -Inf, y2 = Inf)
-        out <- out + geom_rect(data = d, inherit.aes = FALSE,
+      d <- data.frame(variable = names[subset], x1 = epoch, x2 = n,
+                      y1 = -Inf, y2 = Inf)
+      out <- out + geom_rect(data = d, inherit.aes = FALSE,
                                mapping = aes(xmin = x1, xmax = x2,
                                              ymin = y1, ymax = y2),
                                fill = "yellow", alpha = 0.2)
-    }
-    if(variate_names == FALSE)
-    {
-        out <- out + theme(strip.text.y = element_blank())
     }
     # change background
     if (!is.null(true_anoms)) legend_position <- "bottom"
@@ -177,7 +175,7 @@ capa_tile_plot <- function(object, variate_names = FALSE,
 }
 
 plot_capa <- function(object, epoch = n,
-                      subset = 1:p, variate_names = TRUE,
+                      subset = 1:p, variate_names = NULL,
                       true_anoms = NULL, cost = "cor") {
   if (cost == "cor") {
     n <- nrow(object$x)

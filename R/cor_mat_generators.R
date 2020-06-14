@@ -42,6 +42,7 @@ ar_precision_mat <- function(p, phi, sparse = TRUE) {
   else return(Sigma_inv)
 }
 
+#' @export
 car_precision_mat <- function(nbs = banded_neighbours(2, 10), rho = 0.5, sigma = 1,
                               min_nbs = 1, max_nbs = 3, standardised = TRUE, sparse = TRUE) {
   p <- length(nbs)
@@ -63,6 +64,7 @@ car_precision_mat <- function(nbs = banded_neighbours(2, 10), rho = 0.5, sigma =
   else return(Sigma_inv)
 }
 
+#' @export
 adjacency_mat <- function(nbs_list, sparse = TRUE) {
   p <- length(nbs_list)
   adj_mat <- do.call('rbind', lapply(nbs_list, indicator, p = p))
@@ -79,6 +81,7 @@ symmetric_from_lower_tri <- function(x_tri) {
   x_tri
 }
 
+#' @export
 banded_neighbours <- function(band, p) {
   if (band == 0) {
     nbs <- lapply(1:p, function(i) integer(0))
@@ -122,6 +125,7 @@ random_neighbours <- function(p, min_nbs = 1, max_nbs = 3) {
   nbs
 }
 
+#' @export
 lattice_neighbours <- function(p) {
   grid_nbs <- function(i, j, n_row, n_col) {
     grid_ind <- c(i, j - 1,
