@@ -3,7 +3,6 @@
 ###############################################################
 # library(tidyverse)
 # library(lubridate)
-# library(ggplot2)
 # library(ggvis)
 # library(corrplot)
 
@@ -70,7 +69,9 @@ failure_period <- function(nr) {
                             end = ymd("1973-07-28", tz = "CET"))
   a4 <- lubridate::interval(start = ymd("1973-11-09", tz = "CET"),
                             end = ymd("1979-01-15", tz = "CET"))
-  a <- list(a1, a2, a3, a4)
+  a5 <- lubridate::interval(start = ymd("1979-01-16", tz = "CET"),
+                            end = ymd("1980-06-11", tz = "CET"))
+  a <- list(a1, a2, a3, a4, a5)
   a[nr]
 }
 
@@ -99,26 +100,33 @@ failure_period <- function(nr) {
 # $ status
 ## display daily subsea barrier temp for periods running/not running, healthy/not healty.
 relevant_vars <- function(type = "all") {
-  temperatures <- c("discharge_temperature",
-                    "mpfm_temperature",
-                    "subsea_barrier_temperature")
-  pressures <- c("discharge_pressure",
-                 "mpfm_pressure",
-                 "subsea_barrier_pressure",
-                 "suction_pressure",
-                 "differential_pressure")
-  other <- c("mpfm_gvf",
-             "mpfm_gas_flow_rate",
-             "mpfm_oil_flow_rate",
-             "mpfm_flow_rate",
-             "output_current",
-             "output_power",
-             "speed")
+  temperatures <- c(
+    "discharge_temperature",
+    "mpfm_temperature",
+    "subsea_barrier_temperature"
+  )
+  pressures <- c(
+    # "discharge_pressure",
+   "mpfm_pressure",
+   "subsea_barrier_pressure",
+   # "suction_pressure",
+   "differential_pressure"
+  )
+  other <- c(
+    # "mpfm_gvf",
+    "mpfm_gas_flow_rate",
+    "mpfm_oil_flow_rate",
+    # "mpfm_flow_rate",
+    "output_current",
+    "output_power",
+    "speed")
   if (type == "temperatures") return(temperatures)
   else if (type == "pressures") return(pressures)
+  else if (type == "other") return(other)
   else return(c(temperatures, pressures, other))
 }
 
+#' @export
 daily_means <- function(data, vars = "all") {
   data <- data %>%
     dplyr::filter(running == "Running") %>%
@@ -145,23 +153,30 @@ plot_daily_mean <- function(data, var, plot_type = "point",
     dplyr::filter(running == "Running") %>%
     dplyr::select(date, starts_with(var), status) %>%
     dplyr::group_by(date, status) %>%
-    dplyr::summarise(mean_temp = mean(eval(parse(text = var))))
+    dplyr::summarise(mean_measurement = mean(eval(parse(text = var))))
   dat$ind <- 1:nrow(dat)
   dat$nostatus <- "nostatus"
 
   if (plot_type == "point")
-  p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = ind, y = mean_temp,
-                                                colour = get(colour_by))) +
-      ggplot2::geom_point(size = 0.7)
+    p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = date, y = mean_measurement,
+                                                  colour = get(colour_by))) +
+      ggplot2::geom_point(size = 0.3) +
+      ggplot2::scale_y_continuous(name = NULL) +
+      ggplot2::scale_colour_discrete("Status")
   else if (plot_type == "hist")
-  p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = mean_temp, fill = get(colour_by))) +
+    p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = mean_measurement, fill = get(colour_by))) +
       ggplot2::geom_histogram(ggplot2::aes(y = ..density..),
                               bins = 50, position = "dodge")
   else if (plot_type == "density")
-  p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = mean_temp, colour = get(colour_by))) +
-      ggplot2::geom_density()
+    p <- ggplot2::ggplot(data = dat, ggplot2::aes(x = mean_measurement, colour = get(colour_by))) +
+      ggplot2::geom_density() +
+      ggplot2::scale_colour_discrete("Status")
   if (anonymise) p <- anonymise(p)
   else p <- p + ggplot2::ggtitle(paste0("Daily mean ", var))
+  # else p <- p + ggplot2::ggtitle(var)
+  if (colour_by == "nostatus") p <- p + guides(colour = FALSE, fill = FALSE)
+  p <- p + theme(plot.title = element_text(size = 10))
+
   p
 }
 
@@ -210,7 +225,8 @@ mvcapa_pump <- function(x, est_band = 2, b = 1, b_point = 1, minsl = 20,
                       b           = b,
                       b_point     = b_point,
                       min_seg_len = minsl)
-    plot_capa(list("x" = x, "anoms" = res), true_anoms = true_anoms)
+    print(res)
+    plot_capa(list("x" = x, "anoms" = res), true_anoms = true_anoms, variate_names = colnames(x))
   } else if (cost == "iid") {
     beta <- iid_penalty(n, p, b)
     beta_tilde <- iid_point_penalty(n, p, b_point)
@@ -219,7 +235,7 @@ mvcapa_pump <- function(x, est_band = 2, b = 1, b_point = 1, minsl = 20,
                             beta_tilde  = beta_tilde,
                             min_seg_len = minsl,
                             type        = "mean")
-    plot_capa(res, true_anoms = true_anoms, cost = "iid")
+    plot_capa(res, true_anoms = true_anoms, cost = "iid", variate_names = colnames(x))
   }
 }
 
@@ -231,7 +247,7 @@ plot_cor_mat <- function(x, est_band, diff = FALSE) {
   Sigma <- solve(standardise_precision_mat(Q_hat))
   # Sigma_diff <- solve(standardise_precision_mat(Q_hat_diff))
   corrplot(Sigma, method = "number", type = "upper", mar = c(0, 0, 0.5, 0),
-           tl.cex = 1.5, cl.cex = 0.8, number.cex = 2)
+           tl.cex = 1.5, cl.cex = 0.8, number.cex = 2, cl.pos = "n")
 }
 
 save_cor_mat_plot <- function(x, est_band) {
@@ -246,14 +262,15 @@ save_mvcapa_pump_plot <- function(x, cost, b, b_point = 1, minsl = 20, band = 4,
   file_name <- paste0("candidate_data_", cost,
                       "_penscale", b,
                       "_pointpenscale", b_point,
-                      "_minsl", minsl,
-                      ".png")
+                      "_minsl", minsl)
+  if (!is.null(colnames(x))) file_name <- paste0(file_name, "_named")
+  file_name <- paste0(file_name, ".png")
   ggsave(paste0("./images/", file_name), width = 8, height = 6, units = "in")
 }
 
 promising_plots_3to4 <- function() {
   nr <- 3:4
-  x <- make_all_residuals(pump_daily, nr = nr)
+  x <- make_all_residuals(pump_daily, nr = nr, named = TRUE)
   band <- 4
   plot_cor_mat(x, band)
 
@@ -297,13 +314,31 @@ promising_plots_3to4 <- function() {
 
 promising_plots_1to4 <- function() {
   nr <- 1:4
-  x <- make_all_residuals(pump_daily, nr = nr)
+  x <- make_all_residuals(pump_daily, nr = nr, named = TRUE)
   band <- 4
   plot_cor_mat(x, band)
 
   true_anoms <- pump_anom_inds(pump_daily, nr = nr)
   mvcapa_pump(x, est_band = band, b = 11, true_anoms = true_anoms, b_point = 2, minsl = 5)
   save_mvcapa_pump_plot(x, "cor", 11, 2, 5, band, true_anoms)
+}
+
+promising_plots_1to5 <- function() {
+  nr <- 1:5
+  x <- make_all_residuals(pump_daily, nr = nr, named = TRUE)
+  band <- 4
+  plot_cor_mat(x, band)
+
+  true_anoms <- pump_anom_inds(pump_daily, nr = nr[1:4])
+  mvcapa_pump(x, est_band = band, b = 11, true_anoms = true_anoms, b_point = 1.3, minsl = 5)
+  mvcapa_pump(x, est_band = band, b = 11, true_anoms = true_anoms, b_point = 10^6, minsl = 5)
+  save_mvcapa_pump_plot(x, "cor", 11, 2, 5, band, true_anoms)
+  save_mvcapa_pump_plot(x, "cor", 11, 1.3, 5, band, true_anoms)
+
+  x <- make_all_residuals(pump_daily, nr = nr, named = FALSE)
+  mvcapa_pump(x, est_band = band, b = 11, true_anoms = true_anoms, b_point = 1.3, minsl = 5)
+  save_mvcapa_pump_plot(x, "cor", 11, 2, 5, band, true_anoms)
+  save_mvcapa_pump_plot(x, "cor", 11, 1.3, 5, band, true_anoms)
 }
 
 make_residuals <- function(pump_daily, var, BC = FALSE) {
@@ -319,7 +354,7 @@ make_residuals <- function(pump_daily, var, BC = FALSE) {
   pump_daily[[var]] - pump_daily[[pred_name]]
 }
 
-make_all_residuals <- function(pump_daily, nr = c(3, 4), BC = FALSE) {
+make_all_residuals <- function(pump_daily, nr = 1:5, BC = FALSE, named = TRUE) {
   vars <- c("discharge_temperature",
             "mpfm_temperature",
             # "subsea_barrier_temperature",
@@ -327,15 +362,20 @@ make_all_residuals <- function(pump_daily, nr = c(3, 4), BC = FALSE) {
             "subsea_barrier_pressure",
             "differential_pressure")
   failure_nr <- failure_period(nr)
-  pump_daily <- pump_daily %>% filter(date %within% failure_nr)
-  do.call("cbind", lapply(vars, make_residuals, pump_daily = pump_daily))
+  # pump_daily <- pump_daily %>% filter(date %within% failure_nr)
+  pump_daily <- pump_daily[pump_daily$date %within% failure_nr, ]
+  out <- do.call("cbind", lapply(vars, make_residuals, pump_daily = pump_daily))
+  if (named) colnames(out) <- c("disch_temp", "mpfm_temp", "mpfm_press", "barr_press", "diff_press")
+  # if (named) colnames(out) <- vars
+  out
 }
 
 pump_anom_inds <- function(pump_daily, nr = 3:4) {
   anoms <- do.call("c", pump_anoms()[nr])
   anoms <- lubridate::date(anoms)
   failure_nr <- failure_period(nr)
-  pump_daily <- pump_daily %>% filter(date %within% failure_nr)
+  # pump_daily <- pump_daily %>% filter(date %within% failure_nr)
+  pump_daily <- pump_daily[pump_daily$date %within% failure_nr, ]
   which(pump_daily$date %in% anoms)
 }
 
@@ -348,16 +388,19 @@ plot_all_residuals <- function(pump_daily) {
     ggplot2::geom_line()
 }
 
-residual_plot <- function(pump_daily, var, colour_by = "status", nr = c(3, 4),
+#' @export
+residual_plot <- function(pump_daily, var, colour_by = "status", nr = 1:5,
                           BC = FALSE) {
   failure_nr <- failure_period(nr)
-  pump_daily <- pump_daily %>% filter(date %within% failure_nr)
+  pump_daily <- pump_daily[pump_daily$date %within% failure_nr, ]
+  # pump_daily <- pump_daily %>% filter(date %within% failure_int)
   res_name <- paste0(var, "_residual")
   pump_daily[[res_name]] <- make_residuals(pump_daily, var, BC)
-  ggpubr::ggarrange(plot_daily_mean(pump_daily, res_name, "density", colour_by = colour_by),
+  ggpubr::ggarrange(plot_daily_mean(pump_daily, var, colour_by = colour_by),
+                    plot_daily_mean(pump_daily, var, "density", colour_by = colour_by),
                     plot_daily_mean(pump_daily, res_name, colour_by = colour_by),
-                    plot_daily_mean(pump_daily, var, colour_by = colour_by),
-                    nrow = 3, ncol = 1,
+                    plot_daily_mean(pump_daily, res_name, "density", colour_by = colour_by),
+                    nrow = 2, ncol = 2,
                     common.legend = TRUE, legend = "right")
   # pump_daily[[res_name]]
 }

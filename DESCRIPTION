@@ -10,7 +10,11 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Depends:
-    data.table (>= 1.12)
+    data.table (>= 1.12),
+    magrittr (>= 1.5),
+    tidyverse (>= 1.3),
+    lubridate (>= 1.7.4),
+    ggvis (>= 0.4.5)
 Imports: 
     anomaly (>= 3.0.1),
     Matrix (>= 1.2),
@@ -26,7 +30,7 @@ Imports:
     arrow (>= 0.16),
     latex2exp (>= 0.4),
     Rfast (>= 1.9.9),
-    xtable (>= 1.8)
+    xtable (>= 1.8),
 Suggests: 
     testthat (>= 2.1.0)
 Remotes:

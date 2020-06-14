@@ -311,3 +311,21 @@ test_runtime <- function(cost, b = 1, est_band = 2, times = 5) {
     times = times
   ))
 }
+
+#' @export
+simple_example <- function(p = 4, n = 200, vartheta = 10,
+                           b = 2, b_point = 2, seed = NULL) {
+  if (!is.null(seed)) set.seed(seed)
+  x <- simulate_cor(n = n, p = p,
+                    locations = c(20, n - 50),
+                    durations = c(round(n/10), 30),
+                    proportions = c(2/p, 1/p),
+                    vartheta = vartheta, change_type = "random",
+                    point_locations = round(n/2), point_proportions = 1/p,
+                    point_mu = 1.5 * vartheta,
+                    Sigma = car_precision_mat(banded_neighbours(3, p), rho = 0.9))$x
+  x <- centralise(x)
+  Q_hat <- estimate_precision_mat(x, adjacency_mat(banded_neighbours(3, p), sparse = FALSE))
+  res <- mvcapa_cor(x, Q_hat, b = b, b_point = b_point)
+  plot_capa(list("x" = x, "anoms" = res))
+}

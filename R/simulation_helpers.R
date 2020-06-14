@@ -25,6 +25,7 @@ robust_scale <- function(x, Q = NULL) {
   t((t(x) - med) / sigma)
 }
 
+#' @export
 centralise <- function(x) {
   med <- Rfast::colMedians(x)
   t(t(x) - med)

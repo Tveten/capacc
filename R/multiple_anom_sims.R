@@ -237,9 +237,9 @@ multi_anom_table <- function(p = 10, vartheta = 2, perf_metric = "arand_acc",
   pm_dt[, "point_anom" := !is.na(point_locations)]
   pm_dt <- pm_dt[p %in% v$p & vartheta == v$vartheta]
   pm_dt <- rename_cost(pm_dt)
-  layout <- expand.grid(rh = rho,
+  layout <- expand.grid(pa = point_anom,
+                        rh = rho,
                         sh = shape,
-                        pa = point_anom,
                         pt = precision_type,
                         stringsAsFactors = FALSE)
   table <- do.call("rbind", Map(multi_anom_row,
@@ -280,7 +280,7 @@ latex_ari_table <- function(x, p, vartheta) {
   caption <- paste0("ARI for ",
                     "$p = ", p,
                     "$, $\\vartheta = ", vartheta,
-                    "$. The largest value is given in bold.")
+                    "$. The largest value for each data setting is given in bold.")
   label <- paste0("tab:ari_p", p, "_vartheta", vartheta)
 
   date_line <- paste0('% ', date())
@@ -297,7 +297,7 @@ latex_ari_table <- function(x, p, vartheta) {
                      '\\end{table}', sep = ' \n')
 
   mid_sep <- ' \n\\midrule'
-  colnames(x) <- c("$\\bQ$", "$\\rho$", "$\\mu_{(\\cdot)}$", "Pt. anoms",
+  colnames(x) <- c("$\\bQ$", "$\\rho$", "$\\bmu_{(\\cdot)}$", "Pt. anoms",
                    "MVCAPA($\\hat{\\bQ}(4)$)",
                    "MVCAPA($\\bI$)",
                    "inspect($\\hat{\\bQ}$)",
@@ -316,10 +316,18 @@ latex_ari_table <- function(x, p, vartheta) {
 }
 
 tables_to_show <- function() {
+  multi_anom_table(p = 100, vartheta = 2, shape = c(5, 8), rho = c(0.5, 0.9), latex = TRUE)
+
   multi_anom_table(p = 10, vartheta = 1.5)
-  multi_anom_table(p = 10, vartheta = 1.5, shape = c(5, 8), rho = c(0.5, 0.9), latex = TRUE)
+  multi_anom_table(p = 10, vartheta = 1, shape = c(5, 8), rho = c(0.5, 0.7, 0.9), latex = TRUE)
+  multi_anom_table(p = 10, vartheta = 1, shape = c(5, 8), rho = c(0.5, 0.7, 0.9))
+  multi_anom_table(p = 10, vartheta = 1.5, shape = c(5, 8), rho = c(0.5, 0.7, 0.9), latex = TRUE)
+  multi_anom_table(p = 10, vartheta = 1.5, shape = c(5, 8), rho = c(0.5, 0.7, 0.9))
   multi_anom_table(p = 100, vartheta = 1.5)
-  multi_anom_table(p = 100, vartheta = 1.5, shape = c(5, 8), rho = c(0.5, 0.9))
+  multi_anom_table(p = 100, vartheta = 1, shape = c(5, 6, 8), rho = c(0.5, 0.9), latex = TRUE)
+  multi_anom_table(p = 100, vartheta = 1, shape = c(5, 6, 8), rho = c(0.5, 0.9))
+  multi_anom_table(p = 100, vartheta = 1.5, shape = c(5, 6, 8), rho = c(0.5, 0.7, 0.9), latex = TRUE)
+  multi_anom_table(p = 100, vartheta = 1.5, shape = c(5, 6, 8), rho = c(0.5, 0.7, 0.9))
 }
 
 

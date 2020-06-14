@@ -370,8 +370,8 @@ mse_row <- function(mse_dt, pt, rh, pr, sh) {
   mse_vec <- mse_dt$rmse
   which_min <- which.min(mse_vec)
   which_notmin <- (1:length(mse_vec))[-which_min]
-  mse_vec <- round(mse_vec, 1)
-  mse_vec <- vapply(mse_vec, function(x) sprintf("%.1f", x), character(1))
+  mse_vec <- round(mse_vec, 2)
+  mse_vec <- vapply(mse_vec, function(x) sprintf("%.2f", x), character(1))
   mse_vec[which_min] <- paste0("$\\mathbf{", mse_vec[which_min] , "}$")
   mse_vec[which_notmin] <- paste0("$", mse_vec[which_notmin], "$")
   wide_mse <- matrix(c(mse_dt$precision_type[1],
@@ -418,7 +418,7 @@ latex_mse_table <- function(x, p, vartheta, shape) {
 
   mid_sep <- ' \n\\midrule'
   colnames(x) <- c("$\\bQ$", "$\\rho$", "$J$",
-                   "MVCPT($\\hat{\\bQ}(\\bW(4))$)",
+                   "MVCPT($\\hat{\\bQ}(4)$)",
                    "MVCPT($\\bI$)",
                    "inspect($\\hat{\\bQ}$)",
                    "inspect($\\bI$)")
@@ -473,5 +473,7 @@ most_relevant_tables <- function() {
   cpt_mse_table(100, 3, 5, latex = TRUE)
   cpt_mse_table(100, 3, 6, latex = TRUE)
   cpt_mse_table(100, 3, 0, latex = TRUE)
+
+  cpt_mse_table(100, 3, 6, rho = c(0.5, 0.9), latex = TRUE)
 }
 
