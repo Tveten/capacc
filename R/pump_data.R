@@ -256,10 +256,13 @@ save_cor_mat_plot <- function(x, est_band) {
   dev.off()
 }
 
-save_mvcapa_pump_plot <- function(x, cost, b, b_point = 1, minsl = 20, band = 4, true_anoms = NULL) {
+save_mvcapa_pump_plot <- function(x, cost, b, b_point = 1, minsl = 20, band = 4,
+                                  true_anoms = NULL, save_id = "") {
   pl <- mvcapa_pump(x, est_band = band, b = b, b_point = b_point, minsl = minsl,
                     true_anoms = true_anoms, cost = cost)
-  file_name <- paste0("candidate_data_", cost,
+  file_name <- paste0("candidate_data_",
+                      save_id,
+                      cost,
                       "_penscale", b,
                       "_pointpenscale", b_point,
                       "_minsl", minsl)
@@ -329,7 +332,7 @@ promising_plots_1to5 <- function() {
   band <- 4
   plot_cor_mat(x, band)
 
-  true_anoms <- pump_anom_inds(pump_daily, nr = nr[1:4])
+  true_anoms <- pump_anom_inds(pump_daily, nr = 1:4)
   mvcapa_pump(x, est_band = band, b = 11, true_anoms = true_anoms, b_point = 1.3, minsl = 5)
   mvcapa_pump(x, est_band = band, b = 11, true_anoms = true_anoms, b_point = 10^6, minsl = 5)
   save_mvcapa_pump_plot(x, "cor", 11, 2, 5, band, true_anoms)
@@ -339,6 +342,30 @@ promising_plots_1to5 <- function() {
   mvcapa_pump(x, est_band = band, b = 11, true_anoms = true_anoms, b_point = 1.3, minsl = 5)
   save_mvcapa_pump_plot(x, "cor", 11, 2, 5, band, true_anoms)
   save_mvcapa_pump_plot(x, "cor", 11, 1.3, 5, band, true_anoms)
+
+  # iid method
+  mvcapa_pump(x, cost = "iid", b = 11, true_anoms = true_anoms, b_point = 1.3, minsl = 5)
+  save_mvcapa_pump_plot(x, "iid", 11, 1.3, 5, band, true_anoms)
+
+  # Plot of the residuals.
+  mvcapa_pump(x, est_band = band, b = 10^6, true_anoms = NULL, b_point = 10^6, minsl = 5)
+  save_mvcapa_pump_plot(x, "cor", 10^6, 10^6, 5, band, NULL)
+  mvcapa_pump(x, est_band = band, b = 10^6, true_anoms = true_anoms, b_point = 10^6, minsl = 5)
+  save_mvcapa_pump_plot(x, "cor", 10^7, 10^7, 5, band, true_anoms)
+
+  # Plot of raw data.
+  vars <- c("discharge_temperature",
+            "mpfm_temperature",
+            # "subsea_barrier_temperature",
+            "mpfm_pressure",
+            "subsea_barrier_pressure",
+            "differential_pressure")
+  failure_nr <- failure_period(nr)
+  pump_daily <- pump_daily[pump_daily$date %within% failure_nr, ]
+  x <- as.matrix(pump_daily[vars])
+  colnames(x) <- NULL
+  mvcapa_pump(x, est_band = band, b = 10^7, true_anoms = true_anoms, b_point = 10^7, minsl = 5)
+  save_mvcapa_pump_plot(x, "cor", 10^7, 10^7, 5, band, true_anoms, "raw_")
 }
 
 make_residuals <- function(pump_daily, var, BC = FALSE) {

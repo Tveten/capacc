@@ -71,3 +71,30 @@ iid_point_penalty <- function(n, p, b = 1) {
   point_pen$beta
 }
 
+plot_penalty_func <- function(n = 200, p = 100) {
+  pen <- get_penalty_vec("combined", n, p, 1)$vec
+  pen_df <- data.frame("J" = 0:p, "pen" = pen)
+  ggplot2::ggplot(data = pen_df, ggplot2::aes(x = J, y = pen)) +
+    ggplot2::geom_line(color = "red") +
+    ggplot2::scale_y_continuous(latex2exp::TeX("P(|\\mathbf{J}|)"),
+                                limits = c(0, max(pen_df$pen))) +
+    ggplot2::scale_x_continuous(latex2exp::TeX("|\\mathbf{J}|"),
+                                breaks = round(seq(0, p, round(p / 5)))) +
+    # ggplot2::ggtitle(paste0("n = ", n, ", p = ", p)) +
+    ggplot2::theme_classic() +
+    ggplot2::theme(panel.grid.major = ggplot2::element_line(colour = "grey90"),
+                   panel.grid.minor = ggplot2::element_line(colour = "grey95"))
+}
+
+save_plot_penalty_func <- function(n = 200, p = 100) {
+  plot_penalty_func(n, p)
+  file_name <- paste0("penalty_func_n", n, "_p", p, ".png")
+  ggsave(paste0("./images/", file_name), width = 3, height = 2, units = "in", dpi = 800)
+}
+
+
+
+
+
+
+
