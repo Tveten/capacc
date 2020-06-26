@@ -207,7 +207,10 @@ multi_anom_row <- function(pm_dt, perf_metric, pt, rh, sh, pa) {
   which_max <- which.max(pm_vec)
   which_notmax <- (1:length(pm_vec))[-which_max]
   pm_vec <- round(pm_vec, 2)
-  pm_vec <- vapply(pm_vec, function(x) sprintf("%.2f", x), character(1))
+  pm_vec <- vapply(pm_vec, function(x) {
+    if (isTRUE(all.equal(x, 0))) x <- abs(x)
+    sprintf("%.2f", x)
+  }, character(1))
   pm_vec[which_max] <- paste0("$\\mathbf{", pm_vec[which_max] , "}$")
   pm_vec[which_notmax] <- paste0("$", pm_vec[which_notmax], "$")
   wide_pm <- matrix(c(pt, rh, sh, pa, pm_vec), ncol = length(pm_vec) + 4)

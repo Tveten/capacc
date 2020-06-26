@@ -201,7 +201,7 @@ rcor_mat <- function(d, k0 = d, alphad = 1) {
 }
 
 car_mat_from_type <- function(p, precision_type, rho = 0.9, band = 2,
-                          min_nbs = 1, max_nbs = 3) {
+                              min_nbs = 1, max_nbs = 3) {
   if (precision_type == "lattice")
     nbs <- lattice_neighbours(p)
   else if (precision_type == "banded")
@@ -307,3 +307,23 @@ compare_CM_alg <- function(p = 50, n_sim = 100) {
        'prop_CM_best'      = sum(apply(res, 1, function(x) x[1] < x[2])) / n_sim,
        'bands'             = c(band(A), band(A_CM), band(A_reverse_CM)))
 }
+
+visualise_cor_mat <- function(p = 10, rho = 0.9, precision_type = "banded", band = 2) {
+  if (precision_type == "global_const")
+    Q <- solve(constant_cor_mat(p, rho))
+  else
+    Q <- standardise_precision_mat(car_mat_from_type(p, precision_type, rho, band))
+  corrplot::corrplot(Q, is.corr = FALSE, method = "square",
+                     col = colorRampPalette(c("darkblue", "darkred"))(200),
+                     outline = FALSE, tl.pos = "n", addgrid.col = "darkred")
+}
+
+
+save_visualise_cor_mat <- function(precision_type = "banded", band = 2) {
+  png(paste0("./images/", precision_type, "_cor_mat.png"),
+      width = 6, height = 6, units = "in", res = 800)
+  visualise_cor_mat(10, 0.9, precision_type, band)
+  dev.off()
+}
+
+

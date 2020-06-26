@@ -329,3 +329,24 @@ simple_example <- function(p = 4, n = 200, vartheta = 10,
   res <- mvcapa_cor(x, Q_hat, b = b, b_point = b_point)
   plot_capa(list("x" = x, "anoms" = res))
 }
+
+save_simple_example <- function(p = 4, n = 200, vartheta = 10,
+                                b = 2, b_point = 2, seed = NULL) {
+  file_name <- paste0("simple_example",
+                      "_p", p,
+                      "_vartheta", vartheta,
+                      "_b", b,
+                      "_bpoint", b_point,
+                      ".png")
+  show(simple_example(p, n, vartheta, b, b_point, seed))
+  ggsave(paste0("./images/", file_name), width = 7, height = 5, units = "in")
+}
+
+simple_examples_to_save <- function() {
+  save_simple_example(vartheta = 0, b = 10^6, b_point = 10^6, seed = 6)
+  save_simple_example(b = 10^6, b_point = 10^6, seed = 6)
+  save_simple_example(seed = 6)
+}
+
+
+
