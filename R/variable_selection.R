@@ -81,20 +81,34 @@ many_subset_est <- function(out_file, variables, data = init_data(),
 subset_est_setup <- function(p = 10, precision_type = "banded",
                              vartheta = 2, shape = c(5, 6),
                              rho = c(0.9, 0.7, 0.5),
-                             proportions = c(1/p, round(sqrt(p)) / p)) {
-  if (p <= 50) {
-    n <- 100
-    n_sim <- 1000
-    costs <- c("iid", "cor", "cor_exact")
-  }
-  else {
-    n <- 2 * p
-    n_sim <- 500
-    costs <- c("iid", "cor")
+                             proportions = c(1/p, round(sqrt(p)) / p),
+                             long_anom = FALSE) {
+  if (long_anom) {
+    n <- 1000
+    locations <- round(n / 2)
+    durations <- 200
+    if (p <= 50) {
+      n_sim <- 1000
+      costs <- c("iid", "cor", "cor_exact")
+    } else {
+      n_sim <- 500
+      costs <- c("iid", "cor")
+    }
+  } else {
+    if (p <= 50) {
+      n <- 100
+      n_sim <- 1000
+      costs <- c("iid", "cor", "cor_exact")
+    }
+    else {
+      n <- 2 * p
+      n_sim <- 500
+      costs <- c("iid", "cor")
+    }
+    locations <- round(n / 10)
+    durations <- 10
   }
 
-  locations <- round(n / 10)
-  durations <- 10
   band <- 2
   precision_est_struct <- c(NA, "correct", "banded")
   est_band <- 4
@@ -119,8 +133,9 @@ subset_est_setup <- function(p = 10, precision_type = "banded",
 subset_est_runs <- function(p = 10, precision_type = "banded",
                             vartheta = c(2, 3), shape = c(5, 6),
                             rho = c(0.9, 0.7, 0.5),
-                            proportions = c(1/p, round(sqrt(p)) / p)) {
-  setup <- subset_est_setup(p, precision_type, vartheta, shape, rho, proportions)
+                            proportions = c(1/p, round(sqrt(p)) / p),
+                            long_anom = FALSE) {
+  setup <- subset_est_setup(p, precision_type, vartheta, shape, rho, proportions, long_anom)
   many_subset_est(setup$out_file, setup$variables, setup$data,
                   setup$method, setup$tuning, setup$n_sim)
 }
@@ -128,31 +143,46 @@ subset_est_runs <- function(p = 10, precision_type = "banded",
 #' @export
 all_subset_est_runs <- function() {
   subset_est_runs(10, "banded")
-  subset_est_runs(100, "banded")
+  subset_est_runs(100, "banded", long_anom = TRUE)
+  # subset_est_runs(10, "banded", vartheta = 5)
+  # subset_est_runs(100, "banded", vartheta = 5)
 }
 
-subset_est_table <- function(p = c(10, 100), vartheta = 2, rho = c(0.5, 0.7, 0.9),
+subset_est_table <- function(p = 10, vartheta = 2, rho = c(0.5, 0.7, 0.9),
                              proportions = c(1/p, round(sqrt(p)) / p), latex = FALSE) {
   out_file <- "subset_est_FINAL.csv"
   all_res <- read_results(out_file)
+  # if (isTRUE(all.equal(proportions, 1/p))) shape <- 0
   l <- list(p = p, vartheta = vartheta, rho = rho, prop = proportions)
   res <- all_res[p %in% l$p & vartheta %in% l$vartheta & rho %in% l$rho & proportions %in% l$prop]
+  res <- res[!precision_est_struct %in% "correct"]
   res <- rename_cost(res)
   res[, J := round(p * proportions)]
-  res <- res[, .(size_J    = sprintf("%.2f", mean(size_J)),
-                 precision = sprintf("%.2f", mean(precision)),
-                 recall    = sprintf("%.2f", mean(recall))),
-             by = .(p, J, rho, cost)]
-  if (latex) return(latex_subset_est_table(res, vartheta))
+  res <- res[, .SD[, .(size_J    = sprintf("%.2f", mean(size_J)),
+                       precision = sprintf("%.2f", mean(precision)),
+                       recall    = sprintf("%.2f", mean(recall))),
+                 by = cost],
+             by = .(J, shape, rho)]
+  res <- rbind(res[p == 10 & J == 1 & shape == 0],
+               res[p == 10 & J == 3 & shape == 6],
+               res[p == 10 & J == 3 & shape == 5],
+               res[p == 100 & J == 1 & shape == 0],
+               res[p == 100 & J == 10 & shape == 6],
+               res[p == 100 & J == 10 & shape == 5])
+  res[, "shape" := unlist(lapply(shape, rename_shape))]
+  res[shape == "$1$", "shape" := "--"]
+
+  if (latex) return(latex_subset_est_table(res, vartheta, p))
   else return(res)
 }
 
-latex_subset_est_table <- function(x, vartheta) {
-  caption <- paste0("Average precision, recall and $\\hat{J}$ over 1000 repetitions for ",
-                    "$\\vartheta = ", vartheta, "$,
-                    $\\bQ = \\bQ(2)$. $n = 100$ for $p = 10$, and $n = 200$ for $p = 100$, while $s = n / 10$ and $e = s + 10$." )
-
-  label <- paste0("tab:subset_est_vartheta", vartheta)
+latex_subset_est_table <- function(x, vartheta, p) {
+  if (p == 10) n <- 100
+  else if (p == 100) n <- 200
+  caption <- paste0("Average precision, recall and $\\hat{J}$ over 1000 repetitions for $p = ", p,
+                    "$ and  $n = ", n, "$. ",
+                    "Other parameters: $s = n / 10$ and $e = s + 10$, $\\vartheta = 2$, $\\bQ = \\bQ(2)$.")
+  label <- paste0("tab:subset_est_vartheta", vartheta, "_p", p)
 
   date_line <- paste0('% ', date())
   begin_table <- paste('\\begin{table}[!htb]',
@@ -168,7 +198,7 @@ latex_subset_est_table <- function(x, vartheta) {
                      '\\end{table}', sep = ' \n')
 
   mid_sep <- ' \n\\midrule'
-  colnames(x) <- c("$p$", "$J$", "$\\rho$", "Method",
+  colnames(x) <- c("$J$", "$\\bmu_{(\\cdot)}$", "$\\rho$", "Method",
                    "$\\hat{J}$",
                    "Precision",
                    "Recall")
@@ -185,29 +215,36 @@ latex_subset_est_table <- function(x, vartheta) {
   cat(latex_table)
 }
 
-size_J_hist <- function(p = 10, vartheta = 2, rho = 0.9, proportions = 1/p) {
+size_J_hist <- function(p = 10, vartheta = 2, shape = 6, rho = 0.9, proportions = 1/p) {
   out_file <- "subset_est_FINAL.csv"
   all_res <- read_results(out_file)
-  l <- list(p = p, vartheta = vartheta, rho = rho, prop = proportions)
-  res <- all_res[p == l$p & vartheta == l$vartheta & rho == l$rho & proportions == l$prop]
+  if (isTRUE(all.equal(proportions, 1/p))) shape <- 0
+  l <- list(p = p, vartheta = vartheta, rho = rho, prop = proportions, shape = shape)
+  res <- all_res[p %in% l$p & vartheta %in% l$vartheta & rho %in% l$rho & proportions %in% l$prop & shape %in% l$shape]
+  res <- res[!precision_est_struct %in% "correct"]
   res <- rename_cost(res)
+  res <- res[size_J > 0]
 
-  title_text <- paste0("$J = ", l$prop * p, "$")
   col_name_dt <- cost_names_colours()[name %in% res[, unique(cost)]]
-  col_name_dt <- col_name_dt[c(3, 1, 2)]
   cols <- col_name_dt$colour
   names(cols) <- col_name_dt$name
-  print(col_name_dt)
-  print(res[, unique(cost)])
+  res[, "cost" := factor(cost, levels = col_name_dt$name)]
+  print(unique(res$size_J))
+  if (shape == 0)
+    title_text <- paste0("$J = ", l$prop * p, "$")
+  else if (shape == 5)
+    title_text <- paste0("$J = ", l$prop * p, "$, $\\mu_{(0)}$")
+  else if (shape == 6)
+    title_text <- paste0("$J = ", l$prop * p, "$, $\\mu_{(\\Sigma)}$")
 
-  ggplot2::ggplot(data = res, ggplot2::aes(x = as.factor(size_J), fill = cost)) +
+  ggplot2::ggplot(data = res, ggplot2::aes(x = as.factor(size_J), fill = cost, )) +
     ggplot2::geom_bar(position = "dodge") +
     ggplot2::scale_x_discrete(latex2exp::TeX("$\\hat{J}$")) +
     ggplot2::scale_y_continuous("Count per 1000") +
-      ggplot2::scale_fill_manual(name = "Method",
-                                 breaks = col_name_dt$name,
-                                 labels = unname(latex2exp::TeX(col_name_dt$name)),
-                                 values = cols) +
+    ggplot2::scale_fill_manual(name = "Method",
+                               breaks = col_name_dt$name,
+                               labels = unname(latex2exp::TeX(col_name_dt$name)),
+                               values = cols) +
     ggplot2::ggtitle(latex2exp::TeX(title_text)) +
     ggplot2::theme_classic() +
     ggplot2::theme(panel.grid.major = ggplot2::element_line(colour = "grey90"),
@@ -219,8 +256,12 @@ size_J_hist <- function(p = 10, vartheta = 2, rho = 0.9, proportions = 1/p) {
 grid_plot_size_J <- function(p = 10, vartheta = 2, rho = 0.7,
                              proportions = c(1/p, round(sqrt(p)) / p),
                              out_file = "sizeJ") {
-  plots <- lapply(proportions, size_J_hist, p = p, vartheta = vartheta, rho = rho)
-  dims <- c(1, length(proportions))
+  plots <- c(lapply(proportions, size_J_hist, p = p, vartheta = vartheta, rho = rho, shape = 6),
+             list(size_J_hist(p, vartheta, 5, rho, proportions[2])))
+  # print(list(p, vartheta, 5, rho, proportions[2]))
+  # plots <- size_J_hist(p, vartheta, 5, rho, proportions[2])
+  # print(plots)
+  dims <- c(1, 3)
   pp <- grid_plot(plots, dims, "")
   if (!is.null(out_file)) {
     file_name <- paste0("./images/", out_file,
@@ -228,7 +269,7 @@ grid_plot_size_J <- function(p = 10, vartheta = 2, rho = 0.7,
                         "_rho", rho,
                         "_vartheta", vartheta,
                         ".png")
-    width <- 7
+    width <- 8
     height <- 3
     show(pp)
     ggplot2::ggsave(file_name, width = width, height = height,

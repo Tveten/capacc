@@ -246,8 +246,8 @@ plot_cor_mat <- function(x, est_band, diff = FALSE) {
   # Q_hat_diff <- 2 * estimate_precision_mat(diff_x, adjacency_mat(banded_neighbours(est_band, ncol(x))))
   Sigma <- solve(standardise_precision_mat(Q_hat))
   # Sigma_diff <- solve(standardise_precision_mat(Q_hat_diff))
-  corrplot(Sigma, method = "number", type = "upper", mar = c(0, 0, 0.5, 0),
-           tl.cex = 1.5, cl.cex = 0.8, number.cex = 2, cl.pos = "n")
+  corrplot::corrplot(Sigma, method = "number", type = "upper", mar = c(0, 0, 0.5, 0),
+                     tl.cex = 1.5, cl.cex = 0.8, number.cex = 2, cl.pos = "n", add = TRUE)
 }
 
 save_cor_mat_plot <- function(x, est_band) {
@@ -403,10 +403,11 @@ pump_anom_inds <- function(pump_daily, nr = 3:4) {
   failure_nr <- failure_period(nr)
   # pump_daily <- pump_daily %>% filter(date %within% failure_nr)
   pump_daily <- pump_daily[pump_daily$date %within% failure_nr, ]
-  which(pump_daily$date %in% anoms)
+  true_anoms <- which(pump_daily$date %in% anoms)
+  n_anoms <- length(true_anoms) / 2
+  data.frame(start = true_anoms[1:n_anoms * 2 - 1] - 1,
+             end   = true_anoms[1:n_anoms * 2])
 }
-
-
 
 plot_all_residuals <- function(pump_daily) {
   res <- reshape2::melt(make_all_residuals(pump_daily))

@@ -1,5 +1,5 @@
 
-grid_plot <- function(plots, dims, title, legend_ind = 1) {
+grid_plot <- function(plots, dims, title = NULL, legend_ind = 1) {
   figure <- ggpubr::ggarrange(plotlist = plots, nrow = dims[1], ncol = dims[2],
                               common.legend = TRUE,
                               legend.grob = ggpubr::get_legend(plots[[legend_ind]]),
@@ -155,7 +155,7 @@ cost_names_colours <- function() {
   mvcor_cols <- RColorBrewer::brewer.pal(9, "Reds")
   mviid_cols <- RColorBrewer::brewer.pal(9, "Blues")
   # ml_cols <- c("cyan3", "dodgerblue2")
-  ml_cols <- c("darkorange2", "gold3")
+  ml_cols <- c("chocolate2", "orange2", "gold3")
   inspect_cols <- RColorBrewer::brewer.pal(9, "Greens")
   rbind(
     data.table(cost = "cor", precision_est_struct = NA, est_band = NA,
@@ -171,9 +171,9 @@ cost_names_colours <- function() {
     data.table(cost = "iid", precision_est_struct = "banded", est_band = 0,
                name = "MVCAPA($I$)", colour = mviid_cols[6]),
     data.table(cost = "cor_exact", precision_est_struct = NA, est_band = NA,
-               name = "ML($Q$)", colour = ml_cols[2]),
+               name = "ML($Q$)", colour = ml_cols[3]),
     data.table(cost = "cor_exact", precision_est_struct = "correct", est_band = NA,
-               name = "ML(\\hat{Q}(W^*))$)", colour = ml_cols[1]),
+               name = "ML($\\hat{Q}(W^*))$)", colour = ml_cols[2]),
     data.table(cost = "cor_exact", precision_est_struct = "banded", est_band = 4,
                name = "ML($\\hat{Q}(4)$)", colour = ml_cols[1]),
     data.table(cost = "inspect", precision_est_struct = NA, est_band = NA,
@@ -259,4 +259,14 @@ rename_precision_est_struct <- function(res) {
   res <- res[precision_est_struct == "banded",
              precision_est_struct := paste0(est_band, "-", precision_est_struct)]
   res <- res[grepl("iid", cost), precision_est_struct := "true"]
+}
+
+rename_shape <- function(shape) {
+  if (shape == 0) shape_text <- "$1$"
+  else if (shape == 5) shape_text <- "$0$"
+  else if (shape == 6) shape_text <- "$\\Sigma$"
+  else if (shape == 8) shape_text <- "$0.8$"
+  else if (shape == 9) shape_text <- "$0.9$"
+  else shape_text <- shape
+  return(shape_text)
 }
