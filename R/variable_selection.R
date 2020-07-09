@@ -82,42 +82,37 @@ subset_est_setup <- function(p = 10, precision_type = "banded",
                              vartheta = 2, shape = c(5, 6),
                              rho = c(0.9, 0.7, 0.5),
                              proportions = c(1/p, round(sqrt(p)) / p),
-                             long_anom = FALSE) {
+                             long_anom = FALSE, alpha = 0.05) {
   if (long_anom) {
     n <- 1000
     locations <- round(n / 2)
     durations <- 200
-    if (p <= 50) {
-      n_sim <- 1000
-      costs <- c("iid", "cor", "cor_exact")
-    } else {
-      n_sim <- 500
-      costs <- c("iid", "cor")
-    }
+    if (p <= 50) costs <- c("iid", "cor", "cor_exact")
+    else costs <- c("iid", "cor")
   } else {
     if (p <= 50) {
       n <- 100
-      n_sim <- 1000
       costs <- c("iid", "cor", "cor_exact")
     }
     else {
       n <- 2 * p
-      n_sim <- 500
       costs <- c("iid", "cor")
     }
     locations <- round(n / 10)
     durations <- 10
   }
+  n_sim <- 1000
 
   band <- 2
-  precision_est_struct <- c(NA, "correct", "banded")
+  precision_est_struct <- c(NA, "banded")
   est_band <- 4
 
   out_file <- "subset_est_FINAL.csv"
   data <- init_data(n = n, p = p, precision_type = precision_type, band = band,
                     vartheta = vartheta, locations = locations, durations = durations)
   method <- method_params()
-  tuning <- tuning_params(init_b = c(0.1, 1, 3), n_sim = n_sim)
+  tuning <- tuning_params(init_b = c(0.1, 1, 3), n_sim = n_sim, alpha = alpha,
+                          tol = alpha / 2)
   variables <- list("cost"        = costs,
                     "precision_est_struct" = precision_est_struct,
                     "est_band"    = est_band,
@@ -131,30 +126,39 @@ subset_est_setup <- function(p = 10, precision_type = "banded",
 
 #' @export
 subset_est_runs <- function(p = 10, precision_type = "banded",
-                            vartheta = c(2, 3), shape = c(5, 6),
+                            vartheta = c(2, 3, 5), shape = c(5, 6),
                             rho = c(0.9, 0.7, 0.5),
                             proportions = c(1/p, round(sqrt(p)) / p),
-                            long_anom = FALSE) {
-  setup <- subset_est_setup(p, precision_type, vartheta, shape, rho, proportions, long_anom)
+                            long_anom = FALSE, alpha = 0.05) {
+  setup <- subset_est_setup(p, precision_type, vartheta, shape, rho,
+                            proportions, long_anom, alpha)
   many_subset_est(setup$out_file, setup$variables, setup$data,
                   setup$method, setup$tuning, setup$n_sim)
 }
 
 #' @export
 all_subset_est_runs <- function() {
-  subset_est_runs(10, "banded")
-  subset_est_runs(100, "banded", long_anom = TRUE)
+  # subset_est_runs(10, "banded")
+  # subset_est_runs(100, "banded")
+  subset_est_runs(100, "banded", proportions = c(2/100, 5/100))
+  subset_est_runs(10, "banded", alpha = 0.005)
+  subset_est_runs(100, "banded", proportions = c(1/100, 2/100, 5/100, 10/100),
+                  alpha = 0.005)
+  # subset_est_runs(100, "banded", long_anom = TRUE)
+  # subset_est_runs(10, "banded", long_anom = TRUE)
   # subset_est_runs(10, "banded", vartheta = 5)
   # subset_est_runs(100, "banded", vartheta = 5)
 }
 
 subset_est_table <- function(p = 10, vartheta = 2, rho = c(0.5, 0.7, 0.9),
-                             proportions = c(1/p, round(sqrt(p)) / p), latex = FALSE) {
+                             proportions = c(1/p, round(sqrt(p)) / p),
+                             durations = 10, latex = FALSE) {
   out_file <- "subset_est_FINAL.csv"
   all_res <- read_results(out_file)
   # if (isTRUE(all.equal(proportions, 1/p))) shape <- 0
-  l <- list(p = p, vartheta = vartheta, rho = rho, prop = proportions)
-  res <- all_res[p %in% l$p & vartheta %in% l$vartheta & rho %in% l$rho & proportions %in% l$prop]
+  l <- list(p = p, vartheta = vartheta, rho = rho, prop = proportions,
+            durations = durations)
+  res <- all_res[p %in% l$p & vartheta %in% l$vartheta & rho %in% l$rho & proportions %in% l$prop & durations == l$durations]
   res <- res[!precision_est_struct %in% "correct"]
   res <- rename_cost(res)
   res[, J := round(p * proportions)]
@@ -215,12 +219,14 @@ latex_subset_est_table <- function(x, vartheta, p) {
   cat(latex_table)
 }
 
-size_J_hist <- function(p = 10, vartheta = 2, shape = 6, rho = 0.9, proportions = 1/p) {
+size_J_hist <- function(p = 10, vartheta = 2, shape = 6, rho = 0.9,
+                        proportions = 1/p, durations = 10) {
   out_file <- "subset_est_FINAL.csv"
   all_res <- read_results(out_file)
   if (isTRUE(all.equal(proportions, 1/p))) shape <- 0
-  l <- list(p = p, vartheta = vartheta, rho = rho, prop = proportions, shape = shape)
-  res <- all_res[p %in% l$p & vartheta %in% l$vartheta & rho %in% l$rho & proportions %in% l$prop & shape %in% l$shape]
+  l <- list(p = p, vartheta = vartheta, rho = rho, prop = proportions,
+            shape = shape, durations = durations)
+  res <- all_res[p %in% l$p & vartheta %in% l$vartheta & rho %in% l$rho & proportions %in% l$prop & shape %in% l$shape & durations == l$durations]
   res <- res[!precision_est_struct %in% "correct"]
   res <- rename_cost(res)
   res <- res[size_J > 0]
@@ -253,11 +259,12 @@ size_J_hist <- function(p = 10, vartheta = 2, shape = 6, rho = 0.9, proportions 
 
 
 
-grid_plot_size_J <- function(p = 10, vartheta = 2, rho = 0.7,
+grid_plot_size_J <- function(p = 10, vartheta = 2, rho = 0.7, durations = 10,
                              proportions = c(1/p, round(sqrt(p)) / p),
                              out_file = "sizeJ") {
-  plots <- c(lapply(proportions, size_J_hist, p = p, vartheta = vartheta, rho = rho, shape = 6),
-             list(size_J_hist(p, vartheta, 5, rho, proportions[2])))
+  plots <- c(lapply(proportions, size_J_hist, p = p, vartheta = vartheta,
+                    rho = rho, shape = 6, durations = durations),
+             list(size_J_hist(p, vartheta, 5, rho, proportions[2], durations)))
   # print(list(p, vartheta, 5, rho, proportions[2]))
   # plots <- size_J_hist(p, vartheta, 5, rho, proportions[2])
   # print(plots)
@@ -268,6 +275,7 @@ grid_plot_size_J <- function(p = 10, vartheta = 2, rho = 0.7,
                         "_p", p,
                         "_rho", rho,
                         "_vartheta", vartheta,
+                        "_dur", durations,
                         ".png")
     width <- 8
     height <- 3

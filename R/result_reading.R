@@ -106,6 +106,7 @@ read_penalties <- function(res, all_params) {
 
 read_penalties_known <- function(res, all_params) {
     query_params <- c("n", "p", "rho", "precision_type", "band", "block_size",
+                      "locations", "durations",
                       "cost", "precision_est_struct", "est_band", "size_mu",
                       "alpha", "alpha_tol", "tuning_n_sim")
     read_single_result(res, query_params, all_params, "A penalty (known anom)")

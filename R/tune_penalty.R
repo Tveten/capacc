@@ -55,6 +55,8 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
   message(paste0("Tuning ", method$cost,
                  " penalty for n=", data$n,
                  ", p=", data$p,
+                 ", loc=", data$locations,
+                 ", dur=", data$durations,
                  ", precision_type=", data$precision_type,
                  ", block_size=", data$block_size,
                  ", band=", data$band,
@@ -84,7 +86,7 @@ get_tuned_penalty <- function(data = init_data(mu = 0), method = method_params()
     file_name <- "penalties.csv"
     read_func <- read_penalties
   }
-  if (data$n >= 200) {
+  if (!known && data$n > 200) {
     data$n <- 200
     if (data$p <= 100) data$n <- 200
     else if (data$p > 100) data$n <- 2 * data$p
