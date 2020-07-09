@@ -260,21 +260,6 @@ multi_anom_table <- function(p = 10, vartheta = 2, perf_metric = "arand_acc",
 
 
 latex_ari_table <- function(x, p, vartheta) {
-  rename_shape <- function(shape) {
-    # if (shape == 0) shape_text <- "$\\mu_{(1)}$"
-    # else if (shape == 5) shape_text <- "$\\mu_{(0)}$"
-    # else if (shape == 6) shape_text <- "$\\mu_{(\\Sigma)}$"
-    # else if (shape == 8) shape_text <- "$\\mu_{(0.8)}$"
-    # else if (shape == 9) shape_text <- "$\\mu_{(0.9)}$"
-    # else shape_text <- paste0("sh=", shape)
-    if (shape == 0) shape_text <- "$1$"
-    else if (shape == 5) shape_text <- "$0$"
-    else if (shape == 6) shape_text <- "$\\Sigma$"
-    else if (shape == 8) shape_text <- "$0.8$"
-    else if (shape == 9) shape_text <- "$0.9$"
-    else shape_text <- shape
-    return(shape_text)
-  }
 
   x[, shape := unlist(lapply(shape, rename_shape))]
   x[pt_anoms == TRUE, pt_anoms := "\\checkmark"]

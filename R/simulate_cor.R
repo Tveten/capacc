@@ -93,6 +93,14 @@ simulate_cor <-function(n=100,p=10,vartheta=1,shape=0,change_seed=NA,
     {
         stop("locations+durations must be <= n")
     }
+    if (length(point_proportions) == 1)
+    {
+      point_proportions <- rep(point_proportions, length(point_locations))
+    }
+    if (length(point_mu) == 1)
+    {
+      point_mu <- rep(point_mu, length(point_locations))
+    }
 
     s <- locations
     e <- locations + durations

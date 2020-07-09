@@ -311,11 +311,25 @@ compare_CM_alg <- function(p = 50, n_sim = 100) {
 visualise_cor_mat <- function(p = 10, rho = 0.9, precision_type = "banded", band = 2) {
   if (precision_type == "global_const")
     Q <- solve(constant_cor_mat(p, rho))
+  if (precision_type == "example") {
+    p <- 8
+    nbs <- list(2, c(1, 3, 4, 6), c(2, 4), c(2, 3, 5, 7),
+                c(4, 6, 7), c(2, 5, 7), c(4, 5, 6, 8), 7)
+    Q <- car_precision_mat(nbs, rho, standardised = FALSE, sparse = FALSE)
+  }
   else
     Q <- standardise_precision_mat(car_mat_from_type(p, precision_type, rho, band))
-  corrplot::corrplot(Q, is.corr = FALSE, method = "square",
-                     col = colorRampPalette(c("darkblue", "darkred"))(200),
-                     outline = FALSE, tl.pos = "n", addgrid.col = "darkred")
+  # corrplot::corrplot(Q, is.corr = FALSE, method = "square",
+  #                    col = colorRampPalette(c("darkblue", "darkred"))(200),
+  #                    outline = FALSE, tl.pos = "n", addgrid.col = "darkred")
+  Q[Q != 0] <- - 0.7
+  diag(Q) <- 1
+  corrplot::corrplot(Q, is.corr = FALSE, method = "square", type = "lower",
+                     col = c("grey40", "white", "black"),
+                     outline = FALSE,
+                     tl.pos = "ld", tl.col = "black", tl.cex = 1.5, tl.srt = 0,
+                     tl.offset = 0.7,
+                     cl.pos = "n", addgrid.col = "black")
 }
 
 

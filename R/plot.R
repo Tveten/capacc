@@ -17,14 +17,21 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
     p <- ncol(data_df)
     data_df <- cbind(data.frame("x" = 1:n), data_df)
     data_df <- reshape2::melt(data_df, id = "x")
-    out <- ggplot2::ggplot(data = data_df)
-    out <- out + ggplot2::aes(x = x, y = value)
-    out <- out + ggplot2::geom_point(size = 0.4)
+    out <- ggplot2::ggplot(data = data_df, ggplot2::aes(x = x, y = value)) +
+      ggplot2::geom_point(size = 0.4)
 
-    # highlight the collective anomalies
-    if (cost == "cor") c_anoms <- collective_anomalies(object)
-    else if (cost == "iid") c_anoms <- anomaly::collective_anomalies(object)
+    if (cost == "cor") {
+      c_anoms <- collective_anomalies(object)
+      p_anoms <- point_anomalies(object)
+    } else if (cost == "iid") {
+      c_anoms <- anomaly::collective_anomalies(object)
+      p_anoms <- anomaly::point_anomalies(object)
+    }
     c_anoms <- c_anoms[c_anoms$variate %in% subset, ]
+    p_anoms <- p_anoms[p_anoms$variate %in% subset,]
+
+    # Highlight the collective anomalies
+    est_col <- "red"
     if(!any(is.na(c_anoms)) & nrow(c_anoms) > 0)
     {
       c_anoms_data_df <- c_anoms[, 1:3]
@@ -39,17 +46,11 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
                                                              ymin = ymin,
                                                              ymax = ymax,
                                                              fill = "Estimated collective anomaly"),
-                                      alpha=0.5) +
-        ggplot2::scale_fill_manual(name = "",
-                                   values = c("Estimated collective anomaly" = "red"))
-      # values = c("Known anomaly" = "green",
-      #            "Estimated anomaly" = "blue"))
+                                      # colour = est_col,
+                                      alpha=0.5)
     }
 
-    # highlight the point anomalies
-    if (cost == "cor") p_anoms <- point_anomalies(object)
-    else if (cost == "iid") p_anoms <- anomaly::point_anomalies(object)
-    p_anoms <- p_anoms[p_anoms$variate %in% subset,]
+    # Highlight the point anomalies
     if(!any(is.na(p_anoms)) & nrow(p_anoms) > 0)
     {
       p_anoms_data_df <- Reduce(rbind, Map(function(a,b) {
@@ -58,38 +59,54 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
       )
       out <- out + ggplot2::geom_point(data = p_anoms_data_df,
                                        ggplot2::aes(colour = "Estimated point anomaly"),
-                                       size = 0.8) +
-        ggplot2::scale_colour_manual(name = "",
-                                     values = c("Estimated point anomaly" = "red"))
-
+                                       size = 0.9)
     }
 
-    out <- out + ggplot2::facet_grid(factor(variable, levels = names) ~ .,
-                                     scales = "free_y")
-
-    # Highlight true anomalies if specified.
+    # Highlight true anomalous observations on x-axis if specified.
     if (!is.null(true_anoms)) {
-      n_true_anoms <- length(true_anoms) / 2
-      even <- 2 * 1:n_true_anoms
-      odd <- even - 1
-      true_anoms_df <- data.frame("variable" = names[rep(1:p, n_true_anoms)],
-                                  "start"    = rep(true_anoms[odd], each = p),
-                                  "end"      = rep(true_anoms[even], each = p))
-      true_anoms_df$ymin <- -Inf
-      true_anoms_df$ymax <- Inf
-      out <- out + ggplot2::geom_rect(data = true_anoms_df,
-                                      inherit.aes = FALSE,
-                                      mapping = ggplot2::aes(xmin = start,
-                                                             xmax = end,
-                                                             ymin = ymin,
-                                                             ymax = ymax,
-                                                             linetype = "Known collective anomaly"),
-                                      alpha = 0,
-                                      size = 1,
-                                      colour = "green3") +
-        ggplot2::scale_linetype_manual(name = "",
-                                       values = c("Known collective anomaly" = 1))
+      anoms <- unlist(lapply(1:nrow(true_anoms), function(i) (true_anoms$start[i] + 1):true_anoms$end[i]))
+      true_anoms <- data.frame(x = 1:n, anom = "Known normal", variable = names[length(names)], stringsAsFactors = FALSE)
+      true_anoms$anom[anoms] <- "Known anomaly"
+      out <- out + ggplot2::geom_rug(data = true_anoms[true_anoms$anom == "Known anomaly", ], inherit.aes = FALSE,
+                                     sides = "b", outside = TRUE, length = unit(0.5, "cm"),
+                                     # size = 0.8,
+                                     colour = "dodgerblue3",
+                                     mapping = ggplot2::aes(x = x, linetype = anom)) +
+        ggplot2::coord_cartesian(clip = "off")
     }
+
+    # Highlight estimated anomalous observations on x-axis.
+    starts <- unique(c_anoms$start)
+    ends <- unique(c_anoms$end)
+    point_locs <- unique(p_anoms$location)
+    if (length(c(starts, ends, point_locs)) > 0) {
+      all_anom_est_x <- c(point_locs, unlist(lapply(1:length(starts), function(i) {
+        starts[i]:ends[i]
+      })))
+      est_anoms <- data.frame(x = 1:n, anom = "Estimated normal", variable = names[length(names)], stringsAsFactors = FALSE)
+      est_anoms$anom[all_anom_est_x] <- "Estimated anomaly"
+      out <- suppressMessages(out + ggplot2::geom_rug(data = est_anoms[est_anoms$anom == "Estimated anomaly", ],
+                                                      inherit.aes = FALSE,
+                                     sides = "b", outside = TRUE, length = unit(0.5 - 0.5 / 1.618, "cm"),
+                                     # size = 0.3,
+                                     colour = est_col,
+                                     mapping = ggplot2::aes(x = x)) +
+        ggplot2::coord_cartesian(clip = "off"))
+    }
+
+    out <- out +
+      ggplot2::scale_colour_manual(name = "",
+                                   values = c("Estimated point anomaly" = est_col)) +
+      ggplot2::scale_fill_manual(name = "",
+                                 values = c("Estimated collective anomaly" = est_col)) +
+      ggplot2::scale_linetype_manual(name = "",
+                                     values = c("Known normal"  = "blank",
+                                                "Known anomaly" = "solid",
+                                                "Estimated normal"  = "blank",
+                                                "Estimated anomaly" = "solid")) +
+      ggplot2::facet_grid(factor(variable, levels = names) ~ .,
+                                 scales = "free_y")
+
 
     # grey out the data after epoch
     if(epoch != nrow(x))
@@ -111,15 +128,18 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
                                 panel.grid.minor = ggplot2::element_blank(),
                                 # Change axis line
                                 axis.line = ggplot2::element_line(colour = "black"),
+                                axis.ticks.length.x=unit(0.65, "cm"),
                                 legend.position = legend_position
                               ) +
       ggplot2::xlab("t") +
       ggplot2::ylab("Value")
+    if (length(subset) > 8)
+      out <- out + ggplot2::scale_y_continuous(breaks = NULL)
 
     return(out)
 }
 
-capa_tile_plot <- function(object, variate_names = FALSE,
+capa_tile_plot <- function(object, variate_names = NULL,
                            epoch = dim(object$x)[1], subset = 1:ncol(object$x),
                            true_anoms = NULL) {
     # nulling out variables used in ggplot to get the package past CRAN checks
@@ -158,7 +178,7 @@ capa_tile_plot <- function(object, variate_names = FALSE,
                                                                 ymax = y2),
                                          fill = "yellow", alpha=0.2)
     }
-    if(variate_names == FALSE)
+    if(is.null(variate_names))
     {
         out <- out + ggplot2::theme(axis.text.y = ggplot2::element_blank(),
                                     axis.title = ggplot2::element_blank())
