@@ -1,0 +1,57 @@
+---
+output:
+  github_document:
+    html_preview: true
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "README-"
+)
+```
+
+# mvcapaCor
+An `R` package for detecting (collective and point) anomalies or changepoints in cross-correlated data.
+It also contains code to reproduce the simulation study in "Scalable changepoint and anaomly detection in cross-correlated data with an application to condition monitoring".
+
+## Overview
+Functionality:
+
+* Function for running the CAPA-CC algorithm on data, as well as CPT-CC for a single change.
+* Functions for visualising the detected collective and point anomalies.
+* Functions for estimating a precision matrix restricted to a given adjacency matrix by the GLASSO method.
+* Functions for generating test data and running the simulation study in "Scalable changepoint and anaomly detection in cross-correlated data with an application to condition monitoring".
+
+## Installation
+
+You can install tpcaMonitoring from github with:
+
+```{r gh-installation, eval = FALSE}
+# install.packages("devtools")
+devtools::install_github("Tveten/mvcapaCor")
+```
+
+## Exported and documented functions
+For more information, see the documentation of the functions below inside R.
+
+* mvcapa_cor
+* estimate_precision_mat
+* plot_capa
+
+## Example
+
+```{r example}
+library(mvcapaCor)
+# To run the entire simulation study, use run_simstudy().
+# It will take several days to run, but the output from it is also contained in
+# this package so that one can still get plots of results and study the results in more detail.
+# The code in run_simstudy() specifies in a simple way the simulation
+# setup and the necessary steps in the study.
+
+# Generate the test sets used:
+x <- simulate_cor(200, 4)
+```
