@@ -418,8 +418,8 @@ latex_mse_table <- function(x, p, vartheta, shape) {
 
   mid_sep <- ' \n\\midrule'
   colnames(x) <- c("$\\bQ$", "$\\rho$", "$J$",
-                   "MVCPT($\\hat{\\bQ}(4)$)",
-                   "MVCPT($\\bI$)",
+                   "CPT-CC($\\hat{\\bQ}(4)$)",
+                   "CPT-CC($\\bI$)",
                    "inspect($\\hat{\\bQ}$)",
                    "inspect($\\bI$)")
   heading <- paste(colnames(x), collapse = " & ")
@@ -474,6 +474,7 @@ most_relevant_tables <- function() {
   cpt_mse_table(100, 3, 6, latex = TRUE)
   cpt_mse_table(100, 3, 0, latex = TRUE)
 
+  # Table in main text:
   cpt_mse_table(100, 3, 6, rho = c(0.5, 0.9), latex = TRUE)
 }
 

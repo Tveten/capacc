@@ -159,17 +159,17 @@ cost_names_colours <- function() {
   inspect_cols <- RColorBrewer::brewer.pal(9, "Greens")
   rbind(
     data.table(cost = "cor", precision_est_struct = NA, est_band = NA,
-               name = "MVCAPA($Q$)", colour = mvcor_cols[9]),
+               name = "CAPA-CC($Q$)", colour = mvcor_cols[9]),
     data.table(cost = "cor", precision_est_struct = "correct", est_band = NA,
-               name = "MVCAPA($\\hat{Q}(W^*)$)", colour = mvcor_cols[7]),
+               name = "CAPA-CC($\\hat{Q}(W^*)$)", colour = mvcor_cols[7]),
     data.table(cost = "cor", precision_est_struct = "banded", est_band = 4,
-               name = "MVCAPA($\\hat{Q}(4)$)", colour = mvcor_cols[6]),
+               name = "CAPA-CC($\\hat{Q}(4)$)", colour = mvcor_cols[6]),
     data.table(cost = "cor", precision_est_struct = "banded", est_band = 2,
-               name = "MVCAPA($\\hat{Q}(2)$)", colour = mvcor_cols[5]),
+               name = "CAPA-CC($\\hat{Q}(2)$)", colour = mvcor_cols[5]),
     data.table(cost = "cor", precision_est_struct = "banded", est_band = 1,
-               name = "MVCAPA($\\hat{Q}(1)$)", colour = mvcor_cols[4]),
+               name = "CAPA-CC($\\hat{Q}(1)$)", colour = mvcor_cols[4]),
     data.table(cost = "iid", precision_est_struct = "banded", est_band = 0,
-               name = "MVCAPA($I$)", colour = mviid_cols[6]),
+               name = "MVCAPA", colour = mviid_cols[6]),
     data.table(cost = "cor_exact", precision_est_struct = NA, est_band = NA,
                name = "ML($Q$)", colour = ml_cols[3]),
     data.table(cost = "cor_exact", precision_est_struct = "correct", est_band = NA,
@@ -183,17 +183,17 @@ cost_names_colours <- function() {
     data.table(cost = "inspect", precision_est_struct = "banded", est_band = 0,
                name = "inspect($I$)", colour = inspect_cols[4]),
     data.table(cost = "mvlrt", precision_est_struct = NA, est_band = NA,
-               name = "MVCPT($Q$)", colour = mvcor_cols[9]),
+               name = "CPT-CC($Q$)", colour = mvcor_cols[9]),
     data.table(cost = "mvlrt", precision_est_struct = "correct", est_band = NA,
-               name = "MVCPT($\\hat{Q}(W^*)$)", colour = mvcor_cols[8]),
+               name = "CPT-CC($\\hat{Q}(W^*)$)", colour = mvcor_cols[8]),
     data.table(cost = "mvlrt", precision_est_struct = "banded", est_band = 0,
-               name = "MVCPT($I$)", colour = mviid_cols[6]),
+               name = "CPT-CC($I$)", colour = mviid_cols[6]),
     data.table(cost = "mvlrt", precision_est_struct = "banded", est_band = 1,
-               name = "MVCPT($\\hat{Q}(1)$)", colour = mvcor_cols[4]),
+               name = "CPT-CC($\\hat{Q}(1)$)", colour = mvcor_cols[4]),
     data.table(cost = "mvlrt", precision_est_struct = "banded", est_band = 2,
-               name = "MVCPT($\\hat{Q}(2)$)", colour = mvcor_cols[5]),
+               name = "CPT-CC($\\hat{Q}(2)$)", colour = mvcor_cols[5]),
     data.table(cost = "mvlrt", precision_est_struct = "banded", est_band = 4,
-               name = "MVCPT($\\hat{Q}(4)$)", colour = mvcor_cols[6])
+               name = "CPT-CC($\\hat{Q}(4)$)", colour = mvcor_cols[6])
   )
 }
 
@@ -262,11 +262,11 @@ rename_precision_est_struct <- function(res) {
 }
 
 rename_shape <- function(shape) {
-  if (shape == 0) shape_text <- "$1$"
-  else if (shape == 5) shape_text <- "$0$"
-  else if (shape == 6) shape_text <- "$\\Sigma$"
-  else if (shape == 8) shape_text <- "$0.8$"
-  else if (shape == 9) shape_text <- "$0.9$"
+  if (shape == 0) shape_text <- "1"
+  else if (shape == 5) shape_text <- "0"
+  else if (shape == 6) shape_text <- "\\Sigma"
+  else if (shape == 8) shape_text <- "0.8"
+  else if (shape == 9) shape_text <- "0.9"
   else shape_text <- shape
   return(shape_text)
 }

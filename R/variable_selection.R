@@ -150,15 +150,19 @@ all_subset_est_runs <- function() {
   # subset_est_runs(100, "banded", vartheta = 5)
 }
 
-subset_est_table <- function(p = 10, vartheta = 2, rho = c(0.5, 0.7, 0.9),
+subset_est_table <- function(p = 10, vartheta = c(2, 5), rho = c(0.5, 0.9),
                              proportions = c(1/p, round(sqrt(p)) / p),
-                             durations = 10, latex = FALSE) {
+                             shape = 6, durations = 10, alpha = 0.005,
+                             latex = FALSE) {
   out_file <- "subset_est_FINAL.csv"
   all_res <- read_results(out_file)
   # if (isTRUE(all.equal(proportions, 1/p))) shape <- 0
   l <- list(p = p, vartheta = vartheta, rho = rho, prop = proportions,
-            durations = durations)
-  res <- all_res[p %in% l$p & vartheta %in% l$vartheta & rho %in% l$rho & proportions %in% l$prop & durations == l$durations]
+            shape = c(0, shape), durations = durations, alpha = alpha)
+  res <- all_res[p %in% l$p & vartheta %in% l$vartheta & rho %in% l$rho & proportions %in% l$prop & shape %in% l$shape & durations == l$durations & alpha == l$alpha]
+  # l <- list(p = p, vartheta = vartheta, rho = rho, prop = proportions,
+  #           durations = durations)
+  # res <- all_res[p %in% l$p & vartheta %in% l$vartheta & rho %in% l$rho & proportions %in% l$prop & durations == l$durations]
   res <- res[!precision_est_struct %in% "correct"]
   res <- rename_cost(res)
   res[, J := round(p * proportions)]
@@ -166,27 +170,29 @@ subset_est_table <- function(p = 10, vartheta = 2, rho = c(0.5, 0.7, 0.9),
                        precision = sprintf("%.2f", mean(precision)),
                        recall    = sprintf("%.2f", mean(recall))),
                  by = cost],
-             by = .(J, shape, rho)]
-  res <- rbind(res[p == 10 & J == 1 & shape == 0],
-               res[p == 10 & J == 3 & shape == 6],
-               res[p == 10 & J == 3 & shape == 5],
-               res[p == 100 & J == 1 & shape == 0],
-               res[p == 100 & J == 10 & shape == 6],
-               res[p == 100 & J == 10 & shape == 5])
-  res[, "shape" := unlist(lapply(shape, rename_shape))]
-  res[shape == "$1$", "shape" := "--"]
+             by = .(J, vartheta, rho)]
+  res <- res[order(J), .SD[order(rho)], by = .(J, vartheta)]
+  # res <- rbind(res[p == 10 & J == 1 & shape == 0],
+  #              res[p == 10 & J == 3 & shape == 6],
+  #              res[p == 10 & J == 3 & shape == 5],
+  #              res[p == 100 & J == 1 & shape == 0],
+  #              res[p == 100 & J == 10 & shape == 6],
+  #              res[p == 100 & J == 10 & shape == 5])
+  # res[, "shape" := unlist(lapply(shape, rename_shape))]
+  # res[shape == "$1$", "shape" := "--"]
 
-  if (latex) return(latex_subset_est_table(res, vartheta, p))
+  if (latex) return(latex_subset_est_table(res, p, shape, alpha))
   else return(res)
 }
 
-latex_subset_est_table <- function(x, vartheta, p) {
+latex_subset_est_table <- function(x, p, shape, alpha) {
   if (p == 10) n <- 100
   else if (p == 100) n <- 200
   caption <- paste0("Average precision, recall and $\\hat{J}$ over 1000 repetitions for $p = ", p,
                     "$ and  $n = ", n, "$. ",
-                    "Other parameters: $s = n / 10$ and $e = s + 10$, $\\vartheta = 2$, $\\bQ = \\bQ(2)$.")
-  label <- paste0("tab:subset_est_vartheta", vartheta, "_p", p)
+                    "Other parameters: $\\bQ = \\bQ(2)$, $s = n / 10$ and $e = s + 10$, ",
+                    "$\\bmu_{(", rename_shape(shape), ")}$, $\\alpha = ", alpha, "$.")
+  label <- paste0("tab:subset_est_p", p)
 
   date_line <- paste0('% ', date())
   begin_table <- paste('\\begin{table}[!htb]',
@@ -202,7 +208,7 @@ latex_subset_est_table <- function(x, vartheta, p) {
                      '\\end{table}', sep = ' \n')
 
   mid_sep <- ' \n\\midrule'
-  colnames(x) <- c("$J$", "$\\bmu_{(\\cdot)}$", "$\\rho$", "Method",
+  colnames(x) <- c("$J$", "$\\vartheta$", "$\\rho$", "Method",
                    "$\\hat{J}$",
                    "Precision",
                    "Recall")
@@ -220,16 +226,16 @@ latex_subset_est_table <- function(x, vartheta, p) {
 }
 
 size_J_hist <- function(p = 10, vartheta = 2, shape = 6, rho = 0.9,
-                        proportions = 1/p, durations = 10) {
+                        proportions = 1/p, durations = 10, alpha = 0.05) {
   out_file <- "subset_est_FINAL.csv"
   all_res <- read_results(out_file)
   if (isTRUE(all.equal(proportions, 1/p))) shape <- 0
   l <- list(p = p, vartheta = vartheta, rho = rho, prop = proportions,
-            shape = shape, durations = durations)
-  res <- all_res[p %in% l$p & vartheta %in% l$vartheta & rho %in% l$rho & proportions %in% l$prop & shape %in% l$shape & durations == l$durations]
+            shape = shape, durations = durations, alpha = alpha)
+  res <- all_res[p %in% l$p & vartheta %in% l$vartheta & rho %in% l$rho & proportions %in% l$prop & shape %in% l$shape & durations == l$durations & alpha == l$alpha]
   res <- res[!precision_est_struct %in% "correct"]
   res <- rename_cost(res)
-  res <- res[size_J > 0]
+  # res <- res[size_J > 0]
 
   col_name_dt <- cost_names_colours()[name %in% res[, unique(cost)]]
   cols <- col_name_dt$colour
@@ -260,22 +266,26 @@ size_J_hist <- function(p = 10, vartheta = 2, shape = 6, rho = 0.9,
 
 
 grid_plot_size_J <- function(p = 10, vartheta = 2, rho = 0.7, durations = 10,
-                             proportions = c(1/p, round(sqrt(p)) / p),
-                             out_file = "sizeJ") {
-  plots <- c(lapply(proportions, size_J_hist, p = p, vartheta = vartheta,
-                    rho = rho, shape = 6, durations = durations),
-             list(size_J_hist(p, vartheta, 5, rho, proportions[2], durations)))
+                             proportions = c(1/p, round(sqrt(p)) / p), alpha = 0.05,
+                             shape = 6, out_file = "sizeJ") {
+  # plots <- c(lapply(proportions, size_J_hist, p = p, vartheta = vartheta,
+  #                   rho = rho, shape = 6, durations = durations, alpha = alpha),
+  #            list(size_J_hist(p, vartheta, 5, rho, proportions[2], durations, alpha)))
+  plots <- lapply(proportions, size_J_hist, p = p, vartheta = vartheta,
+                  rho = rho, shape = shape, durations = durations, alpha = alpha)
   # print(list(p, vartheta, 5, rho, proportions[2]))
   # plots <- size_J_hist(p, vartheta, 5, rho, proportions[2])
   # print(plots)
-  dims <- c(1, 3)
+  dims <- c(1, length(proportions))
   pp <- grid_plot(plots, dims, "")
   if (!is.null(out_file)) {
     file_name <- paste0("./images/", out_file,
                         "_p", p,
                         "_rho", rho,
                         "_vartheta", vartheta,
+                        "_shape", shape,
                         "_dur", durations,
+                        "_alpha", alpha,
                         ".png")
     width <- 8
     height <- 3
@@ -284,4 +294,24 @@ grid_plot_size_J <- function(p = 10, vartheta = 2, rho = 0.7, durations = 10,
                     units = "in", dpi = 800)
   }
   else return(pp)
+}
+
+all_grid_J_plots <- function() {
+  for (rho in c(0.7, 0.9)) {
+    for (vartheta in c(2, 3, 5)) {
+      grid_plot_size_J(p = 10, vartheta = vartheta, rho = rho, alpha = 0.05)
+      grid_plot_size_J(p = 10, vartheta = vartheta, rho = rho, alpha = 0.005)
+      grid_plot_size_J(p = 100, vartheta = vartheta, proportions = c(0.01, 0.05, 0.1),
+                       rho = rho, alpha = 0.05)
+      grid_plot_size_J(p = 100, vartheta = vartheta, proportions = c(0.01, 0.05, 0.1),
+                       rho = rho, alpha = 0.005)
+    }
+  }
+}
+
+all_J_tables <- function() {
+  subset_est_table(p = 10, vartheta = c(2, 5), proportions = c(0.1, 0.3))
+  subset_est_table(p = 10, vartheta = c(2, 5), proportions = c(0.1, 0.3), latex = TRUE)
+  subset_est_table(p = 100, vartheta = c(2, 5), proportions = c(0.01, 0.05, 0.1))
+  subset_est_table(p = 100, vartheta = c(2, 5), proportions = c(0.01, 0.05, 0.1), latex = TRUE)
 }

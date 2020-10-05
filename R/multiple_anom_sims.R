@@ -286,8 +286,8 @@ latex_ari_table <- function(x, p, vartheta) {
 
   mid_sep <- ' \n\\midrule'
   colnames(x) <- c("$\\bQ$", "$\\rho$", "$\\bmu_{(\\cdot)}$", "Pt. anoms",
-                   "MVCAPA($\\hat{\\bQ}(4)$)",
-                   "MVCAPA($\\bI$)",
+                   "CAPA-CC($\\hat{\\bQ}(4)$)",
+                   "MVCAPA",
                    "inspect($\\hat{\\bQ}$)",
                    "inspect($\\bI$)")
   heading <- paste(colnames(x), collapse = " & ")
@@ -304,8 +304,10 @@ latex_ari_table <- function(x, p, vartheta) {
 }
 
 tables_to_show <- function() {
+  # Table in main text:
   multi_anom_table(p = 100, vartheta = 2, shape = c(5, 8), rho = c(0.5, 0.9), latex = TRUE)
 
+  # Other tables:
   multi_anom_table(p = 10, vartheta = 1.5)
   multi_anom_table(p = 10, vartheta = 1, shape = c(5, 8), rho = c(0.5, 0.7, 0.9), latex = TRUE)
   multi_anom_table(p = 10, vartheta = 1, shape = c(5, 8), rho = c(0.5, 0.7, 0.9))
