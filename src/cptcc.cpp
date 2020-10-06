@@ -1,5 +1,5 @@
 
-#include "single_mvnormal_changepoint.h"
+#include "cptcc.h"
 
 using namespace bqp;
 using namespace Rcpp;
@@ -129,10 +129,10 @@ Rcpp::List optimise_mvnormal_lr(const int& cpt,
 }
 
 // [[Rcpp::export]]
-Rcpp::List single_mvnormal_changepoint(const arma::mat& x,
-                                       const arma::sp_mat& Q,
-                                       const double& b = 1,
-                                       const int& min_seg_len = 2)
+Rcpp::List cptcc(const arma::mat& x,
+                 const arma::sp_mat& Q,
+                 const double& b = 1,
+                 const int& min_seg_len = 2)
 {
   int n = x.n_rows;
   int p = x.n_cols;

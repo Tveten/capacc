@@ -22,7 +22,7 @@ est_power_known <- function(data, method, n_sim, cpus = 1) {
     comp_cluster <- setup_parallel(cpus)
     `%dopar%` <- foreach::`%dopar%`
     power <- mean(foreach::foreach(i = 1:n_sim,
-                                   .packages = "mvcapaCor",
+                                   .packages = "capacc",
                                    .combine = "c") %dopar% {
                                      simulate_detection_known(data, method, seed = seeds[i])$S_max > 0
                                    })
@@ -149,7 +149,7 @@ many_power_curves <- function(out_file, variables, data = init_data(),
     comp_cluster <- setup_parallel(cpus)
     `%dopar%` <- foreach::`%dopar%`
     res <- foreach::foreach(i = 1:length(params$data),
-                            .packages = c("anomaly", "mvcapaCor")) %dopar% {
+                            .packages = c("anomaly", "capacc")) %dopar% {
                               power_curve(data     = params$data[[i]],
                                           method   = params$method[[i]],
                                           seed     = seeds[i],

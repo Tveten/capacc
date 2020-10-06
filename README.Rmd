@@ -14,9 +14,9 @@ knitr::opts_chunk$set(
 )
 ```
 
-# mvcapaCor
-An `R` package for detecting (collective and point) anomalies or changepoints in cross-correlated data.
-It also contains code to reproduce the simulation study in "Scalable changepoint and anaomly detection in cross-correlated data with an application to condition monitoring".
+# capacc
+An `R` package for detecting (collective and point) anomalies (CAPA-CC) or changepoints (CPT-CC) in cross-correlated data.
+It also contains code to reproduce the simulation study in Tveten, Eckley, Fearnhead (2020) "Scalable changepoint and anaomly detection in cross-correlated data with an application to condition monitoring".
 
 ## Overview
 Functionality:
@@ -28,24 +28,25 @@ Functionality:
 
 ## Installation
 
-You can install tpcaMonitoring from github with:
+You can install capacc from github with:
 
 ```{r gh-installation, eval = FALSE}
 # install.packages("devtools")
-devtools::install_github("Tveten/mvcapaCor")
+devtools::install_github("Tveten/capacc")
 ```
 
 ## Exported and documented functions
 For more information, see the documentation of the functions below inside R.
 
-* mvcapa_cor
+* capacc
+* cptcc
 * estimate_precision_mat
 * plot_capa
 
 ## Example
 
 ```{r example, message = FALSE, warning = FALSE}
-library(mvcapaCor)
+library(capacc)
 
 # Generate the test sets used:
 x <- simulate_cor(200, 4)

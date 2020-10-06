@@ -1,4 +1,4 @@
 library(testthat)
-library(mvcapaCor)
+library(capacc)
 
-test_check("mvcapaCor")
+test_check("capacc")

@@ -1,5 +1,5 @@
 ## usethis namespace: start
-#' @useDynLib mvcapaCor, .registration = TRUE
+#' @useDynLib capacc, .registration = TRUE
 #' @importFrom Rcpp sourceCpp
 ## usethis namespace: end
 NULL

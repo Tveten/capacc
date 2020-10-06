@@ -1,6 +1,6 @@
 
 #
-# profile_mvcapa_cor <- function(x, Q, n_sim = 100) {
+# profile_capacc <- function(x, Q, n_sim = 100) {
 #   p <- ncol(Q)
 #   nbs <- lower_nbs(Q)
 #   extended_nbs <- extended_lower_nbs(nbs)

@@ -218,17 +218,17 @@ simulate_detection <- function(data = init_data(), method = method_params(),
     Q_hat <- get_Q_hat(x$x, data, method)
     if (grepl("cor", method$cost)) {
       x$x <- centralise(x$x)
-      if (method$cost == "cor_exact") mvcapa_func <- mvcapa_cor_exact
-      else if(method$cost == "cor")   mvcapa_func <- mvcapa_cor
-      res <- mvcapa_func(x$x, Q_hat,
+      if (method$cost == "cor_exact") capacc_func <- capacc_exact
+      else if(method$cost == "cor")   capacc_func <- capacc
+      res <- capacc_func(x$x, Q_hat,
                          b                = method$b,
                          b_point          = max(0.05, method$b),
                          min_seg_len      = method$minsl,
                          max_seg_len      = method$maxsl)
     } else if (method$cost == "mvlrt")
-      res <- single_mvnormal_changepoint(x$x, Q_hat,
-                                         b = method$b,
-                                         min_seg_len = method$minsl)
+      res <- cptcc(x$x, Q_hat,
+                   b = method$b,
+                   min_seg_len = method$minsl)
     else if (method$cost == "sinspect")
       res <- single_cor_inspect(t(x$x), Q_hat, method$b)
     else if (method$cost == "inspect")
@@ -346,7 +346,7 @@ simple_example <- function(p = 4, n = 200, vartheta = 10, method = "cor",
   if (method == "cor") {
     x <- centralise(x)
     Q_hat <- estimate_precision_mat(x, adjacency_mat(banded_neighbours(4, p), sparse = FALSE))
-    res <- mvcapa_cor(x, Q_hat, b = b, b_point = b_point)
+    res <- capacc(x, Q_hat, b = b, b_point = b_point)
     plot_capa(list("x" = x, "anoms" = res), true_anoms = true_anoms)
   } else if (method == "iid") {
     beta <- iid_penalty(n, p, b)

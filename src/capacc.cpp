@@ -5,7 +5,7 @@
 #include <cmath>
 #include <RcppArmadillo.h>
 
-Rcpp::DataFrame format_mvcapa_cor_output(std::list<std::tuple<int,int,int,double>> anoms)
+Rcpp::DataFrame format_capacc_output(std::list<std::tuple<int,int,int,double>> anoms)
 {
   std::vector<int> start;
   std::vector<int> end;
@@ -24,11 +24,20 @@ Rcpp::DataFrame format_mvcapa_cor_output(std::list<std::tuple<int,int,int,double
                                  Rcpp::_["size"] = size);
 }
 
+//' CAPA-CC
+//'
+//' @param x An n x p data matrix where each row is an observation vector.
+//' @param Q An estimate of the precision matrix. See \link{\code{estimate_precision_mat}}
+//' @param b The scaling factor for the collective anomaly penalty. Defaults to 1.
+//' @param b_point The scaling factor for the point anomaly penalty. Defaults to 1.
+//' @param min_seg_len The minimum segment length. Defaults to 2.
+//' @param max_seg_len The maximum segment length. Defaults to 10^8.
+//' @return A data frame containg start- and end-points of anaomlies, indices of which variables are affected as well as the size of the anomalous mean for each variable.
 // [[Rcpp::export]]
-Rcpp::DataFrame mvcapa_cor(const arma::mat& x, const arma::sp_mat& Q,
-                           const double& b = 1, const double& b_point = 1,
-                           const int& min_seg_len = 2,
-                           const int& max_seg_len = 100000000)
+Rcpp::DataFrame capacc(const arma::mat& x, const arma::sp_mat& Q,
+                       const double& b = 1, const double& b_point = 1,
+                       const int& min_seg_len = 2,
+                       const int& max_seg_len = 100000000)
 {
 
   // arma::mat x;
@@ -78,5 +87,5 @@ Rcpp::DataFrame mvcapa_cor(const arma::mat& x, const arma::sp_mat& Q,
   //     std::cout << "(" << std::get<0>(lv)  << "," << std::get<1>(lv) << "," << std::get<2>(lv) << ")" << std::endl;
   //   }
 
-  return format_mvcapa_cor_output(locs_and_vars);
+  return format_capacc_output(locs_and_vars);
 }

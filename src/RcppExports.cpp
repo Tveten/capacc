@@ -6,9 +6,25 @@
 
 using namespace Rcpp;
 
+// capacc
+Rcpp::DataFrame capacc(const arma::mat& x, const arma::sp_mat& Q, const double& b, const double& b_point, const int& min_seg_len, const int& max_seg_len);
+RcppExport SEXP _capacc_capacc(SEXP xSEXP, SEXP QSEXP, SEXP bSEXP, SEXP b_pointSEXP, SEXP min_seg_lenSEXP, SEXP max_seg_lenSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const arma::sp_mat& >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< const double& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const double& >::type b_point(b_pointSEXP);
+    Rcpp::traits::input_parameter< const int& >::type min_seg_len(min_seg_lenSEXP);
+    Rcpp::traits::input_parameter< const int& >::type max_seg_len(max_seg_lenSEXP);
+    rcpp_result_gen = Rcpp::wrap(capacc(x, Q, b, b_point, min_seg_len, max_seg_len));
+    return rcpp_result_gen;
+END_RCPP
+}
 // optimise_mvnormal_saving
 Rcpp::List optimise_mvnormal_saving(const arma::mat& x, const arma::sp_mat& Q, const std::vector<std::vector<int>>& nbs, const std::vector<std::vector<int>>& extended_nbs, const double& alpha_dense, const double& beta, const double& alpha_sparse);
-RcppExport SEXP _mvcapaCor_optimise_mvnormal_saving(SEXP xSEXP, SEXP QSEXP, SEXP nbsSEXP, SEXP extended_nbsSEXP, SEXP alpha_denseSEXP, SEXP betaSEXP, SEXP alpha_sparseSEXP) {
+RcppExport SEXP _capacc_optimise_mvnormal_saving(SEXP xSEXP, SEXP QSEXP, SEXP nbsSEXP, SEXP extended_nbsSEXP, SEXP alpha_denseSEXP, SEXP betaSEXP, SEXP alpha_sparseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -25,7 +41,7 @@ END_RCPP
 }
 // dense_mvnormal_savings
 double dense_mvnormal_savings(const arma::mat& mean_x, const arma::sp_mat& Q, const double& n);
-RcppExport SEXP _mvcapaCor_dense_mvnormal_savings(SEXP mean_xSEXP, SEXP QSEXP, SEXP nSEXP) {
+RcppExport SEXP _capacc_dense_mvnormal_savings(SEXP mean_xSEXP, SEXP QSEXP, SEXP nSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -36,87 +52,9 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// main1
-int main1();
-RcppExport SEXP _mvcapaCor_main1() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(main1());
-    return rcpp_result_gen;
-END_RCPP
-}
-// main2
-int main2();
-RcppExport SEXP _mvcapaCor_main2() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(main2());
-    return rcpp_result_gen;
-END_RCPP
-}
-// mvcapa_cor
-Rcpp::DataFrame mvcapa_cor(const arma::mat& x, const arma::sp_mat& Q, const double& b, const double& b_point, const int& min_seg_len, const int& max_seg_len);
-RcppExport SEXP _mvcapaCor_mvcapa_cor(SEXP xSEXP, SEXP QSEXP, SEXP bSEXP, SEXP b_pointSEXP, SEXP min_seg_lenSEXP, SEXP max_seg_lenSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
-    Rcpp::traits::input_parameter< const arma::sp_mat& >::type Q(QSEXP);
-    Rcpp::traits::input_parameter< const double& >::type b(bSEXP);
-    Rcpp::traits::input_parameter< const double& >::type b_point(b_pointSEXP);
-    Rcpp::traits::input_parameter< const int& >::type min_seg_len(min_seg_lenSEXP);
-    Rcpp::traits::input_parameter< const int& >::type max_seg_len(max_seg_lenSEXP);
-    rcpp_result_gen = Rcpp::wrap(mvcapa_cor(x, Q, b, b_point, min_seg_len, max_seg_len));
-    return rcpp_result_gen;
-END_RCPP
-}
-// lower_nbs
-std::vector<std::vector<int>> lower_nbs(const arma::sp_mat& A);
-RcppExport SEXP _mvcapaCor_lower_nbs(SEXP ASEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::sp_mat& >::type A(ASEXP);
-    rcpp_result_gen = Rcpp::wrap(lower_nbs(A));
-    return rcpp_result_gen;
-END_RCPP
-}
-// extended_lower_nbs
-std::vector<std::vector<int>> extended_lower_nbs(std::vector<std::vector<int>> nbs);
-RcppExport SEXP _mvcapaCor_extended_lower_nbs(SEXP nbsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::vector<std::vector<int>> >::type nbs(nbsSEXP);
-    rcpp_result_gen = Rcpp::wrap(extended_lower_nbs(nbs));
-    return rcpp_result_gen;
-END_RCPP
-}
-// test_precision_copy
-void test_precision_copy(arma::sp_mat& A);
-RcppExport SEXP _mvcapaCor_test_precision_copy(SEXP ASEXP) {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::sp_mat& >::type A(ASEXP);
-    test_precision_copy(A);
-    return R_NilValue;
-END_RCPP
-}
-// test_precision_move
-void test_precision_move(arma::sp_mat& A);
-RcppExport SEXP _mvcapaCor_test_precision_move(SEXP ASEXP) {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::sp_mat& >::type A(ASEXP);
-    test_precision_move(A);
-    return R_NilValue;
-END_RCPP
-}
 // optimise_mvnormal_lr
 Rcpp::List optimise_mvnormal_lr(const int& cpt, const arma::mat& x, const arma::sp_mat& Q, const double& b);
-RcppExport SEXP _mvcapaCor_optimise_mvnormal_lr(SEXP cptSEXP, SEXP xSEXP, SEXP QSEXP, SEXP bSEXP) {
+RcppExport SEXP _capacc_optimise_mvnormal_lr(SEXP cptSEXP, SEXP xSEXP, SEXP QSEXP, SEXP bSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -128,9 +66,9 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// single_mvnormal_changepoint
-Rcpp::List single_mvnormal_changepoint(const arma::mat& x, const arma::sp_mat& Q, const double& b, const int& min_seg_len);
-RcppExport SEXP _mvcapaCor_single_mvnormal_changepoint(SEXP xSEXP, SEXP QSEXP, SEXP bSEXP, SEXP min_seg_lenSEXP) {
+// cptcc
+Rcpp::List cptcc(const arma::mat& x, const arma::sp_mat& Q, const double& b, const int& min_seg_len);
+RcppExport SEXP _capacc_cptcc(SEXP xSEXP, SEXP QSEXP, SEXP bSEXP, SEXP min_seg_lenSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -138,27 +76,89 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::sp_mat& >::type Q(QSEXP);
     Rcpp::traits::input_parameter< const double& >::type b(bSEXP);
     Rcpp::traits::input_parameter< const int& >::type min_seg_len(min_seg_lenSEXP);
-    rcpp_result_gen = Rcpp::wrap(single_mvnormal_changepoint(x, Q, b, min_seg_len));
+    rcpp_result_gen = Rcpp::wrap(cptcc(x, Q, b, min_seg_len));
     return rcpp_result_gen;
+END_RCPP
+}
+// main1
+int main1();
+RcppExport SEXP _capacc_main1() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(main1());
+    return rcpp_result_gen;
+END_RCPP
+}
+// main2
+int main2();
+RcppExport SEXP _capacc_main2() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(main2());
+    return rcpp_result_gen;
+END_RCPP
+}
+// lower_nbs
+std::vector<std::vector<int>> lower_nbs(const arma::sp_mat& A);
+RcppExport SEXP _capacc_lower_nbs(SEXP ASEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::sp_mat& >::type A(ASEXP);
+    rcpp_result_gen = Rcpp::wrap(lower_nbs(A));
+    return rcpp_result_gen;
+END_RCPP
+}
+// extended_lower_nbs
+std::vector<std::vector<int>> extended_lower_nbs(std::vector<std::vector<int>> nbs);
+RcppExport SEXP _capacc_extended_lower_nbs(SEXP nbsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<std::vector<int>> >::type nbs(nbsSEXP);
+    rcpp_result_gen = Rcpp::wrap(extended_lower_nbs(nbs));
+    return rcpp_result_gen;
+END_RCPP
+}
+// test_precision_copy
+void test_precision_copy(arma::sp_mat& A);
+RcppExport SEXP _capacc_test_precision_copy(SEXP ASEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::sp_mat& >::type A(ASEXP);
+    test_precision_copy(A);
+    return R_NilValue;
+END_RCPP
+}
+// test_precision_move
+void test_precision_move(arma::sp_mat& A);
+RcppExport SEXP _capacc_test_precision_move(SEXP ASEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::sp_mat& >::type A(ASEXP);
+    test_precision_move(A);
+    return R_NilValue;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_mvcapaCor_optimise_mvnormal_saving", (DL_FUNC) &_mvcapaCor_optimise_mvnormal_saving, 7},
-    {"_mvcapaCor_dense_mvnormal_savings", (DL_FUNC) &_mvcapaCor_dense_mvnormal_savings, 3},
-    {"_mvcapaCor_main1", (DL_FUNC) &_mvcapaCor_main1, 0},
-    {"_mvcapaCor_main2", (DL_FUNC) &_mvcapaCor_main2, 0},
-    {"_mvcapaCor_mvcapa_cor", (DL_FUNC) &_mvcapaCor_mvcapa_cor, 6},
-    {"_mvcapaCor_lower_nbs", (DL_FUNC) &_mvcapaCor_lower_nbs, 1},
-    {"_mvcapaCor_extended_lower_nbs", (DL_FUNC) &_mvcapaCor_extended_lower_nbs, 1},
-    {"_mvcapaCor_test_precision_copy", (DL_FUNC) &_mvcapaCor_test_precision_copy, 1},
-    {"_mvcapaCor_test_precision_move", (DL_FUNC) &_mvcapaCor_test_precision_move, 1},
-    {"_mvcapaCor_optimise_mvnormal_lr", (DL_FUNC) &_mvcapaCor_optimise_mvnormal_lr, 4},
-    {"_mvcapaCor_single_mvnormal_changepoint", (DL_FUNC) &_mvcapaCor_single_mvnormal_changepoint, 4},
+    {"_capacc_capacc", (DL_FUNC) &_capacc_capacc, 6},
+    {"_capacc_optimise_mvnormal_saving", (DL_FUNC) &_capacc_optimise_mvnormal_saving, 7},
+    {"_capacc_dense_mvnormal_savings", (DL_FUNC) &_capacc_dense_mvnormal_savings, 3},
+    {"_capacc_optimise_mvnormal_lr", (DL_FUNC) &_capacc_optimise_mvnormal_lr, 4},
+    {"_capacc_cptcc", (DL_FUNC) &_capacc_cptcc, 4},
+    {"_capacc_main1", (DL_FUNC) &_capacc_main1, 0},
+    {"_capacc_main2", (DL_FUNC) &_capacc_main2, 0},
+    {"_capacc_lower_nbs", (DL_FUNC) &_capacc_lower_nbs, 1},
+    {"_capacc_extended_lower_nbs", (DL_FUNC) &_capacc_extended_lower_nbs, 1},
+    {"_capacc_test_precision_copy", (DL_FUNC) &_capacc_test_precision_copy, 1},
+    {"_capacc_test_precision_move", (DL_FUNC) &_capacc_test_precision_move, 1},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_mvcapaCor(DllInfo *dll) {
+RcppExport void R_init_capacc(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

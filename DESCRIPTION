@@ -1,11 +1,11 @@
-Package: mvcapaCor
+Package: capacc
 Type: Package
-Title: Exploring cross-stream correlations in MVCAPA
+Title: Collective and point anomalies in cross-correlated data
 Version: 0.1.0
 Author: Martin Tveten
 Maintainer: Martin Tveten <matveten@gmail.com>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Description: An efficient implementation of the CAPA-CC method and CPT-CC for a single change.
+    Includes plotting functionality from the anomaly package, as well as code for reproducing results in the paper Tveten, Eckley, Fearnhead (2020) "Scalable changepoint and anaomly detection in cross-correlated data with an application to condition monitoring".
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

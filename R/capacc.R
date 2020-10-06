@@ -1,14 +1,14 @@
 #### C++ helpers #####
 
-collective_anomalies <- function(mvcapa_cor_res) {
-  res_dt <- as.data.table(mvcapa_cor_res$anoms)
+collective_anomalies <- function(capacc_res) {
+  res_dt <- as.data.table(capacc_res$anoms)
   res_dt <- res_dt[start != end]
   names(res_dt)[4] <- "mean_change"
   res_dt
 }
 
-point_anomalies <- function(mvcapa_cor_res) {
-  res_dt <- as.data.table(mvcapa_cor_res$anoms)
+point_anomalies <- function(capacc_res) {
+  res_dt <- as.data.table(capacc_res$anoms)
   res_dt <- res_dt[start == end][, 2:4]
   names(res_dt)[c(1, 3)] <- c("location", "strength")
   res_dt
@@ -26,7 +26,7 @@ init_precision_mat <- function(precision_mat, tol = sqrt(.Machine$double.eps)) {
   list('Q' = precision_mat, 'nbs' = lower_nbs, 'extended_nbs' = extended_nbs)
 }
 
-mvcapa_corR <- function(x, Q, b = 1,
+capaccR <- function(x, Q, b = 1,
                         min_seg_len = 3, max_seg_len = round(nrow(x) / 3),
                         prune = TRUE, print_progress = FALSE) {
   # TODO: Restrict min_seg_len and max_seg_len
@@ -127,7 +127,7 @@ mvcapa_corR <- function(x, Q, b = 1,
               'anom'    = anom))
 }
 
-mvcapa_cor_exact <- function(x, Q, b = 1, b_point = 1,
+capacc_exact <- function(x, Q, b = 1, b_point = 1,
                              min_seg_len = 2, max_seg_len = 100,
                              prune = TRUE, print_progress = FALSE) {
   # TODO: Restrict min_seg_len and max_seg_len
@@ -210,25 +210,25 @@ mvcapa_cor_exact <- function(x, Q, b = 1, b_point = 1,
 }
 
 
-collective_anomaliesR <- function(mvcapa_cor_res) {
+collective_anomaliesR <- function(capacc_res) {
   anom_list <- list()
-  m <- nrow(mvcapa_cor_res$anom)
+  m <- nrow(capacc_res$anom)
   # Indices m correspond to m - 1 in the data.
   while (m >= 1) {
-    if (mvcapa_cor_res$anom[m, 2] == 0) m <- mvcapa_cor_res$anom[m, 1]
-    else if (mvcapa_cor_res$anom[m, 2] == 1) {
+    if (capacc_res$anom[m, 2] == 0) m <- capacc_res$anom[m, 1]
+    else if (capacc_res$anom[m, 2] == 1) {
       end <- m - 1
-      start <- mvcapa_cor_res$anom[m, 1]
-      J <- mvcapa_cor_res$J[[m]]
-      means <- colMeans(mvcapa_cor_res$x[start:end, J, drop = FALSE])
+      start <- capacc_res$anom[m, 1]
+      J <- capacc_res$J[[m]]
+      means <- colMeans(capacc_res$x[start:end, J, drop = FALSE])
       anom_df <- data.frame('start'       = rep(start, length(J)),
                             'end'         = rep(end, length(J)),
                             'variate'     = J,
                             'mean_change' = means)
       anom_list[[length(anom_list) + 1]] <- anom_df
       m <- start
-    } else if (mvcapa_cor_res$anom[m, 2] == 2) {
-      m <- mvcapa_cor_res$anom[m, 1]
+    } else if (capacc_res$anom[m, 2] == 2) {
+      m <- capacc_res$anom[m, 1]
     }
   }
   if (length(anom_list) == 0)
@@ -241,23 +241,23 @@ collective_anomaliesR <- function(mvcapa_cor_res) {
   }
 }
 
-point_anomaliesR <- function(mvcapa_cor_res) {
+point_anomaliesR <- function(capacc_res) {
   anom_list <- list()
-  m <- nrow(mvcapa_cor_res$anom)
+  m <- nrow(capacc_res$anom)
   while (m >= 1) {
-    # if (mvcapa_cor_res$anom[m, 2] == 0) m <- mvcapa_cor_res$anom[m, 1]
-    # else if (mvcapa_cor_res$anom[m, 2] == 1) {
-    #   m <- mvcapa_cor_res$anom[m, 1]
-    # } else if (mvcapa_cor_res$anom[m, 2] == 2) {
-    if (mvcapa_cor_res$anom[m, 2] == 2) {
-      J_point <- mvcapa_cor_res$J_point[[m]]
+    # if (capacc_res$anom[m, 2] == 0) m <- capacc_res$anom[m, 1]
+    # else if (capacc_res$anom[m, 2] == 1) {
+    #   m <- capacc_res$anom[m, 1]
+    # } else if (capacc_res$anom[m, 2] == 2) {
+    if (capacc_res$anom[m, 2] == 2) {
+      J_point <- capacc_res$J_point[[m]]
       anom_df <- data.frame('location' = rep(m - 1, length(J_point)),
                             'variate'  = J_point,
-                            'strength' = mvcapa_cor_res$x[m - 1, J_point])
+                            'strength' = capacc_res$x[m - 1, J_point])
       anom_list[[length(anom_list) + 1]] <- anom_df
-      # m <- mvcapa_cor_res$anom[m, 1]
+      # m <- capacc_res$anom[m, 1]
     }
-    m <- mvcapa_cor_res$anom[m, 1]
+    m <- capacc_res$anom[m, 1]
   }
   if (length(anom_list) == 0)
     return(data.frame('location' = integer(0), 'variate' = integer(0),

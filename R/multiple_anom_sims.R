@@ -124,7 +124,7 @@ many_classifications <- function(out_file, variables, data = init_data(),
     comp_cluster <- setup_parallel(cpus)
     `%dopar%` <- foreach::`%dopar%`
     res <- foreach::foreach(i = 1:length(params$data),
-                            .packages = c("anomaly", "mvcapaCor")) %dopar% {
+                            .packages = c("anomaly", "capacc")) %dopar% {
       classify_anom(out_file, params$data[[i]], params$method[[i]],
                     tuning, n_sim, seeds[i])
     }
