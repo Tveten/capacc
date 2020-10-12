@@ -1,3 +1,29 @@
+#' Robustly estimate a precision matrix with a given adjacency structure.
+#'
+#' @description The function uses the GLASSAO algorithm implemented in the glassoFast package to estimate a precision matrix robustly with a conditional independence structure specified by \code{adj_mat}.
+#'
+#' @details
+#' The function \code{adjacency_mat} can be used to generate an adjacency matrix from a list containing the neighbours of variable i in list[[i]].
+#' Moreover, the functions \code{banded_neighbours}, \code{lattice_neighbours}, \code{random_neighbours} can be used to generate such lists of neighbours for banded, lattice and random adjacency structures.
+#'
+#' @param x An n x p data matrix where each row is an observation vector.
+#' @param adj_mat A p x p adjacency matrix. See details.
+#' @param sparse A logical specifying whether the returned estimate should be a sparse matrix from the Matrix package or not.
+#'
+#' @return A precision matrix.
+#'
+#' @examples
+#' x <- simulate_cor()$x
+#' Q <- robust_sparse_precision(x, adjacency_mat(banded_neighbours(2, ncol(x)), sparse = FALSE))
+#'
+#' @export
+robust_sparse_precision <- function(x, adj_mat, sparse = TRUE) {
+  S <- robust_cov_mat(x)
+  S_inv <- glassoFast::glassoFast(S, rho = reg_mat(adj_mat))$wi
+  if (sparse) return(Matrix::Matrix(S_inv, sparse = TRUE))
+  else return(S_inv)
+}
+
 robust_cov_mat <- function(x) {
   n <- nrow(x)
   scores_x <- apply(Rfast::colRanks(x) / (n + 1), 2, qnorm)
@@ -22,14 +48,6 @@ reg_mat <- function(adj_mat) {
   reg_mat[adj_mat != 0] <- 0
   diag(reg_mat) <- 0
   reg_mat
-}
-
-#' @export
-estimate_precision_mat <- function(x, adj_mat, sparse = TRUE) {
-  S <- robust_cov_mat(x)
-  S_inv <- glassoFast::glassoFast(S, rho = reg_mat(adj_mat))$wi
-  if (sparse) return(Matrix::Matrix(S_inv, sparse = TRUE))
-  else return(S_inv)
 }
 
 CAR_func <- function(W) {
@@ -74,7 +92,7 @@ estimate_CAR_precision_mat <- function(x, adj_mat, Q_theta = NULL, param_lim = N
 #==============#
 ##### OLD ######
 #==============#
-estimate_precision_mat_slow <- function(x, adj_mat, sparse = TRUE) {
+robust_sparse_precision_slow <- function(x, adj_mat, sparse = TRUE) {
   if (ncol(x) >= nrow(x))
     warning("There may be convergence issues when p >= n.")
 

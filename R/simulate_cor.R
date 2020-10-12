@@ -3,18 +3,26 @@
 #'
 #' @name simulate_cor
 #'
-#' @description Generates multivariate simulated data having n observations and p variates. The data have a standard Gaussian distribution except at
+#' @description Generates cross-correlated multivariate simulated data having n observations and p variates. The data have a Gaussian distribution with the specified covariance matrix except at
 #' a specified number of locations where there is a change in mean in a proportion of the variates. The function is useful for generating data to demonstrate and assess
-#' multivariate anomaly detection methods such as \code{capa.mv} and \code{pass}.
+#' multivariate anomaly detection methods such as \code{capa.cc}, \code{capa.mv} \code{pass} and \code{inspect}.
 #'
 #' @param n The number of observations. The default is \code{n=100}.
 #' @param p The number of variates. The default is \code{p=10}.
-#' @param mu The change in mean. Default is \code{mu=1}.
-#' @param locations A vector of locations (or scalar for a single location) where the change in mean occurs. The default is \code{locations=20}.
+#' @param vartheta The size of the mean change vector in L2 distance. Defaults to 5.
+#' @param shape An integer between 0 and 10 specifying the shape of a change. Defaults to 0, which means equally changing components. 5 gives mean components drawn from an i.i.d. Gaussian distriubtion, while 6 draws changes from the data distribution. See the function \code{generate_change} for more details.
+#' @param change_seed The seed of the drawn mean change.
+#' @param Sigma The data covariance matrix. The default is the identity matrix.
+#' @param locations A vector of locations (or scalar for a single location) where the change in mean occurs. The default is \code{locations=40}.
 #' @param durations A scalar or vector (the same length as \code{locations}) of values indicating the duration for the change in mean. If the durations are all
 #' of the same length then a scalar value can be used. The default is \code{durations=20}.
 #' @param proportions A scalar or vector (the same length as \code{locations}) of values in the range (0,1] indicating the proportion of variates at each location that are affected by
 #' the change in mean. If the proportions are all same than a scalar value can be used. The default is \code{proportions=0.1}.
+#' @param change_type A string specifying which variables are affected. Options include "adjacent", "adjacent_lattice", "scattered", "block_scattered", "custom" and "random". See the function \code{get_affected_dims} for more details.
+#' @param changing_vars If \code{change_type="custom"}, which variables are anomalous?
+#' @param point_locations A vector with locations of point anomalies. Defaults to NA.
+#' @param point_proportions A vector of the same length as \code{point_locations} specifying the the proportion of variables affected by each point anomaly.
+#' @param point_mu A vector of the same length as \code{point_locations} specifying the mean of all variables affected by each point anomaly.
 #'
 #' @return A matrix with n rows and p columns
 #'
@@ -24,7 +32,7 @@
 #' sim.data<-simulate(500,200,2,c(100,200,300),6,c(0.04,0.06,0.08))
 #'
 #' @export
-simulate_cor <-function(n=100,p=10,vartheta=1,shape=0,change_seed=NA,
+simulate_cor <-function(n=100,p=10,vartheta=5,shape=0,change_seed=NA,
                         Sigma=diag(1, p),locations=40,durations=20,proportions=0.1,
                         change_type = 'adjacent', changing_vars = NA,
                         point_locations = NA, point_proportions = NA, point_mu = NA)

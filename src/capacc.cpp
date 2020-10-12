@@ -24,15 +24,6 @@ Rcpp::DataFrame format_capacc_output(std::list<std::tuple<int,int,int,double>> a
                                  Rcpp::_["size"] = size);
 }
 
-//' CAPA-CC
-//'
-//' @param x An n x p data matrix where each row is an observation vector.
-//' @param Q An estimate of the precision matrix. See \link{\code{estimate_precision_mat}}
-//' @param b The scaling factor for the collective anomaly penalty. Defaults to 1.
-//' @param b_point The scaling factor for the point anomaly penalty. Defaults to 1.
-//' @param min_seg_len The minimum segment length. Defaults to 2.
-//' @param max_seg_len The maximum segment length. Defaults to 10^8.
-//' @return A data frame containg start- and end-points of anaomlies, indices of which variables are affected as well as the size of the anomalous mean for each variable.
 // [[Rcpp::export]]
 Rcpp::DataFrame capacc(const arma::mat& x, const arma::sp_mat& Q,
                        const double& b = 1, const double& b_point = 1,

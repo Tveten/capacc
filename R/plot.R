@@ -1,11 +1,12 @@
 
 capa_line_plot <- function(object, epoch = dim(object$x)[1],
                            subset = 1:ncol(object$x), variate_names = NULL,
-                           true_anoms = NULL, cost = "cor") {
+                           true_anoms = NULL) {
     # creating null entries for ggplot global variables so as to pass CRAN checks
     x <- value <- ymin <- ymax <- x1 <- x2 <- y1 <- y2 <- x1 <- x2 <- y1 <- y2 <- NULL
-    if (cost == "cor") x <- object$x
-    else if (cost == "iid") x <- object@data
+    # if (cost == "cor") x <- object$x
+    # else if (cost == "iid") x <- object@data
+    x <- object$x
     data_df <- as.data.frame(x)
     # names <- paste("y", 1:ncol(x), sep = "")
     if (is.null(variate_names)) {
@@ -20,13 +21,13 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
     out <- ggplot2::ggplot(data = data_df, ggplot2::aes(x = x, y = value)) +
       ggplot2::geom_point(size = 0.4)
 
-    if (cost == "cor") {
+    # if (cost == "cor") {
       c_anoms <- collective_anomalies(object)
       p_anoms <- point_anomalies(object)
-    } else if (cost == "iid") {
-      c_anoms <- anomaly::collective_anomalies(object)
-      p_anoms <- anomaly::point_anomalies(object)
-    }
+    # } else if (cost == "iid") {
+    #   c_anoms <- anomaly::collective_anomalies(object)
+    #   p_anoms <- anomaly::point_anomalies(object)
+    # }
     c_anoms <- c_anoms[c_anoms$variate %in% subset, ]
     p_anoms <- p_anoms[p_anoms$variate %in% subset,]
 
@@ -194,18 +195,32 @@ capa_tile_plot <- function(object, variate_names = NULL,
     return(out)
 }
 
-plot_capa <- function(object, epoch = n,
-                      subset = 1:p, variate_names = NULL,
-                      true_anoms = NULL, cost = "cor") {
-  if (cost == "cor") {
-    n <- nrow(object$x)
-    p <- ncol(object$x)
-  } else if (cost == "iid") {
-    n <- nrow(object@data)
-    p <- ncol(object@data)
-  }
+#' Plotting function for capacc objects
+#'
+#' @param object A capacc object to be plotted.
+#' @param epoch Plots data from 1:epoch.
+#' @param subset Plots variables in subset.
+#' @param variate_names An optional vector with the names of the variables.
+#' @param true_anoms An optional data frame with columns "start" and "end" to illustrate known locations of anomalies.
+#'
+#' @return A ggplot of the detected collective and point anomalies.
+#'
+#' @export
+plot.capacc <- function(object, epoch = n,
+                        subset = 1:p, variate_names = NULL,
+                        true_anoms = NULL) {
+# plot.capacc <- function(object, epoch = n,
+#                         subset = 1:p, variate_names = NULL,
+#                         true_anoms = NULL, cost = "cor") {
+  # if (cost == "cor") {
+  n <- nrow(object$x)
+  p <- ncol(object$x)
+  # } else if (cost == "iid") {
+  #   n <- nrow(object@data)
+  #   p <- ncol(object@data)
+  # }
   if (length(subset) <= 30)
-    return(capa_line_plot(object, epoch, subset, variate_names, true_anoms, cost))
+    return(capa_line_plot(object, epoch, subset, variate_names, true_anoms))
   else
     return(capa_tile_plot(object, variate_names, epoch, subset, true_anoms))
 }

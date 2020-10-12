@@ -13,9 +13,9 @@ get_Q_hat <- function(x, data, method) {
     if (grepl("inspect", method$cost) && method$precision_est_struct == "correct")
       return(2 * solve(robust_cov_mat(diff_x)))
     else
-      return(2 * estimate_precision_mat(diff_x, get_adj_mat(data, method)))
+      return(2 * robust_sparse_precision(diff_x, get_adj_mat(data, method)))
   } else
-    return(estimate_precision_mat(x, get_adj_mat(data, method)))
+    return(robust_sparse_precision(x, get_adj_mat(data, method)))
 }
 
 robust_scale <- function(x, Q = NULL) {

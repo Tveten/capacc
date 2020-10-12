@@ -42,9 +42,19 @@ ar_precision_mat <- function(p, phi, sparse = TRUE) {
   else return(Sigma_inv)
 }
 
+#' Generate a row-standardised CAR precision matrix
+#'
+#' @param nbs A list where nbs[[i]] is a vector with the neighbours of variable i. The functions \code{banded_neighbours}, \code{lattice_neighbours}, \code{random_neighbours} can be used to generate such lists of neighbours for banded, lattice and random adjacency structures.
+#' @param rho The parameter in the row-standardised CAR model.
+#' @param sigma The standard deviation of each variables. Defaults to 1.
+#' @param standardised A logical value for whether the output precision matrix should be stadnardised so that its inverse is a correlation matrix.
+#' @param sparse A logical value specifying whether the output should be a sparse matrix from the Matrix package (TRUE) or not (FALSE).
+#'
+#' @return A CAR precision matrix.
+#'
 #' @export
 car_precision_mat <- function(nbs = banded_neighbours(2, 10), rho = 0.5, sigma = 1,
-                              min_nbs = 1, max_nbs = 3, standardised = TRUE, sparse = TRUE) {
+                              standardised = TRUE, sparse = TRUE) {
   p <- length(nbs)
   W <- adjacency_mat(nbs, sparse)
   if (all(unlist(Map(length, nbs)) == 0)) {
@@ -116,6 +126,7 @@ number_neighbours <- function(n_vec_lower) {
 #   number_neighbours(n_nbs)
 # }
 
+#' @export
 random_neighbours <- function(p, min_nbs = 1, max_nbs = 3) {
   adj_mat <- radjacency_mat(p, min_nbs, max_nbs)
   nbs <- list()

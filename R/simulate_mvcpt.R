@@ -28,7 +28,7 @@
 #'   if (!is.null(seed)) set.seed(seed)
 #'   x <- rescale_variance(simulate_cor_(data))
 #'   diff_x <- x[2:nrow(x), ] - x[1:(nrow(x) - 1), ]
-#'   Q_hat <- 2 * estimate_precision_mat(diff_x, get_adj_mat(params$precision_est_struct))
+#'   Q_hat <- 2 * robust_sparse_precision(diff_x, get_adj_mat(params$precision_est_struct))
 #'   if (grepl("inspect", params$cost))
 #'     return(single_cor_inspect(t(x), Q_hat))
 #'   else if (grepl("mvlrt", params$cost))

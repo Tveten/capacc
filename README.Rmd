@@ -21,7 +21,7 @@ It also contains code to reproduce the simulation study in Tveten, Eckley, Fearn
 ## Overview
 Functionality:
 
-* Function for running the CAPA-CC algorithm on data, as well as CPT-CC for a single change.
+* Function for running the CAPA-CC algorithm on data, as well as CPT-CC for a single change, implemented in C++.
 * Functions for visualising the detected collective and point anomalies.
 * Functions for estimating a precision matrix restricted to a given adjacency matrix by the GLASSO method.
 * Functions for generating test data and running the simulation study in "Scalable changepoint and anaomly detection in cross-correlated data with an application to condition monitoring".
@@ -38,16 +38,24 @@ devtools::install_github("Tveten/capacc")
 ## Exported and documented functions
 For more information, see the documentation of the functions below inside R.
 
-* capacc
-* cptcc
-* estimate_precision_mat
-* plot_capa
+* capa.cc
+* cpt.cc
+* robust_sparse_precision
+* plot.capacc
+* simulate_cor
+* car_precision_mat
 
 ## Example
 
 ```{r example, message = FALSE, warning = FALSE}
 library(capacc)
 
-# Generate the test sets used:
-x <- simulate_cor(200, 4)
+p <- 10
+Sigma <- solve(car_precision_mat(lattice_neighbours(p), rho = 0.95))
+x <- simulate_cor(n = 200, p = p, Sigma = Sigma)$x
+Q <- robust_sparse_precision(x, adjacency_mat(banded_neighbours(2, ncol(x)), sparse = FALSE))
+print(round(Q, 2))
+res <- capa.cc(x, Q, b = 1, min_seg_len = 5)
+plot(res)
+collective_anomalies(res)
 ```

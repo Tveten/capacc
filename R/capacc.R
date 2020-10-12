@@ -1,5 +1,181 @@
+#' Collective and point anomalies in cross-correlated data---CAPA-CC
+#'
+#' @name capa.cc
+#'
+#' @description
+#' A method for detecting anomalous segments and points based on CAPA-CC by Tveten, Eckley, Fearnhead (2020).
+#'
+#' @param x An n x p data matrix where each row is an observation vector.
+#' @param Q An estimate of the precision matrix. See \code{\link{robust_sparse_precision}}. Must be a sparse matrix from the Matrix package.
+#' @param b The scaling factor for the collective anomaly penalty. Defaults to 1.
+#' @param b_point The scaling factor for the point anomaly penalty. Defaults to 1.
+#'
+#' @param min_seg_len The minimum segment length. Defaults to 2.
+#' @param max_seg_len The maximum segment length. Defaults to 10^8.
+#' @param transform A function used to centre the data prior to analysis by \code{capa.cc}. This can, for example, be used to compensate for the effects of autocorrelation in the data.
+#' The default value is \code{transform=centralise}, which centrailises the data by the median.
+#' Other choices are available in the anomaly package, for example \code{anomaly::robustscale} and \code{anomaly::ac_corrected}), and a user defined function can also be specified.
+#'
+#' @return An S3 class of type capacc with the following components:
+#' \describe{
+#' \item{\code{x}}{The input data matrix.}
+#' \item{\code{anoms}}{A data frame with four columns: start (start-point of the anomaly), end (end-point of an anomaly), variate (which variable is affected) and size (the estimated size of the mean component for the given variate).}
+#' }
+#'
+#' @references
+#'
+#' @examples
+#' library(capacc)
+#' x <- simulate_cor()$x
+#' Q <- robust_sparse_precision(x, adjacency_mat(banded_neighbours(2, ncol(x)), sparse = FALSE))
+#' res <- capa.cc(x, Q, b = 1, min_seg_len = 5)
+#' plot(res)
+#' collective_anomalies(res)
+#'
+#' @export
+#'
+capa.cc<-function(x,Q,b=1,b_point=1,min_seg_len=2,max_seg_len=10^8,transform=centralise)
+{
+    # make sure the callable transform object is of type function
+    # data needs to be in the form of an array
+    x<-to_array(x)
+    if(!is.array(x))
+    {
+        stop("cannot convert x to an array")
+    }
+    if(any(vapply(x, is.na, logical(1))))
+    {
+        stop("x contains NA values")
+    }
+    if(any(vapply(x, is.null, logical(1))))
+    {
+        stop("x contains NULL values")
+    }
+    if(!is.numeric(x))
+    {
+        stop("x must be of type numeric")
+    }
+    # check dimensions
+    if(length(dim(x)) != 2)
+    {
+        stop("cannot convert x to a two dimensional array")
+    }
+    if(dim(x)[1] == 1)
+    {
+        x<-t(x)
+    }
+    # try transforming the data
+    if(!purrr::is_function(transform))
+    {
+        stop("transform must be a function")
+    }
+    x<-transform(x)
+    # and check the transformed data
+    if(!is.array(x))
+    {
+        stop("cannot convert the transformed x to an array - check the transform function")
+    }
+    if(any(vapply(x, is.na, logical(1))))
+    {
+        stop("the transformed x contains NA values - check the transform function")
+    }
+    if(any(vapply(x, is.null, logical(1))))
+    {
+        stop("the transformed x contains NULL values - check the transform function")
+    }
+    if(!is.numeric(x))
+    {
+        stop("the transformed x must be of type numeric - check the transform function")
+    }
+    if(length(dim(x)) != 2)
+    {
+        stop("cannot convert transformed x to a two dimensional array - check the transform function")
+    }
+
+    # check Q
+    if (ncol(x) != ncol(Q))
+    {
+      stop("The number of columns in x are not equal to the number of columns in Q")
+    }
+    if (ncol(Q) != nrow(Q))
+    {
+      stop("Q must be a square matrix")
+    }
+    if (!is(Q, 'sparseMatrix'))
+    {
+      stop("Q is not a sparse matrix from the Matrix package.")
+    }
+    if (!Matrix::isSymmetric(Q))
+    {
+      stop("Q must be a symmetrix matrix.")
+    }
+
+    # check min_seg_len
+    if(!is.numeric(min_seg_len))
+    {
+        stop("min_seg_len must be numeric")
+    }
+    if(min_seg_len < 1)
+    {
+        stop("min_seg_len must be greater than zero")
+    }
+    if(min_seg_len > dim(x)[1])
+    {
+        stop("min_seg_len must be less tha the number of observations in x")
+    }
+
+    # check max_seg_len
+    if(is.null(max_seg_len))
+    {
+        max_seg_len=dim(x)[1]
+    }
+    if(!is.numeric(max_seg_len))
+    {
+        stop("max_seg_len must be numeric")
+    }
+    if(max_seg_len < 1)
+    {
+        stop("max_seg_len must be greater than zero")
+    }
+    # check relative values of min and max segment length
+    if(max_seg_len < min_seg_len)
+    {
+        stop("max_seg_len must be greater than min_seg_len")
+    }
+    # check b
+    if(!is.numeric(b))
+    {
+        stop("b must be numeric")
+    }
+    if(length(b) != 1)
+    {
+        stop("b must be a single scalar value")
+    }
+    if(b < 0)
+    {
+        stop("b values must be >= 0")
+    }
+    # check b_point
+    if(!is.numeric(b_point))
+    {
+        stop("b_point must be numeric")
+    }
+    if(length(b_point) != 1)
+    {
+        stop("b_point must be a single scalar value")
+    }
+    if(b_point < 0)
+    {
+        stop("b_point must be >= 0")
+    }
+
+    anoms <- capacc(x, Q, b, b_point, min_seg_len, max_seg_len)
+    invisible(structure(list("x" = x, "anoms" = anoms), class = 'capacc'))
+}
+
 #### C++ helpers #####
 
+#' @export
 collective_anomalies <- function(capacc_res) {
   res_dt <- as.data.table(capacc_res$anoms)
   res_dt <- res_dt[start != end]
@@ -7,6 +183,7 @@ collective_anomalies <- function(capacc_res) {
   res_dt
 }
 
+#' @export
 point_anomalies <- function(capacc_res) {
   res_dt <- as.data.table(capacc_res$anoms)
   res_dt <- res_dt[start == end][, 2:4]
@@ -16,7 +193,9 @@ point_anomalies <- function(capacc_res) {
 
 
 
+######################
 #### R functions #####
+######################
 
 init_precision_mat <- function(precision_mat, tol = sqrt(.Machine$double.eps)) {
   p <- ncol(precision_mat)
@@ -36,7 +215,7 @@ capaccR <- function(x, Q, b = 1,
   # x <- anomaly::robustscale(x)
   # TODO: Implement standardisation based on Q.
   # Now: Assumes x and Q are standardised before input.
-  # precision_mat <- estimate_precision_mat(x, adj_model)
+  # precision_mat <- robust_sparse_precision(x, adj_model)
   if (!any(class(Q) == "dsCMatrix")) Q <- Matrix::Matrix(Q, sparse = TRUE)
   Q_obj <- init_precision_mat(Q)
   # Q_order <- 1:p
