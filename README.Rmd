@@ -45,6 +45,18 @@ For more information, see the documentation of the functions below inside R.
 * simulate_cor
 * car_precision_mat
 
+The following functions rerun the simulation study:
+
+* all_known_power_runs10
+* all_known_power_runs100
+* all_known_cpt_runs10
+* all_known_cpt_runs100
+* all_cpt_est_runs
+* all_multiple_anom_runs10
+* all_multiple_anom_runs100
+* all_subset_est_runs
+
+
 ## Example
 
 ```{r example, message = FALSE, warning = FALSE}
