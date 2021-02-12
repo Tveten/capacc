@@ -1,31 +1,3 @@
-
-format_data <- function(data) {
-  data$locations <- data$locations[1]
-  data$durations <- min(data$durations)
-  data$vartheta <- data$vartheta[1]
-  data$mu <- data$mu[1]
-  data$proportions <- data$proportions[1]
-  data$change_type <- data$change_type[1]
-  data$point_locations <- data$point_locations[1]
-  data$point_proportions <- data$point_proportions[1]
-  data$point_mu <- data$point_mu[1]
-  which_data <- !(grepl("Sigma", names(data)) | names(data) == c("changing_vars"))
-  data[which_data]
-}
-
-correct_res <- function() {
-  file_name <- "./results/multiple_anom_FINAL.csv"
-  res <- fread(file_name)
-  print(dim(res))
-  print(res[, length(unique(seed)), by = .(p, precision_type, shape, rho, vartheta, point_locations)]$V1)
-  print(res[, .N, by = .(p, precision_type, shape, rho, vartheta, point_locations)]$N)
-  res <- res[, seed := .SD[cost == "iid", seed][1],
-             by = .(p, precision_type, shape, rho, vartheta, point_locations)]
-  print(dim(res))
-  print(res[, length(unique(seed)), by = .(p, precision_type, shape, rho, vartheta, point_locations)]$V1)
-  print(res[, .N, by = .(p, precision_type, shape, rho, vartheta, point_locations)]$N)
-}
-
 #' @export
 classify_anom <- function(out_file, data = init_data(), method = method_params(),
                           tuning = tuning_params(), n_sim = 100, seed = NA) {
@@ -58,19 +30,6 @@ classify_anom <- function(out_file, data = init_data(), method = method_params()
                   "arand_acc"      = adjusted_rand_index(est_labs, true_labs)))
   }
 
-  get_seed <- function() {
-    all_params <- c(format_data(data), method, tuning, list(n_sim = n_sim))
-    all_res <- read_results(out_file)
-    exclude <- c("cost", "precision_est_struct", "est_band")
-    prev_res <- read_anom_class(all_res, all_params, exclude = exclude)
-    prev_seed <- unique(prev_res$seed)
-    if (length(prev_seed) > 0) {
-      message(paste0("Overriding input seed with the same seed used for other costs: ",
-                     paste(prev_seed, collapse = ", ")))
-      return(prev_seed[1])
-    } else return(seed)
-  }
-
   message(paste0("Multiple anomaly classification for n=", data$n,
                  ", p=", data$p,
                  ", precision=", data$precision_type,
@@ -87,7 +46,7 @@ classify_anom <- function(out_file, data = init_data(), method = method_params()
   all_res <- read_results(out_file)
   if (already_estimated(all_res, all_params, read_anom_class)) return(NULL)
 
-  seed <- get_seed()
+  seed <- get_previous_seed(seed, all_params, read_anom_class, out_file)
   if (!is.na(seed)) set.seed(seed)
   if (is.na(method$b) && !is.null(method$b))
     method$b <- get_tuned_penalty(data, method, tuning, FALSE, seed + 2)$b
@@ -99,6 +58,20 @@ classify_anom <- function(out_file, data = init_data(), method = method_params()
                ", est_band=", method$est_band))
   print(res)
   fwrite(add_setup_info(res), paste0("./results/", out_file), append = TRUE)
+}
+
+format_data <- function(data) {
+  data$locations <- data$locations[1]
+  data$durations <- min(data$durations)
+  data$vartheta <- data$vartheta[1]
+  data$mu <- data$mu[1]
+  data$proportions <- data$proportions[1]
+  data$change_type <- data$change_type[1]
+  data$point_locations <- data$point_locations[1]
+  data$point_proportions <- data$point_proportions[1]
+  data$point_mu <- data$point_mu[1]
+  which_data <- !(grepl("Sigma", names(data)) | names(data) == c("changing_vars"))
+  data[which_data]
 }
 
 many_classifications <- function(out_file, variables, data = init_data(),
@@ -150,8 +123,15 @@ multiple_anom_setup <- function(p = 10, precision_type = "banded",
                     "rho"         = rho,
                     "vartheta"    = vartheta,
                     "shape"       = shape)
+  # variables <- list("cost"        = c("iid", "cor", "inspect", "gflars", "var_pgl"),
+  #                   "precision_est_struct" = precision_est_struct,
+  #                   "est_band"    = est_band,
+  #                   "rho"         = rho,
+  #                   "vartheta"    = vartheta,
+  #                   "shape"       = shape)
   tuning <- tuning_params(init_b = c(0.001, 0.1, 1, 3, 30), n_sim = 200)
   out_file <- "multiple_anom_FINAL.csv"
+  # out_file <- "multiple_anom_extra_test.csv"
   list(variables = variables, data = data, method = method,
        tuning = tuning, out_file = out_file)
 }
@@ -213,7 +193,7 @@ multi_anom_row <- function(pm_dt, perf_metric, pt, rh, sh, pa) {
   }, character(1))
   pm_vec[which_max] <- paste0("$\\mathbf{", pm_vec[which_max] , "}$")
   pm_vec[which_notmax] <- paste0("$", pm_vec[which_notmax], "$")
-  wide_pm <- matrix(c(pt, rh, sh, pa, pm_vec), ncol = length(pm_vec) + 4)
+  wide_pm <- matrix(c(pt, rh, sh, pa, pm_vec), ncol = 4 + length(pm_vec))
   colnames(wide_pm) <- c("$\\mathbf{Q}$", "$\\rho$", "shape",
                           "pt_anoms", pm_dt$cost)
 
@@ -221,7 +201,8 @@ multi_anom_row <- function(pm_dt, perf_metric, pt, rh, sh, pa) {
   else if (wide_pm[1, 1] == "lattice") wide_pm[1, 1] <- "$\\mathbf{Q}_\\text{lat}$"
   else if (wide_pm[1, 1] == "global_const") wide_pm[1, 1] <- "$\\mathbf{Q}_\\text{con}$"
 
-  wide_pm[, c(1:4, 6, 5, 8, 7)]
+  # wide_pm[, c(1:4, 6, 5, 8, 7)]
+  wide_pm
 }
 
 # Varying cost, rho, vartheta shape and precision_type in sims.
@@ -233,10 +214,11 @@ multi_anom_table <- function(p = 10, vartheta = 2, perf_metric = "arand_acc",
                              rho = c(0.5, 0.7, 0.9),
                              shape = c(5, 6, 8),
                              point_anom = c(FALSE, TRUE),
-                             latex = FALSE) {
+                             latex = FALSE,
+                             file_name = "multiple_anom_FINAL.csv") {
   v <- list(p = p, vartheta = vartheta)
   if (p == 10) v$p <- c(10, 16)
-  pm_dt <- fread("./results/multiple_anom_FINAL.csv")
+  pm_dt <- fread(paste0("./results/", file_name))
   pm_dt[, "point_anom" := !is.na(point_locations)]
   pm_dt <- pm_dt[p %in% v$p & vartheta == v$vartheta]
   pm_dt <- rename_cost(pm_dt)
@@ -285,9 +267,17 @@ latex_ari_table <- function(x, p, vartheta) {
                      '\\end{table}', sep = ' \n')
 
   mid_sep <- ' \n\\midrule'
-  colnames(x) <- c("$\\bQ$", "$\\rho$", "$\\bmu_{(\\cdot)}$", "Pt. anoms",
+  # colnames(x) <- c("$\\bQ$", "$\\rho$", "$\\bmu_{(\\cdot)}$", "Pt. anoms",
+  #                  "CAPA-CC($\\hat{\\bQ}(4)$)",
+  #                  "MVCAPA",
+  #                  "inspect($\\hat{\\bQ}$)",
+  #                  "inspect($\\bI$)")
+  colnames(x) <- c("$\\vartheta$",
+                   "$\\bQ$", "$\\rho$", "$\\bmu_{(\\cdot)}$", "Pt. anoms",
                    "CAPA-CC($\\hat{\\bQ}(4)$)",
+                   "Group Fused LARS",
                    "MVCAPA",
+                   "Whiten + MVCAPA",
                    "inspect($\\hat{\\bQ}$)",
                    "inspect($\\bI$)")
   heading <- paste(colnames(x), collapse = " & ")
@@ -322,4 +312,17 @@ tables_to_show <- function() {
 
 
 
+
+correct_res <- function() {
+  file_name <- "./results/multiple_anom_FINAL.csv"
+  res <- fread(file_name)
+  print(dim(res))
+  print(res[, length(unique(seed)), by = .(p, precision_type, shape, rho, vartheta, point_locations)]$V1)
+  print(res[, .N, by = .(p, precision_type, shape, rho, vartheta, point_locations)]$N)
+  res <- res[, seed := .SD[cost == "iid", seed][1],
+             by = .(p, precision_type, shape, rho, vartheta, point_locations)]
+  print(dim(res))
+  print(res[, length(unique(seed)), by = .(p, precision_type, shape, rho, vartheta, point_locations)]$V1)
+  print(res[, .N, by = .(p, precision_type, shape, rho, vartheta, point_locations)]$N)
+}
 

@@ -35,7 +35,8 @@
 simulate_cor <-function(n=100,p=10,vartheta=5,shape=0,change_seed=NA,
                         Sigma=diag(1, p),locations=40,durations=20,proportions=0.1,
                         change_type = 'adjacent', changing_vars = NA,
-                        point_locations = NA, point_proportions = NA, point_mu = NA)
+                        point_locations = NA, point_proportions = NA, point_mu = NA,
+                        n_sd_changes = 0)
 {
     if(length(n) > 1)
     {
@@ -129,6 +130,7 @@ simulate_cor <-function(n=100,p=10,vartheta=5,shape=0,change_seed=NA,
         X[point_locations[k], J] <- X[point_locations[k], J] + point_mu[k]
       }
     }
+    if (n_sd_changes > 0) X <- add_changing_variance(X, n_sd_changes)
     list("x" = X, "mu" = mu)
 }
 
@@ -146,7 +148,8 @@ simulate_cor_ <- function(data = init_data()) {
                changing_vars     = data$changing_vars,
                point_locations   = data$point_locations,
                point_proportions = data$point_proportions,
-               point_mu          = data$point_mu)
+               point_mu          = data$point_mu,
+               n_sd_changes      = data$n_sd_changes)
 }
 
 # - Start from location[j] + 1 to locations[j] + s[j] to be consistent with
@@ -211,4 +214,20 @@ generate_change <- function(vartheta, J, shape, Sigma, seed = NA) {
   mu[J] <- mu_J
   mu / vector.norm(mu) * vartheta
 }
+
+add_changing_variance <- function(x, n_changes = 10, sd_range = c(0.5, 2)) {
+  p <- ncol(x)
+  n <- nrow(x)
+  cpt <- round(seq(0, n, length.out = n_changes + 1))
+  sd <- runif(n_changes, sd_range[1], sd_range[2])
+  for (i in 2:length(cpt)) {
+    x[(cpt[i - 1] + 1):cpt[i], ] <- sd[i - 1] * x[(cpt[i - 1] + 1):cpt[i], ]
+  }
+  x
+}
+
+
+
+
+
 

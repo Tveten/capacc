@@ -4,8 +4,6 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
                            true_anoms = NULL) {
     # creating null entries for ggplot global variables so as to pass CRAN checks
     x <- value <- ymin <- ymax <- x1 <- x2 <- y1 <- y2 <- x1 <- x2 <- y1 <- y2 <- NULL
-    # if (cost == "cor") x <- object$x
-    # else if (cost == "iid") x <- object@data
     x <- object$x
     data_df <- as.data.frame(x)
     # names <- paste("y", 1:ncol(x), sep = "")
@@ -21,13 +19,8 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
     out <- ggplot2::ggplot(data = data_df, ggplot2::aes(x = x, y = value)) +
       ggplot2::geom_point(size = 0.4)
 
-    # if (cost == "cor") {
-      c_anoms <- collective_anomalies(object)
-      p_anoms <- point_anomalies(object)
-    # } else if (cost == "iid") {
-    #   c_anoms <- anomaly::collective_anomalies(object)
-    #   p_anoms <- anomaly::point_anomalies(object)
-    # }
+    c_anoms <- collective_anomalies(object)
+    p_anoms <- point_anomalies(object)
     c_anoms <- c_anoms[c_anoms$variate %in% subset, ]
     p_anoms <- p_anoms[p_anoms$variate %in% subset,]
 

@@ -31,6 +31,9 @@ Imports:
     latex2exp (>= 0.4),
     Rfast (>= 1.9.9),
     xtable (>= 1.8),
+    jointseg (>= 1.0.2),
+    glmnet (>= 4.1),
+    gglasso (>= 1.5)
 Suggests: 
     testthat (>= 2.1.0)
 Remotes:

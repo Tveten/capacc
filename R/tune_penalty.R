@@ -48,6 +48,15 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
     exp((log(b_lower) + log(b_upper)) / 2)
   }
 
+  if (known) {
+    file_name <- "penalties_known.csv"
+    read_func <- read_penalties_known
+  } else {
+    file_name <- "penalties.csv"
+    read_func <- read_penalties
+  }
+
+  seed <- get_previous_seed(seed, c(data, method, tuning), read_func, file_name)
   if (!is.na(seed)) set.seed(seed)
   data$mu <- 0
   data$vartheta <- 0
@@ -70,8 +79,6 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
     print(res[.N])
   }
   res <- add_setup_info(res[which.min(abs(diff))])
-  if (known) file_name <- "penalties_known.csv"
-  else       file_name <- "penalties.csv"
   fwrite(res, paste0("./results/", file_name), append = TRUE)
 }
 
@@ -79,6 +86,7 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
 get_tuned_penalty <- function(data = init_data(mu = 0), method = method_params(),
                               tuning = tuning_params(), known = FALSE, seed = NA) {
   if (method$cost == "cor_exact") method$cost <- "cor"
+  else if (method$cost %in% c("gflars", "var_pgl")) return(list(b = NA))
   if (known) {
     file_name <- "penalties_known.csv"
     read_func <- read_penalties_known

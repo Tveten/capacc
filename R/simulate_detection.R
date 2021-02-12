@@ -6,7 +6,8 @@ init_data <- function(n = 100, p = 10, proportions = round(sqrt(p))/p,
                       change_type = 'adjacent', changing_vars = NA,
                       point_locations = NA, point_proportions = NA,
                       point_mu = NA, precision_type = 'banded', rho = 0.9,
-                      band = 2, block_size = p, min_nbs = 1, max_nbs = 3) {
+                      band = 2, block_size = p, min_nbs = 1, max_nbs = 3,
+                      n_sd_changes = 0) {
   get_Sigma <- function(precision_type) {
     if (precision_type == 'iid') {
       return(list('mat' = diag(1, p), 'inverse' = diag(1, p)))
@@ -73,14 +74,15 @@ init_data <- function(n = 100, p = 10, proportions = round(sqrt(p))/p,
        'changing_vars'     = changing_vars,
        'point_locations'   = point_locations,
        'point_proportions' = point_proportions,
-       'point_mu'          = point_mu)
+       'point_mu'          = point_mu,
+       'n_sd_changes'      = n_sd_changes)
 }
 
 init_data_mc <- function(n = 1000, p = 10, vartheta = 1, shape = 6,
                          location = 300, duration = 10,
                          precision_type = 'banded', rho = 0.9,
-                         point_anoms = FALSE,
-                         band = 2, block_size = p) {
+                         point_anoms = FALSE, band = 2, block_size = p,
+                         n_sd_changes = 0) {
   locations <- 1:3 * location
   durations <- 3:1 * duration
   varthetas <- 1:3 * vartheta
@@ -106,7 +108,8 @@ init_data_mc <- function(n = 1000, p = 10, vartheta = 1, shape = 6,
             precision_type    = precision_type,
             rho               = rho,
             band              = band,
-            block_size        = block_size)
+            block_size        = block_size,
+            n_sd_changes      = n_sd_changes)
 }
 
 init_data_ <- function(data) {
@@ -126,7 +129,8 @@ init_data_ <- function(data) {
             precision_type    = data$precision_type,
             rho               = data$rho,
             band              = data$band,
-            block_size        = data$block_size)
+            block_size        = data$block_size,
+            n_sd_changes      = data$n_sd_changes)
 }
 
 #' @export
@@ -140,12 +144,19 @@ method_params <- function(cost = "cor", b = 1, minsl = 2, maxsl = 100,
   if (grepl("iid", cost)) {
     precision_est_struct <- "banded"
     est_band <- 0
-  } else {
-    if (is.na(precision_est_struct) || precision_est_struct == "correct")
-      est_band <- NA
-    else if (precision_est_struct == "banded") {
-      if (is.na(est_band)) est_band <- 2
-    }
+  }
+  if (cost == "gflars") {
+    b <- minsl <- maxsl <- precision_est_struct <- est_band <- size_mu <- NA
+  }
+  if (cost == "var_pgl") {
+    precision_est_struct <- est_band <- size_mu <- NA
+  }
+  if (cost == "decor")
+    precision_est_struct <- est_band <- size_mu <- NA
+  if (is.na(precision_est_struct) || precision_est_struct == "correct")
+    est_band <- NA
+  else if (precision_est_struct == "banded") {
+    if (is.na(est_band)) est_band <- 2
   }
   if (cost != "cor_dense_optimal") size_mu <- NA
   else {
@@ -193,19 +204,24 @@ simulate_detection <- function(data = init_data(), method = method_params(),
     else if (cost == "cor")
       return(list("collective" = collective_anomalies(list("anoms" = res)),
                   "point"      = point_anomalies(list("anoms" = res))))
-    else if (cost == "iid")
+    else if (cost == "iid" || cost == "decor")
       return(list("collective" = anomaly::collective_anomalies(res),
                   "point"      = anomaly::point_anomalies(res)))
     else if (cost %in% c("mvlrt", "sinspect"))
       return(format_cpt_out(cost, res))
     else if (cost == "inspect")
-      return(anomalies_inspect(res, x$x))
+      return(anomalies_from_cpt(as.data.table(res)$location, x$x))
+    else if (cost == "gflars")
+      return(anomalies_from_cpt(res, x$x))
+    else if (cost == "var_pgl")
+      return(anomalies_from_cpt(res, x$x))
   }
 
   if (!is.null(seed)) set.seed(seed)
   x <- simulate_cor_(data)
-  if (method$cost == "iid") {
-    x$x <- robust_scale(x$x)
+  if (method$cost == "iid" || method$cost == "decor") {
+    if (method$cost == "decor") x$x <- robust_whitening(x$x)
+    else x$x <- robust_scale(x$x)
     beta <- iid_penalty(data$n, data$p, method$b)
     beta_tilde <- iid_point_penalty(data$n, data$p, max(0.05, method$b))
     res <- anomaly::capa.mv(x$x,
@@ -214,6 +230,10 @@ simulate_detection <- function(data = init_data(), method = method_params(),
                             min_seg_len = method$minsl,
                             max_seg_len = method$maxsl,
                             type        = "mean")
+  } else if (method$cost == "gflars") {
+    res <- jointseg::jointSeg(x$x, method = "GFLars", K = round(data$n / 10))$bestBkp
+  } else if (method$cost == "var_pgl") {
+    res <- var_pgl(x$x, minsl = method$minsl, maxsl = method$maxsl)
   } else {
     Q_hat <- get_Q_hat(x$x, data, method)
     if (grepl("cor", method$cost)) {
@@ -244,17 +264,18 @@ simulate_detection_known <- function(data = init_data(), method = method_params(
 
   if (!is.null(seed)) set.seed(seed)
   x <- simulate_cor_(data)
-  if (grepl("iid", method$cost)) {
-    x$x <- robust_scale(x$x)
+  if (grepl("iid", method$cost) || method$cost == "decor") {
+    if (method$cost == "decor") x$x <- robust_whitening(x$x)
+    else x$x <- robust_scale(x$x)
     x_anom <- x$x[(data$locations + 1):(data$locations + data$durations), ]
-    if (method$cost == "iid") {
+    if (method$cost == "iid" || method$cost == "decor") {
       penalty_vec <- cumsum(iid_penalty(data$n, data$p, method$b))
       return(optimise_mvnormal_iid_saving(x_anom, penalty_vec))
     } else if (method$cost == "iid_dense") {
       alpha <- get_penalty("dense", data$n, data$p, method$b)$alpha_const
       return(list(S_max = saving_iid(1:data$p, x_anom) - alpha))
     }
-  } else if (grepl("cor", method$cost)) {
+  } else if (grepl("cor", method$cost) && method$cost != "decor") {
     Q_hat <- get_Q_hat(x$x, data, method)
     x$x <- centralise(x$x)
     x_anom <- x$x[(data$locations + 1):(data$locations + data$durations), ]

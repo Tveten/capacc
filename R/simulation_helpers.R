@@ -25,6 +25,16 @@ robust_scale <- function(x, Q = NULL) {
   t((t(x) - med) / sigma)
 }
 
+robust_whitening <- function(x) {
+  # x <- apply(x, 2, function(y) y - mean(y))
+  # Sigma <- 1 / (nrow(x) - 1) * t(x) %*% x
+  x <- centralise(x)
+  Sigma <- robust_cov_mat(x)
+  eigen_S <- eigen(Sigma, symmetric = TRUE)
+  Sigma_inv_root <- eigen_S$vectors %*% diag(1 / sqrt(eigen_S$values)) %*% t(eigen_S$vectors)
+  x %*% Sigma_inv_root
+}
+
 #' @export
 centralise <- function(x) {
   med <- Rfast::colMedians(x)
@@ -61,11 +71,33 @@ get_sim_seeds <- function(vars, prune = TRUE) {
   var_grid$seed
 }
 
+get_previous_seed <- function(seed, all_params, read_func, out_file) {
+  # all_params <- c(data, method, tuning, curve, list(loc_tol = loc_tol))
+  all_res <- read_results(out_file)
+  exclude <- c("cost", "precision_est_struct", "est_band")
+  # prev_res <- read_anom_class(all_res, all_params, exclude = exclude)
+  prev_res <- read_func(all_res, all_params, exclude = exclude)
+  prev_seed <- unique(prev_res$seed)
+  if (length(prev_seed) == 0) return(seed)
+  else if (length(prev_seed) >= 1) {
+    if (length(prev_seed) >= 2) {
+      message("WARNING: More than 1 seed used for this simulation setting. Using the first.")
+      prev_res[, print(paste0("cost and est_structs for seed ", .GRP, ": ",
+                              paste(unique(c(cost, precision_est_struct, est_band)), collapse = " "))),
+               by = seed]
+    }
+    message(paste0("Overriding input seed with the same seed used for other costs: ",
+                   paste(prev_seed[1], collapse = ", ")))
+    return(prev_seed[1])
+  }
+}
+
+
 expand_list <- function(a, vars, prune = TRUE) {
   if (prune) var_grid <- as.data.frame(cost_pruned_expand_grid(vars))
   else       var_grid <- expand.grid(vars, stringsAsFactors = FALSE)
   var_names <- names(var_grid)
-  print(var_grid)
+  # print(var_grid)
   # var_grid <- var_grid[c(3, 1:2, 4:nrow(var_grid)), ]
   # print(var_grid)
 
@@ -87,15 +119,19 @@ cost_pruned_expand_grid <- function(vars) {
   if (any(names(var_grid) == "cost") && length(var_grid) == 1) return(var_grid)
   cost_vars <- c("cost", "precision_est_struct", "est_band")
   var_grid <- var_grid[, rbind(.SD[cost == "iid"][1],
+                   .SD[cost == "decor"][1],
+                   .SD[cost == "gflars"][1],
+                   .SD[cost == "var_pgl"][1],
                    .SD[cost == "cor" & is.na(precision_est_struct)][1],
                    .SD[cost == "cor" & precision_est_struct == "correct"][1],
-                   .SD[cost != "iid" &
+                   .SD[cost != "iid" & cost != "decor" & cost != "gflars" & cost != "var_pgl" &
                          !(cost == "cor" & is.na(precision_est_struct)) &
                          !(cost == "cor" & precision_est_struct == "correct")]),
                    by = c(names(var_grid)[!names(var_grid) %in% cost_vars])]
   if (any(names(var_grid) == "est_band"))
     var_grid <- var_grid[, .SD[!(cost == "cor" & precision_est_struct == "banded" & est_band == 0)],
                          by = c(names(var_grid)[!names(var_grid) %in% cost_vars])]
+  var_grid <- unique(var_grid)
   var_grid[!is.na(cost)]
 }
 
@@ -136,6 +172,58 @@ pll_test <- function(cpus = 1) {
   }
   out
 }
+
+anomalies_from_cpt <- function(cpt, x, tol = 1) {
+  if (length(cpt) == 0) {
+    return(list("collective" = data.table(start = integer(0), end = integer(0)),
+                "point"      = data.table(location = integer(0))))
+  }
+  n <- nrow(x)
+  res <- data.table(location = c(0, cpt, n))
+  res$mean_size <- 0
+  for (i in 2:length(res$location)) {
+    seg_mean <- colMeans(x[(res$location[i - 1] + 1):res$location[i], , drop = FALSE])
+    res$mean_size[i] <- sign(sum(seg_mean)) * sqrt(sum(seg_mean^2))
+  }
+  starts <- integer(0)
+  ends <- integer(0)
+  in_anom <- FALSE
+  curr_start_ind <- 0
+  i <- 2
+  while (i <= nrow(res)) {
+    if (!in_anom && abs(res$mean_size[i]) >= tol) {
+      curr_start_ind <- i - 1
+      starts <- c(starts, res$location[curr_start_ind] + 1)
+      in_anom <- TRUE
+      i <- i + 1
+    } else {
+      if (in_anom) {
+        end_anom <- is_in_interval(res$mean_size[i], c(-tol, tol))
+        switch_anom <- (res$mean_size[curr_start_ind + 1] < 0 && res$mean_size[i] > tol) ||
+          (res$mean_size[curr_start_ind + 1] > 0 && res$mean_size[i] < - tol)
+        if (end_anom) {
+          ends <- c(ends, res$location[i - 1])
+          in_anom <- FALSE
+        } else if (switch_anom) {
+          ends <- c(ends, res$location[i - 1])
+          curr_start_ind <- i - 1
+          starts <- c(starts, res$location[curr_start_ind] + 1)
+        }
+      }
+      i <- i + 1
+    }
+  }
+  if (in_anom) ends <- c(ends, res[.N, location])
+  if (length(starts) != length(ends)) {
+    print(starts)
+    print(ends)
+    stop("Bug when extracting inspect anomalies. Unequal number of start and end points.")
+  }
+  anoms <- data.table(start = starts, end = ends)
+  return(list("collective" = anoms[start != end],
+              "point"      = data.table(location = anoms[start == end, start])))
+}
+
 
 #
 # change_sd <- function(p, prop, duration) {

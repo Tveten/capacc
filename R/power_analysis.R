@@ -39,7 +39,7 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
                         tuning = tuning_params(), curve = curve_params(),
                         loc_tol = 10, known = FALSE, seed = NA, cpus = 1) {
   add_setup_info <- function(res) {
-    which_data <- !(grepl("Sigma", names(data)) | names(data) %in% c("changing_vars", "vartheta"))
+    which_data <- !(grepl("Sigma", names(data)) | names(data) %in% c("changing_vars", "vartheta", "n_sd_changes"))
     res <- cbind(res,
                  as.data.table(data[which_data]),
                  as.data.table(method[names(method) != "b"]),
@@ -109,6 +109,7 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
   all_res <- read_results(out_file)
   if (already_estimated(all_res, all_params, read_func)) return(NULL)
 
+  seed <- get_previous_seed(seed, all_params, read_func, out_file)
   if (!is.na(seed)) set.seed(seed)
   res <- init_power_est(curve$init_values)
   ind <- split_inds(res)
@@ -188,6 +189,7 @@ plot_power_curve <- function(file_name, variables, data = init_data(),
   }
 
   all_params <- c(data, method, tuning, curve, list("loc_tol" = loc_tol))
+  # print(variables$cost)
   params_list <- combine_lists(split_params(
     expand_list(all_params, variables),
     list("data"    = names(data),
@@ -196,13 +198,20 @@ plot_power_curve <- function(file_name, variables, data = init_data(),
          "curve"   = names(curve),
          "loc_tol" = "loc_tol")
   ))
+  # print(extract_nested_elements(c("cost", "precision_est_struct", "est_band"), params_list))
   if (known) read_func <- read_power_curve_known
   else       read_func <- read_power_curve
   all_res <- read_results(file_name)
+  # print(all_res[cost == "decor"])
   res <- do.call("rbind",
                  Map(read_func,
                      params_list,
                      MoreArgs = list(res = all_res)))
+  # print(cbind(res[cost == "cor" & precision_est_struct == "correct", .(cost, vartheta, power)],
+  #             res[cost == "cor" & est_band == 2, .(cost, vartheta, power)],
+  #             res[cost == "decor", .(cost, vartheta, power)])
+  #       )
+  # print(res[, unique(cost)])
   res <- rename_cost(res)
   title <- make_title(all_params, power_curve_title_parts(vars_in_title))
   pl <- ggplot2::ggplot(data = res, ggplot2::aes(x = vartheta, y = power,
@@ -532,20 +541,21 @@ known_anom_setup <- function(p = 10, precision_type = "banded",
 
   # rho <- rev(c(0.3, 0.5, 0.7, 0.9, 0.99))
   curve <- curve_params(max_dist = 0.1, n_sim = n_sim)
-  out_file <- "power_known_anom_FINAL.csv"
+  out_file <- "power_known_anom_extra.csv"
+  # out_file <- "power_known_anom_FINAL.csv"
   data <- init_data(n = n, p = p, precision_type = precision_type[1],
                     band = band, locations = locations, durations = durations,
                     change_type = change_type, shape = shape[1],
                     rho = rho[1], proportions = proportions[1])
   method <- method_params()
-  variables <- list("cost"        = c("iid", "cor"),
+  variables <- list("cost"        = c("iid", "cor", "decor"),
                     "precision_est_struct" = precision_est_struct,
                     "est_band"    = est_band,
                     "shape"       = shape,
                     "rho"         = rho,
                     "proportions" = proportions,
                     "precision_type" = precision_type)
-  tuning <- tuning_params(init_b = c(0.1, 1, 4), n_sim = n_sim)
+  tuning <- tuning_params(init_b = c(0.1, 1, 4), n_sim = n_sim, tol = 0.01)
   list(variables = variables, data = data, method = method,
        tuning = tuning, curve = curve, out_file = out_file)
 }
@@ -568,6 +578,8 @@ all_known_power_runs10 <- function() {
   known_anom_power_runs(10, "banded")
   known_anom_power_runs(16, "lattice")
   known_anom_power_runs(10, "global_const")
+  known_anom_power_runs(10, "banded", rho = 0.9, shape = c(0, 5, 6), proportions = c(1/10, 1))
+  known_anom_power_runs(10, "global_const", rho = 0.9, shape = c(0, 5, 6), proportions = c(1/10, 1))
 }
 
 #' @export
@@ -583,6 +595,9 @@ all_known_power_runs100 <- function() {
   known_anom_power_runs(100, "lattice", shape = c(0, 5, 6, 8), proportions = c(0.1, 1),
                         change_type = "adjacent_lattice", rho = c(0.9, 0.7, 0.5))
   known_anom_power_runs(100, "global_const", shape = 8, rho = c(0.9, 0.7, 0.5))
+
+  known_anom_power_runs(100, "banded", rho = 0.9, shape = c(0, 5, 6))
+  known_anom_power_runs(100, "global_const", rho = 0.9, shape = c(0, 5, 6))
 }
 
 #' @export

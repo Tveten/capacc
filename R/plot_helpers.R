@@ -154,9 +154,12 @@ add_precision_est_struct_to_cost <- function(res) {
 cost_names_colours <- function() {
   mvcor_cols <- RColorBrewer::brewer.pal(9, "Reds")
   mviid_cols <- RColorBrewer::brewer.pal(9, "Blues")
+  mvdecor_col <- "purple"
   # ml_cols <- c("cyan3", "dodgerblue2")
   ml_cols <- c("chocolate2", "orange2", "gold3")
   inspect_cols <- RColorBrewer::brewer.pal(9, "Greens")
+  gflars_col <- "cyan3"
+  var_pgl_col <- "magenta1"
   rbind(
     data.table(cost = "cor", precision_est_struct = NA, est_band = NA,
                name = "CAPA-CC($Q$)", colour = mvcor_cols[9]),
@@ -170,6 +173,8 @@ cost_names_colours <- function() {
                name = "CAPA-CC($\\hat{Q}(1)$)", colour = mvcor_cols[4]),
     data.table(cost = "iid", precision_est_struct = "banded", est_band = 0,
                name = "MVCAPA", colour = mviid_cols[6]),
+    data.table(cost = "decor", precision_est_struct = NA, est_band = NA,
+               name = "Whiten + MVCAPA", colour = mvdecor_col),
     data.table(cost = "cor_exact", precision_est_struct = NA, est_band = NA,
                name = "ML($Q$)", colour = ml_cols[3]),
     data.table(cost = "cor_exact", precision_est_struct = "correct", est_band = NA,
@@ -193,7 +198,11 @@ cost_names_colours <- function() {
     data.table(cost = "mvlrt", precision_est_struct = "banded", est_band = 2,
                name = "CPT-CC($\\hat{Q}(2)$)", colour = mvcor_cols[5]),
     data.table(cost = "mvlrt", precision_est_struct = "banded", est_band = 4,
-               name = "CPT-CC($\\hat{Q}(4)$)", colour = mvcor_cols[6])
+               name = "CPT-CC($\\hat{Q}(4)$)", colour = mvcor_cols[6]),
+    data.table(cost = "gflars", precision_est_struct = NA, est_band = NA,
+               name = "Group Fused LARS", colour = gflars_col),
+    data.table(cost = "var_pgl", precision_est_struct = NA, est_band = NA,
+               name = "VAR DP", colour = var_pgl_col)
   )
 }
 
@@ -218,7 +227,10 @@ rename_cost <- function(res) {
     'cost == "mvlrt" & precision_est_struct == "banded" & est_band == 0',
     'cost == "mvlrt" & precision_est_struct == "banded" & est_band == 1',
     'cost == "mvlrt" & precision_est_struct == "banded" & est_band == 2',
-    'cost == "mvlrt" & precision_est_struct == "banded" & est_band == 4'
+    'cost == "mvlrt" & precision_est_struct == "banded" & est_band == 4',
+    'cost == "decor"',
+    'cost == "gflars"',
+    'cost == "var_pgl"'
   )
   for (call in calls) {
     res[eval(parse(text = call)), "cost" := cost_names[eval(parse(text = call)), name]]

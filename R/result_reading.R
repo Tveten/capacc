@@ -42,6 +42,7 @@ read_single_result <- function(res, query_params, all_params, msg) {
 read_anom_class <- function(res, all_params, exclude = "none") {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size",
                     "shape", "locations", "durations", "vartheta", "point_locations",
+                    "n_sd_changes",
                     "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
                     "alpha", "alpha_tol", "tuning_n_sim",
                     "n_sim")
@@ -49,67 +50,75 @@ read_anom_class <- function(res, all_params, exclude = "none") {
   read_single_result(res, query_params, all_params, "Anomaly classification")
 }
 
-read_power_curve <- function(res, all_params) {
+read_power_curve <- function(res, all_params, exclude = "none") {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
                     "shape", "locations", "durations", "change_type",
                     "cost", "minsl", "maxsl", "precision_est_struct", "est_band", "size_mu",
                     "alpha", "alpha_tol", "tuning_n_sim",
                     "curve_n_sim", "curve_max_dist",
                     "loc_tol")
+  query_params <- query_params[!query_params %in% exclude]
   read_single_result(res, query_params, all_params, "A power curve")
 }
 
-read_power_curve_known <- function(res, all_params) {
+read_power_curve_known <- function(res, all_params, exclude = "none") {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
                     "shape", "locations", "durations", "change_type",
                     "cost", "precision_est_struct", "est_band", "size_mu",
                     "alpha", "alpha_tol", "tuning_n_sim",
                     "curve_n_sim", "curve_max_dist",
                     "loc_tol")
+  query_params <- query_params[!query_params %in% exclude]
   res <- read_single_result(res, query_params, all_params, "A power curve (known anom)")
 }
 
-read_subset_est <- function(res, all_params) {
+read_subset_est <- function(res, all_params, exclude = "none") {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
                     "vartheta", "shape", "locations", "durations", "change_type",
                     "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
                     "alpha", "alpha_tol", "tuning_n_sim",
                     "n_sim")
+  query_params <- query_params[!query_params %in% exclude]
   read_single_result(res, query_params, all_params, "Subset estimates")
 }
 
 
-read_cpt_est <- function(res, all_params) {
+read_cpt_est <- function(res, all_params, exclude = "none") {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
                     "vartheta", "shape", "locations", "durations", "change_type",
                     "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
                     "alpha", "alpha_tol", "tuning_n_sim",
                     "n_sim")
+  query_params <- query_params[!query_params %in% exclude]
   read_single_result(res, query_params, all_params, "Changepoint estimates")
 }
 
-read_cpt_est_res <- function(res, all_params) {
+read_cpt_est_res <- function(res, all_params, exclude = "none") {
   query_params <- c("n", "p", "rho", "precision_type", "band", "block_size", "proportions",
                     "vartheta", "shape", "locations", "durations", "change_type",
                     "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
                     "alpha", "alpha_tol", "tuning_n_sim",
                     "n_sim")
+  query_params <- query_params[!query_params %in% exclude]
   read_single_result(res, query_params, all_params, "Changepoint estimates")
 }
 
-read_penalties <- function(res, all_params) {
-    query_params <- c("n", "p", "rho", "precision_type", "band", "block_size",
-                      "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
-                      "alpha", "alpha_tol", "tuning_n_sim")
-    read_single_result(res, query_params, all_params, "A penalty")
+read_penalties <- function(res, all_params, exclude = "none") {
+  query_params <- c("n", "p", "rho", "precision_type", "band", "block_size",
+                    "n_sd_changes",
+                    "cost", "minsl", "maxsl", "precision_est_struct", "est_band",
+                    "alpha", "alpha_tol", "tuning_n_sim")
+  query_params <- query_params[!query_params %in% exclude]
+  read_single_result(res, query_params, all_params, "A penalty")
 }
 
-read_penalties_known <- function(res, all_params) {
-    query_params <- c("n", "p", "rho", "precision_type", "band", "block_size",
-                      "locations", "durations",
-                      "cost", "precision_est_struct", "est_band", "size_mu",
-                      "alpha", "alpha_tol", "tuning_n_sim")
-    read_single_result(res, query_params, all_params, "A penalty (known anom)")
+read_penalties_known <- function(res, all_params, exclude = "none") {
+  query_params <- c("n", "p", "rho", "precision_type", "band", "block_size",
+                    "locations", "durations", "n_sd_changes",
+                    "cost", "precision_est_struct", "est_band", "size_mu",
+                    "alpha", "alpha_tol", "tuning_n_sim")
+  query_params <- query_params[!query_params %in% exclude]
+  read_single_result(res, query_params, all_params, "A penalty (known anom)")
 }
 
 already_estimated <- function(res, all_params, read_func, out = TRUE) {
