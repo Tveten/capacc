@@ -77,4 +77,3 @@ simple_examples_paper <- function(p = 10, save = FALSE) {
   } else return(figure)
 }
 
-

@@ -1,40 +1,4 @@
 #' @export
-curve_params <- function(max_dist = 0.2, max_iter = 50, n_sim = 100,
-                         init_values = c(0.1, 5)) {
-  list("curve_max_dist" = max_dist,
-       "curve_max_iter" = max_iter,
-       "curve_n_sim"    = n_sim,
-       "init_values"    = init_values)
-}
-
-est_power <- function(data, method, loc_tol, n_sim) {
-  power <- mean(unlist(lapply(1:n_sim, function(i) {
-    if (method$cost == "cor_exact" && i %% 10 == 0) cat("=")
-    mvcapa_sim <- simulate_detection(data, method, standardise_output = TRUE)
-    count_tfp_anom(mvcapa_sim, loc_tol, data)$tp
-  })))
-  data.table("vartheta" = data$vartheta, "power" = power)
-}
-
-est_power_known <- function(data, method, n_sim, cpus = 1) {
-  seeds <- sample(1:10^4, n_sim)
-  if (method$cost == "cor_exact" && cpus > 1) {
-    comp_cluster <- setup_parallel(cpus)
-    `%dopar%` <- foreach::`%dopar%`
-    power <- mean(foreach::foreach(i = 1:n_sim,
-                                   .packages = "capacc",
-                                   .combine = "c") %dopar% {
-                                     simulate_detection_known(data, method, seed = seeds[i])$S_max > 0
-                                   })
-    stop_parallel(comp_cluster)
-  } else
-    power <- mean(unlist(lapply(1:n_sim, function(i) {
-      simulate_detection_known(data, method)$S_max > 0
-    })))
-  data.table("vartheta" = data$vartheta, "power" = power)
-}
-
-#' @export
 power_curve <- function(out_file, data = init_data(), method = method_params(),
                         tuning = tuning_params(), curve = curve_params(),
                         loc_tol = 10, known = FALSE, seed = NA, cpus = 1) {
@@ -122,6 +86,33 @@ power_curve <- function(out_file, data = init_data(), method = method_params(),
   cat('\n')
   print(res)
   fwrite(add_setup_info(res), paste0("./results/", out_file), append = TRUE)
+}
+
+est_power <- function(data, method, loc_tol, n_sim) {
+  power <- mean(unlist(lapply(1:n_sim, function(i) {
+    if (method$cost == "cor_exact" && i %% 10 == 0) cat("=")
+    mvcapa_sim <- simulate_detection(data, method, standardise_output = TRUE)
+    count_tfp_anom(mvcapa_sim, loc_tol, data)$tp
+  })))
+  data.table("vartheta" = data$vartheta, "power" = power)
+}
+
+est_power_known <- function(data, method, n_sim, cpus = 1) {
+  seeds <- sample(1:10^4, n_sim)
+  if (method$cost == "cor_exact" && cpus > 1) {
+    comp_cluster <- setup_parallel(cpus)
+    `%dopar%` <- foreach::`%dopar%`
+    power <- mean(foreach::foreach(i = 1:n_sim,
+                                   .packages = "capacc",
+                                   .combine = "c") %dopar% {
+                                     simulate_detection_known(data, method, seed = seeds[i])$S_max > 0
+                                   })
+    stop_parallel(comp_cluster)
+  } else
+    power <- mean(unlist(lapply(1:n_sim, function(i) {
+      simulate_detection_known(data, method)$S_max > 0
+    })))
+  data.table("vartheta" = data$vartheta, "power" = power)
 }
 
 many_power_curves <- function(out_file, variables, data = init_data(),
@@ -293,9 +284,7 @@ grid_plot_power <- function(variables, data = init_data(),
   else return(pp)
 }
 
-#################
-#### Unknown single anomaly runs
-#################
+#### Unknown single anomaly runs -----------------------------------------------
 #' @export
 power_runs <- function() {
   curve <- curve_params(max_dist = 0.1, n_sim = 300)
@@ -399,9 +388,7 @@ grid_plots_power <- function() {
                   file_name = out_file)
 }
 
-#################
-#### MLE runs
-#################
+#### MLE runs ------------------------------------------------------------------
 #' @export
 single_known_anom_MLE_run <- function(p = 10, rho = 0.99, proportions = 1/p,
                                       shape = 0, cpus = 1) {
@@ -506,9 +493,7 @@ grid_plot_power_MLE <- function(p = 10, rho = "high", shape = 6, dodge = FALSE,
                   out_file = out_file)
 }
 
-#################
-#### known anom runs
-#################
+#### Known anomly runs ---------------------------------------------------------
 known_anom_setup <- function(p = 10, precision_type = "banded",
                              shape = c(0, 5, 6),
                              rho = c(0.99, 0.9, 0.7, 0.5, 0.3),
@@ -688,9 +673,7 @@ plot_power_known_dense_anom <- function() {
                    tuning = tuning, curve = curve, known = TRUE, dodge = TRUE)
 }
 
-#################
-#### known changepoint runs
-#################
+#### Known changepoint runs ----------------------------------------------------
 known_cpt_setup <- function(p = 10, precision_type = "banded",
                             locations = NULL, shape = c(0, 5, 6),
                             rho = c(0.99, 0.9, 0.7, 0.5, 0.3),
@@ -770,6 +753,8 @@ grid_plot_power_known_cpt <- function(p = 10, precision_type = "banded",
                   dodge = dodge, out_file = out_file)
 }
 
+
+#### All plots -----------------------------------------------------------------
 make_all_plots <- function() {
   ### MLE vs. approx plots.
   grid_plot_MLE_sparse_highcor()

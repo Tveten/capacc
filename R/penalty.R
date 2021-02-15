@@ -1,22 +1,3 @@
-linear_penalty <- function(n, p, b = 1, a = 2, C = 2) {
-  a <- as.numeric(a)
-  psi <- a * log(n)
-  # k_star <- (p + C * sqrt(p * psi)) / (2 * log(p))
-  # list('alpha' = b * C * psi, 'beta' = b * C * log(p), 'k_star' = k_star)
-  list('alpha' = b * C * psi, 'beta' = b * C * log(p))
-}
-
-const_penalty <- function(n, p, b = 1, a = 2, C = 2) {
-  a <- as.numeric(a)
-  psi <- a * log(n)
-  b * (p + C * psi + C * sqrt(p * psi))
-}
-
-k_star <- function(alpha_lin, alpha_const, beta) {
-  if (beta > 0) return((alpha_const - alpha_lin) / beta)
-  else return(0);
-}
-
 get_penalty <- function(penalty_regime, n, p, b = 1, a = 2) {
   if (penalty_regime == 'sparse') {
     penalty_obj <- linear_penalty(n, p, b = b, a = a)
@@ -51,6 +32,24 @@ get_penalty_vec <- function(penalty_regime, n, p, b) {
   list("vec" = penalty_vec, "k_star" = penalty$k_star)
 }
 
+linear_penalty <- function(n, p, b = 1, a = 2, C = 2) {
+  a <- as.numeric(a)
+  psi <- a * log(n)
+  # k_star <- (p + C * sqrt(p * psi)) / (2 * log(p))
+  # list('alpha' = b * C * psi, 'beta' = b * C * log(p), 'k_star' = k_star)
+  list('alpha' = b * C * psi, 'beta' = b * C * log(p))
+}
+
+const_penalty <- function(n, p, b = 1, a = 2, C = 2) {
+  a <- as.numeric(a)
+  psi <- a * log(n)
+  b * (p + C * psi + C * sqrt(p * psi))
+}
+
+k_star <- function(alpha_lin, alpha_const, beta) {
+  if (beta > 0) return((alpha_const - alpha_lin) / beta)
+  else return(0);
+}
 
 iid_penalty <- function(n, p, b = 1) {
     s = 2 * log(n)

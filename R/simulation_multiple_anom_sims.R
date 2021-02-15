@@ -168,6 +168,42 @@ all_multiple_anom_runs100 <- function(cpus = 1) {
   multiple_anom_runs(100, "global_const", point_anoms = TRUE, cpus = cpus)
 }
 
+# Varying cost, rho, vartheta shape and precision_type in sims.
+# Table:
+# given p, vartheta or not.
+# precision_type rho, shape, point_anom, cost1 ... cost4
+multi_anom_table <- function(p = 10, vartheta = 2, perf_metric = "arand_acc",
+                             precision_type = c("banded", "lattice", "global_const"),
+                             rho = c(0.5, 0.7, 0.9),
+                             shape = c(5, 6, 8),
+                             point_anom = c(FALSE, TRUE),
+                             latex = FALSE,
+                             file_name = "multiple_anom_FINAL.csv") {
+  v <- list(p = p, vartheta = vartheta)
+  if (p == 10) v$p <- c(10, 16)
+  pm_dt <- fread(paste0("./results/", file_name))
+  pm_dt[, "point_anom" := !is.na(point_locations)]
+  pm_dt <- pm_dt[p %in% v$p & vartheta == v$vartheta]
+  pm_dt <- rename_cost(pm_dt)
+  layout <- expand.grid(pa = point_anom,
+                        rh = rho,
+                        sh = shape,
+                        pt = precision_type,
+                        stringsAsFactors = FALSE)
+  table <- do.call("rbind", Map(multi_anom_row,
+                                pt = layout$pt,
+                                rh = layout$rh,
+                                sh = layout$sh,
+                                pa = layout$pa,
+                                MoreArgs = list(pm_dt = pm_dt,
+                                                perf_metric = perf_metric)))
+  rownames(table) <- NULL
+  table <- as.data.table(table)
+  if (latex) return(latex_ari_table(table, p, vartheta))
+  else return(table)
+}
+
+
 multi_anom_row <- function(pm_dt, perf_metric, pt, rh, sh, pa) {
   pm_dt <- pm_dt[precision_type == pt & rho == rh & shape == sh & point_anom == pa]
   seeds <- unique(pm_dt$seed)
@@ -204,42 +240,6 @@ multi_anom_row <- function(pm_dt, perf_metric, pt, rh, sh, pa) {
   # wide_pm[, c(1:4, 6, 5, 8, 7)]
   wide_pm
 }
-
-# Varying cost, rho, vartheta shape and precision_type in sims.
-# Table:
-# given p, vartheta or not.
-# precision_type rho, shape, point_anom, cost1 ... cost4
-multi_anom_table <- function(p = 10, vartheta = 2, perf_metric = "arand_acc",
-                             precision_type = c("banded", "lattice", "global_const"),
-                             rho = c(0.5, 0.7, 0.9),
-                             shape = c(5, 6, 8),
-                             point_anom = c(FALSE, TRUE),
-                             latex = FALSE,
-                             file_name = "multiple_anom_FINAL.csv") {
-  v <- list(p = p, vartheta = vartheta)
-  if (p == 10) v$p <- c(10, 16)
-  pm_dt <- fread(paste0("./results/", file_name))
-  pm_dt[, "point_anom" := !is.na(point_locations)]
-  pm_dt <- pm_dt[p %in% v$p & vartheta == v$vartheta]
-  pm_dt <- rename_cost(pm_dt)
-  layout <- expand.grid(pa = point_anom,
-                        rh = rho,
-                        sh = shape,
-                        pt = precision_type,
-                        stringsAsFactors = FALSE)
-  table <- do.call("rbind", Map(multi_anom_row,
-                                pt = layout$pt,
-                                rh = layout$rh,
-                                sh = layout$sh,
-                                pa = layout$pa,
-                                MoreArgs = list(pm_dt = pm_dt,
-                                                perf_metric = perf_metric)))
-  rownames(table) <- NULL
-  table <- as.data.table(table)
-  if (latex) return(latex_ari_table(table, p, vartheta))
-  else return(table)
-}
-
 
 latex_ari_table <- function(x, p, vartheta) {
 
@@ -309,9 +309,6 @@ tables_to_show <- function() {
   multi_anom_table(p = 100, vartheta = 1.5, shape = c(5, 6, 8), rho = c(0.5, 0.7, 0.9), latex = TRUE)
   multi_anom_table(p = 100, vartheta = 1.5, shape = c(5, 6, 8), rho = c(0.5, 0.7, 0.9))
 }
-
-
-
 
 correct_res <- function() {
   file_name <- "./results/multiple_anom_FINAL.csv"

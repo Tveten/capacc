@@ -1,14 +1,3 @@
-
-#' @export
-tuning_params <- function(alpha = 0.05, tol = 0.02, max_iter = 50,
-                          init_b = c(0.05, 1, 10), n_sim = 200) {
-  list("alpha"           = alpha,
-       "alpha_tol"       = tol,
-       "tuning_max_iter" = max_iter,
-       "init_b"          = init_b,
-       "tuning_n_sim"    = n_sim)
-}
-
 #' @export
 tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
                          tuning = tuning_params(), known = FALSE, seed = NA) {
