@@ -18,7 +18,8 @@ simulate_cor(
   changing_vars = NA,
   point_locations = NA,
   point_proportions = NA,
-  point_mu = NA
+  point_mu = NA,
+  n_sd_changes = 0
 )
 }
 \arguments{
