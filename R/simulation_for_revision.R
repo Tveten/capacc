@@ -103,11 +103,11 @@ changing_var_runs <- function(precision_type = "banded",
 }
 
 #' @export
-all_small_classify_runs <- function() {
+all_changing_var_runs <- function() {
   changing_var_runs("banded", shape = c(5, 6), rho = 0.9, vartheta = c(1, 2), n_sim = 100)
 }
 
-small_classify_results <- function() {
+changing_var_results <- function() {
   rbind(cbind(data.table(vartheta = rep(1, 2)),
               multi_anom_table(p = 10, vartheta = 1, precision_type = "banded", rho = 0.9,
                                shape = c(5, 6), point_anom = FALSE, latex = FALSE, file_name = "classify_anom_sd_change.csv")),
