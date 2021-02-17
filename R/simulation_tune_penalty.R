@@ -11,7 +11,7 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
                  as.data.table(method[!names(method) %in% excluded_method_names]),
                  as.data.table(tuning[names(tuning) != "init_b"]))
     res$seed <-  seed
-    res
+    res[1]  # There might be more than one anomaly => > 1 location => nrow(res) > 1.
   }
 
   fp_rate <- function(b) {
@@ -53,10 +53,10 @@ tune_penalty <- function(data = init_data(mu = 0), method = method_params(),
   message(paste0("Tuning ", method$cost,
                  " penalty for n=", data$n,
                  ", p=", data$p,
-                 ", loc=", data$locations,
-                 ", dur=", data$durations,
+                 ", loc=", data$locations[1],
+                 ", dur=", data$durations[1],
                  ", precision_type=", data$precision_type,
-                 ", block_size=", data$block_size,
+                 ", block_size=", data$block_size[1],
                  ", band=", data$band,
                  ", rho=", data$rho,
                  ", precision_est_struct=", method$precision_est_struct,
