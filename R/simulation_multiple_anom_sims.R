@@ -242,7 +242,6 @@ multi_anom_row <- function(pm_dt, perf_metric, pt, rh, sh, pa) {
 }
 
 latex_ari_table <- function(x, p, vartheta) {
-
   x[, shape := unlist(lapply(shape, rename_shape))]
   x[pt_anoms == TRUE, pt_anoms := "\\checkmark"]
   x[pt_anoms == FALSE, pt_anoms := "--"]
@@ -277,6 +276,7 @@ latex_ari_table <- function(x, p, vartheta) {
                    "CAPA-CC($\\hat{\\bQ}(4)$)",
                    "Group Fused LARS",
                    "MVCAPA",
+                   "VAR DP",
                    "Whiten + MVCAPA",
                    "inspect($\\hat{\\bQ}$)",
                    "inspect($\\bI$)")

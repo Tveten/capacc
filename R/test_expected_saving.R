@@ -30,7 +30,7 @@ expected_savings <- function(vartheta, J, shape, Q, n, seed = NA, n_sim = 100) {
              "shape"              = shape)
 }
 
-rename_shape <- function(dt) {
+rename_shape2 <- function(dt) {
   dt <- dt[(cost == "iid" & shape == 0) | cost == "cor"]
   dt[cost == "iid", c("shape_str", "shape") := list("all", NA)]
   dt[shape == 0, shape_str := "equal"]
@@ -68,7 +68,7 @@ plot_expected_saving <- function(p, vartheta = 1, precision_type = "banded",
       expected_savings(vartheta, J, shape, Q, n, seed, n_sim)
     }))
   }))
-  expect_dt <- rename_shape(expect_dt)
+  expect_dt <- rename_shape2(expect_dt)
   expect_dt[, "expected_diff" := expected_saving_H1 - expected_saving_H0]
 
   ggplot2::ggplot(data = expect_dt, ggplot2::aes(k, expected_diff,
