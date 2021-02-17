@@ -20,7 +20,7 @@ small_classify_setup <- function(precision_type = "banded",
                     "rho"         = rho,
                     "vartheta"    = vartheta,
                     "shape"       = shape)
-  tuning <- tuning_params(init_b = c(0.001, 0.1, 1, 3, 30), n_sim = 200)
+  tuning <- tuning_params(tol = 0.01, init_b = c(0.001, 0.1, 1, 3, 30), n_sim = 500)
   out_file <- "classify_anom_extra.csv"
   list(variables = variables, data = data, method = method,
        tuning = tuning, out_file = out_file)
@@ -38,8 +38,8 @@ small_classify_runs <- function(precision_type = "banded",
 
 #' @export
 all_small_classify_runs <- function() {
-  small_classify_runs("banded", shape = 6, rho = 0.9, vartheta = 2, n_sim = 10)
-  small_classify_runs("banded", shape = 6, rho = 0.9, vartheta = 2, n_sim = 100)
+  # small_classify_runs("banded", shape = 6, rho = 0.9, vartheta = 2, n_sim = 10)
+  # small_classify_runs("banded", shape = 6, rho = 0.9, vartheta = 2, n_sim = 100)
   small_classify_runs("banded", shape = c(5, 6), rho = 0.9, vartheta = c(1, 2), n_sim = 100)
 }
 
@@ -117,6 +117,13 @@ small_classify_results <- function() {
 }
 
 
-
+adjust_files_sd_changes <- function(file_name) {
+  res <- fread(paste0("results/", file_name))
+  res[, n_sd_changes := 0]
+  cost_ind <- which(names(res) == "cost")
+  new_col_ordering <- c(1:(cost_ind - 1), ncol(res), cost_ind:(ncol(res) - 1))
+  new_res <- res[, ..new_col_ordering]
+  fwrite(new_res, file = paste0("results/", file_name))
+}
 
 
