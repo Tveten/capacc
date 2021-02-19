@@ -41,7 +41,7 @@ namespace ostats
 
   linear_const_penalty mvnormal_default_penalty(const int&, const int&, const double& b = 1.0);
   linear_const_penalty mvnormal_default_point_penalty(const int&, const int&, const double& b = 1.0);
-
+  linear_const_penalty mvnormal_default_sparse_penalty(const int&, const int&, const double& b = 1.0);
 }
 
 #endif // ___PENALTY___

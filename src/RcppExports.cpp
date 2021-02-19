@@ -22,6 +22,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// capacc_sparse
+Rcpp::DataFrame capacc_sparse(const arma::mat& x, const arma::sp_mat& Q, const double& b, const double& b_point, const int& min_seg_len, const int& max_seg_len);
+RcppExport SEXP _capacc_capacc_sparse(SEXP xSEXP, SEXP QSEXP, SEXP bSEXP, SEXP b_pointSEXP, SEXP min_seg_lenSEXP, SEXP max_seg_lenSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const arma::sp_mat& >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< const double& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const double& >::type b_point(b_pointSEXP);
+    Rcpp::traits::input_parameter< const int& >::type min_seg_len(min_seg_lenSEXP);
+    Rcpp::traits::input_parameter< const int& >::type max_seg_len(max_seg_lenSEXP);
+    rcpp_result_gen = Rcpp::wrap(capacc_sparse(x, Q, b, b_point, min_seg_len, max_seg_len));
+    return rcpp_result_gen;
+END_RCPP
+}
 // optimise_mvnormal_saving
 Rcpp::List optimise_mvnormal_saving(const arma::mat& x, const arma::sp_mat& Q, const std::vector<std::vector<int>>& nbs, const std::vector<std::vector<int>>& extended_nbs, const double& alpha_dense, const double& beta, const double& alpha_sparse);
 RcppExport SEXP _capacc_optimise_mvnormal_saving(SEXP xSEXP, SEXP QSEXP, SEXP nbsSEXP, SEXP extended_nbsSEXP, SEXP alpha_denseSEXP, SEXP betaSEXP, SEXP alpha_sparseSEXP) {
@@ -145,6 +161,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_capacc_capacc", (DL_FUNC) &_capacc_capacc, 6},
+    {"_capacc_capacc_sparse", (DL_FUNC) &_capacc_capacc_sparse, 6},
     {"_capacc_optimise_mvnormal_saving", (DL_FUNC) &_capacc_optimise_mvnormal_saving, 7},
     {"_capacc_dense_mvnormal_savings", (DL_FUNC) &_capacc_dense_mvnormal_savings, 3},
     {"_capacc_optimise_mvnormal_lr", (DL_FUNC) &_capacc_optimise_mvnormal_lr, 4},

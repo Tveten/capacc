@@ -18,7 +18,7 @@ simulate_detection <- function(data = init_data(), method = method_params(),
     if (cost == "cor_exact")
       return(list("collective" = collective_anomaliesR(res),
                   "point"      = point_anomaliesR(res)))
-    else if (cost == "cor")
+    else if (cost == "cor" || cost == "cor_sparse")
       return(list("collective" = collective_anomalies(list("anoms" = res)),
                   "point"      = point_anomalies(list("anoms" = res))))
     else if (cost == "iid" || cost == "decor")
@@ -39,6 +39,8 @@ simulate_detection <- function(data = init_data(), method = method_params(),
   if (method$cost == "iid" || method$cost == "decor") {
     if (method$cost == "decor") x$x <- robust_whitening(x$x)
     else x$x <- robust_scale(x$x)
+    # print(x$x[, 1])
+    # print(round(robust_cov_mat(x$x), 2))
     beta <- iid_penalty(data$n, data$p, method$b)
     beta_tilde <- iid_point_penalty(data$n, data$p, max(0.05, method$b))
     res <- anomaly::capa.mv(x$x,
@@ -57,6 +59,7 @@ simulate_detection <- function(data = init_data(), method = method_params(),
       x$x <- centralise(x$x)
       if (method$cost == "cor_exact") capacc_func <- capacc_exact
       else if(method$cost == "cor")   capacc_func <- capacc
+      else if(method$cost == "cor_sparse")   capacc_func <- capacc_sparse
       res <- capacc_func(x$x, Q_hat,
                          b                = method$b,
                          b_point          = max(0.05, method$b),
@@ -96,8 +99,9 @@ simulate_detection_known <- function(data = init_data(), method = method_params(
     Q_hat <- get_Q_hat(x$x, data, method)
     x$x <- centralise(x$x)
     x_anom <- x$x[(data$locations + 1):(data$locations + data$durations), ]
-    if (method$cost == "cor") {
-      penalty <- get_penalty('combined', data$n, data$p, method$b)
+    if (method$cost == "cor" || method$cost == "cor_sparse") {
+      if (method$cost == "cor") penalty <- get_penalty("combined", data$n, data$p, method$b)
+      if (method$cost == "cor_sparse") penalty <- get_penalty("sparse", data$n, data$p, method$b)
       lower_nbs <- lower_nbs(Q_hat)
       extended_nbs <- extended_lower_nbs(lower_nbs)
       return(optimise_mvnormal_saving(x_anom, Q_hat, lower_nbs, extended_nbs,

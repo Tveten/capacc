@@ -177,13 +177,14 @@ multi_anom_table <- function(p = 10, vartheta = 2, perf_metric = "arand_acc",
                              rho = c(0.5, 0.7, 0.9),
                              shape = c(5, 6, 8),
                              point_anom = c(FALSE, TRUE),
+                             tuning_tol = 0.01,
                              latex = FALSE,
                              file_name = "multiple_anom_FINAL.csv") {
   v <- list(p = p, vartheta = vartheta)
   if (p == 10) v$p <- c(10, 16)
   pm_dt <- fread(paste0("./results/", file_name))
   pm_dt[, "point_anom" := !is.na(point_locations)]
-  pm_dt <- pm_dt[p %in% v$p & vartheta == v$vartheta]
+  pm_dt <- pm_dt[p %in% v$p & vartheta == v$vartheta & alpha_tol == tuning_tol]
   pm_dt <- rename_cost(pm_dt)
   layout <- expand.grid(pa = point_anom,
                         rh = rho,

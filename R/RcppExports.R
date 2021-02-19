@@ -5,6 +5,10 @@ capacc <- function(x, Q, b = 1, b_point = 1, min_seg_len = 2L, max_seg_len = 100
     .Call(`_capacc_capacc`, x, Q, b, b_point, min_seg_len, max_seg_len)
 }
 
+capacc_sparse <- function(x, Q, b = 1, b_point = 1, min_seg_len = 2L, max_seg_len = 100000000L) {
+    .Call(`_capacc_capacc_sparse`, x, Q, b, b_point, min_seg_len, max_seg_len)
+}
+
 optimise_mvnormal_saving <- function(x, Q, nbs, extended_nbs, alpha_dense = 0.0, beta = 0.0, alpha_sparse = 0.0) {
     .Call(`_capacc_optimise_mvnormal_saving`, x, Q, nbs, extended_nbs, alpha_dense, beta, alpha_sparse)
 }

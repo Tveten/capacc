@@ -73,5 +73,16 @@ namespace ostats
     return penalty;
   }
 
+  linear_const_penalty mvnormal_default_sparse_penalty(const int& n, const int& p, const double& b)
+  {
+    double psi = 2 * log(n);
+    double a_const = 100000000;
+    double a_lin = b * 2 * psi;
+    double beta = b * 2 * log(p);
+    linear_const_penalty penalty(a_const, a_lin, beta);
+    return penalty;
+  }
+
+
 } // namespace ostats
 

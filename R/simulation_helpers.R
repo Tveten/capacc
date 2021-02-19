@@ -30,8 +30,14 @@ robust_whitening <- function(x) {
   # Sigma <- 1 / (nrow(x) - 1) * t(x) %*% x
   x <- centralise(x)
   Sigma <- robust_cov_mat(x)
+  # print(round(Sigma[1:10, 1:10], 3))
+  # print(round(solve(Sigma)[1:10, 1:10], 3))
   eigen_S <- eigen(Sigma, symmetric = TRUE)
   Sigma_inv_root <- eigen_S$vectors %*% diag(1 / sqrt(eigen_S$values)) %*% t(eigen_S$vectors)
+  # print(round(Sigma_inv_root[, 10], 3))
+  order_root <- order(abs(Sigma_inv_root[, 10]), decreasing = TRUE)[1:10]
+  # print(order_root)
+  # print(round(Sigma_inv_root[order_root, 10], 3))
   x %*% Sigma_inv_root
 }
 
@@ -122,9 +128,10 @@ cost_pruned_expand_grid <- function(vars) {
                    .SD[cost == "decor"][1],
                    .SD[cost == "gflars"][1],
                    .SD[cost == "var_pgl"][1],
+                   .SD[cost == "cor_sparse"][1],
                    .SD[cost == "cor" & is.na(precision_est_struct)][1],
                    .SD[cost == "cor" & precision_est_struct == "correct"][1],
-                   .SD[cost != "iid" & cost != "decor" & cost != "gflars" & cost != "var_pgl" &
+                   .SD[cost != "iid" & cost != "decor" & cost != "gflars" & cost != "var_pgl" & cost != "cor_sparse" &
                          !(cost == "cor" & is.na(precision_est_struct)) &
                          !(cost == "cor" & precision_est_struct == "correct")]),
                    by = c(names(var_grid)[!names(var_grid) %in% cost_vars])]

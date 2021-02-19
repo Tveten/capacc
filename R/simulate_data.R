@@ -167,7 +167,7 @@ get_affected_dims <- function(change_type, prop, p, changing_vars) {
   k <- ceiling(prop * p)
   if (k < 1) return(integer(0))
   if (change_type == "custom") {
-    if (is.na(changing_vars))
+    if (any(is.na(changing_vars)))
       stop("If change_type is 'custom', you must provide a changing_vars vector")
     return(changing_vars)
   } else if (change_type == 'adjacent')

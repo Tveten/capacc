@@ -533,7 +533,7 @@ known_anom_setup <- function(p = 10, precision_type = "banded",
                     change_type = change_type, shape = shape[1],
                     rho = rho[1], proportions = proportions[1])
   method <- method_params()
-  variables <- list("cost"        = c("iid", "cor", "decor"),
+  variables <- list("cost"        = c("iid", "cor", "cor_sparse", "decor"),
                     "precision_est_struct" = precision_est_struct,
                     "est_band"    = est_band,
                     "shape"       = shape,
@@ -547,7 +547,7 @@ known_anom_setup <- function(p = 10, precision_type = "banded",
 
 #' @export
 known_anom_power_runs <- function(p = 10, precision_type = "banded",
-                                  shape = c(0, 5, 6),
+                                  shape = c(0, 5, 6, 8),
                                   rho = c(0.99, 0.9, 0.7, 0.5, 0.3),
                                   proportions = c(1/p, round(sqrt(p)) / p, 1),
                                   change_type = "adjacent",
@@ -569,20 +569,20 @@ all_known_power_runs10 <- function() {
 
 #' @export
 all_known_power_runs100 <- function() {
-  known_anom_power_runs(100, "banded")
-  known_anom_power_runs(100, "global_const")
-  known_anom_power_runs(100, "lattice")
-
-  known_anom_power_runs(100, "banded", shape = 0, change_type = "block_scattered",
-                        rho = c(0.9, 0.7, 0.5), proportions = 0.1)
-  known_anom_power_runs(100, "banded", shape = 8:9, rho = c(0.9, 0.7, 0.5))
-  known_anom_power_runs(100, "lattice", shape = 8:9, rho = c(0.9, 0.7, 0.5))
-  known_anom_power_runs(100, "lattice", shape = c(0, 5, 6, 8), proportions = c(0.1, 1),
-                        change_type = "adjacent_lattice", rho = c(0.9, 0.7, 0.5))
-  known_anom_power_runs(100, "global_const", shape = 8, rho = c(0.9, 0.7, 0.5))
-
-  known_anom_power_runs(100, "banded", rho = 0.9, shape = c(0, 5, 6))
-  known_anom_power_runs(100, "global_const", rho = 0.9, shape = c(0, 5, 6))
+  known_anom_power_runs(100, "banded", shape = c(0, 5, 6, 8), rho = c(0.99, 0.9, 0.7, 0.5, 0.3, 0.1))
+  known_anom_power_runs(100, "global_const", shape = c(0, 5, 6, 8), rho = c(0.99, 0.9, 0.7, 0.5, 0.3, 0.1))
+  known_anom_power_runs(100, "lattice", shape = c(0, 5, 6, 8), rho = c(0.99, 0.9, 0.7, 0.5, 0.3, 0.1))
+#
+#   known_anom_power_runs(100, "banded", shape = 0, change_type = "block_scattered",
+#                         rho = c(0.9, 0.7, 0.5), proportions = 0.1)
+#   known_anom_power_runs(100, "banded", shape = 8:9, rho = c(0.9, 0.7, 0.5))
+#   known_anom_power_runs(100, "lattice", shape = 8:9, rho = c(0.9, 0.7, 0.5))
+#   known_anom_power_runs(100, "lattice", shape = c(0, 5, 6, 8), proportions = c(0.1, 1),
+#                         change_type = "adjacent_lattice", rho = c(0.9, 0.7, 0.5))
+#   known_anom_power_runs(100, "global_const", shape = 8, rho = c(0.9, 0.7, 0.5))
+#
+  known_anom_power_runs(100, "banded", rho = 0.9, shape = c(0, 5, 6), proportions = c(0.01, 0.1))
+  known_anom_power_runs(100, "global_const", rho = 0.9, shape = c(0, 5, 6), proportions = c(0.01, 0.1))
 }
 
 #' @export

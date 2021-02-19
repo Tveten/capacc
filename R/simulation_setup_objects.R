@@ -38,7 +38,7 @@ init_data <- function(n = 100, p = 10, proportions = round(sqrt(p))/p,
   }
 
   if (any(change_type == "custom")) {
-    if (!is.na(changing_vars))
+    if (!any(is.na(changing_vars)))
       proportions <- length(changing_vars) / p
     else
       stop("If change_type is 'custom', you must provide a changing_vars vector")
@@ -134,7 +134,7 @@ init_data_mc <- function(n = 1000, p = 10, vartheta = 1, shape = 6,
 
 #' @export
 method_params <- function(cost = "cor", b = 1, minsl = 2, maxsl = 100,
-                          precision_est_struct = "correct", est_band = NA,
+                          precision_est_struct = "banded", est_band = 4,
                           size_mu = NA) {
   if (grepl("inspect", cost) && !is.na(precision_est_struct)) {
     if (is.na(est_band) || est_band != 0)
@@ -152,6 +152,11 @@ method_params <- function(cost = "cor", b = 1, minsl = 2, maxsl = 100,
   }
   if (cost == "decor")
     precision_est_struct <- est_band <- size_mu <- NA
+  if (cost == "cor_sparse") {
+    precision_est_struct <- "banded"
+    est_band <- 4
+    size_mu <- NA
+  }
   if (is.na(precision_est_struct) || precision_est_struct == "correct")
     est_band <- NA
   else if (precision_est_struct == "banded") {

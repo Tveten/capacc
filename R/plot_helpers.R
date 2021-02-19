@@ -155,6 +155,7 @@ cost_names_colours <- function() {
   mvcor_cols <- RColorBrewer::brewer.pal(9, "Reds")
   mviid_cols <- RColorBrewer::brewer.pal(9, "Blues")
   mvdecor_col <- "purple"
+  mvcor_sparse_col <- "aquamarine3"
   # ml_cols <- c("cyan3", "dodgerblue2")
   ml_cols <- c("chocolate2", "orange2", "gold3")
   inspect_cols <- RColorBrewer::brewer.pal(9, "Greens")
@@ -171,6 +172,8 @@ cost_names_colours <- function() {
                name = "CAPA-CC($\\hat{Q}(2)$)", colour = mvcor_cols[5]),
     data.table(cost = "cor", precision_est_struct = "banded", est_band = 1,
                name = "CAPA-CC($\\hat{Q}(1)$)", colour = mvcor_cols[4]),
+    data.table(cost = "cor_sparse", precision_est_struct = "banded", est_band = 4,
+               name = "CAPA-CCs($\\hat{Q}(4)$)", colour = mvcor_sparse_col),
     data.table(cost = "iid", precision_est_struct = "banded", est_band = 0,
                name = "MVCAPA", colour = mviid_cols[6]),
     data.table(cost = "decor", precision_est_struct = NA, est_band = NA,
@@ -215,6 +218,7 @@ rename_cost <- function(res) {
     'cost == "cor" & precision_est_struct == "banded" & est_band == 1',
     'cost == "cor" & precision_est_struct == "banded" & est_band == 2',
     'cost == "cor" & precision_est_struct == "banded" & est_band == 4',
+    'cost == "cor_sparse" & precision_est_struct == "banded" & est_band == 4',
     'cost == "iid"',
     'cost == "cor_exact" & is.na(precision_est_struct)',
     'cost == "cor_exact" & precision_est_struct == "correct"',
