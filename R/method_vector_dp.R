@@ -313,6 +313,7 @@ local.main.function= function (data,delta.local, lambda.group.list,dp.estimate){
 ####
 ####
 
+#' @export
 var_pgl <- function(x,
                     gamma        = seq(1, 50, 2),
                     lambda       = 0.1 * sqrt(log(p)),

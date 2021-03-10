@@ -5,8 +5,9 @@ grid_plot <- function(plots, dims, title = NULL, legend_ind = 1) {
                               legend.grob = ggpubr::get_legend(plots[[legend_ind]]),
                               legend = "right")
   if (!is.null(title)) {
-    title <- ggpubr::text_grob(title, face = "bold", size = 14)
-    ggpubr::annotate_figure(figure, top = title)
+    print(title)
+    title <- ggpubr::text_grob(title, size = 14, face = "bold")
+    figure <- ggpubr::annotate_figure(figure, top = title)
   }
   figure
 }
@@ -41,7 +42,7 @@ save_grid_plot <- function(pp, dims, prefix, const_vars, data) {
                       ".png")
   width <- min(7, 1 + 2 * dims[2])
   height <- min(8, 0.5 + 1.5 * dims[1])
-  show(pp)
+  print(pp)
   ggplot2::ggsave(file_name, width = width, height = height,
                   units = "in", dpi = 800)
 }

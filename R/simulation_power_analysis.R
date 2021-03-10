@@ -277,6 +277,7 @@ grid_plot_power <- function(variables, data = init_data(),
   dims <- c(n_row, n_col)
   n_costs <- unlist(lapply(costs, length))
   # pp <- grid_plot(plots, dims, latex2exp::TeX(get_title()), which.max(n_costs))
+  # pp <- grid_plot(plots, dims, paste0("J = ", round(data$p * data$proportions)), which.max(n_costs))
   pp <- grid_plot(plots, dims, NULL, which.max(n_costs))
 
   if (!is.null(out_file))
@@ -514,14 +515,19 @@ known_anom_setup <- function(p = 10, precision_type = "banded",
     band <- 2
     precision_est_struct <- c(NA, "correct", "banded")
     est_band <- c(1, 2, 4)
+    # precision_est_struct <- "banded"
+    # est_band <- 4
   } else if (precision_type == "lattice") {
     band <- NA
     precision_est_struct <- c(NA, "correct", "banded")
     est_band <- c(1, 2, 4)
+    # precision_est_struct <- "banded"
+    # est_band <- 4
   } else if (precision_type == "global_const") {
     band <- NA
     precision_est_struct <- "banded"
     est_band <- c(1, 2, 4)
+    # est_band <- 4
   }
 
   # rho <- rev(c(0.3, 0.5, 0.7, 0.9, 0.99))
@@ -533,7 +539,8 @@ known_anom_setup <- function(p = 10, precision_type = "banded",
                     change_type = change_type, shape = shape[1],
                     rho = rho[1], proportions = proportions[1])
   method <- method_params()
-  variables <- list("cost"        = c("iid", "cor", "cor_sparse", "decor"),
+  # variables <- list("cost"        = c("iid", "cor", "cor_sparse", "decor"),
+  variables <- list("cost"        = c("iid", "cor", "decor"),
                     "precision_est_struct" = precision_est_struct,
                     "est_band"    = est_band,
                     "shape"       = shape,
@@ -581,8 +588,8 @@ all_known_power_runs100 <- function() {
 #                         change_type = "adjacent_lattice", rho = c(0.9, 0.7, 0.5))
 #   known_anom_power_runs(100, "global_const", shape = 8, rho = c(0.9, 0.7, 0.5))
 #
-  known_anom_power_runs(100, "banded", rho = 0.9, shape = c(0, 5, 6), proportions = c(0.01, 0.1))
-  known_anom_power_runs(100, "global_const", rho = 0.9, shape = c(0, 5, 6), proportions = c(0.01, 0.1))
+  # known_anom_power_runs(100, "banded", rho = 0.9, shape = c(0, 5, 6), proportions = c(0.01, 0.1))
+  # known_anom_power_runs(100, "global_const", rho = 0.9, shape = c(0, 5, 6), proportions = c(0.01, 0.1))
 }
 
 #' @export
@@ -779,7 +786,7 @@ make_all_plots <- function() {
   # precision_type vs. rho
   grid_plot_power_known_anom(p = 100, c("banded", "lattice", "global_const"),
                              proportions = 1/100, rho = c(0.5, 0.7, 0.9),
-                             shape = 0)
+                             shape = 0, out_file = "power_known_anom_extra")
   # Shape vs. precision_type plots.
   rhos <- rep(c(0.5, 0.7, 0.9), 2)
   proportions <- rep(c(0.1, 1), each = 3)
@@ -787,7 +794,9 @@ make_all_plots <- function() {
       rho         = rhos,
       proportions = proportions,
       MoreArgs = list(p = 100, shape = c(5, 6, 8, 0),
-                      precision_type = c("banded", "lattice", "global_const")))
+                      precision_type = c("banded", "lattice", "global_const"),
+                      # precision_type = c("banded", "global_const"),
+                      out_file = "power_known_anom_extra"))
   # Different change_types.
   grid_plot_power_known_anom(p = 100, precision_type = "banded", shape = 0,
                              change_type = "block_scattered", proportions = 0.1,

@@ -21,6 +21,7 @@ to_array<-function(X)
   return(X)
 }
 
+#' @export
 anomalies_from_cpt <- function(cpt, x, tol = 1) {
   if (length(cpt) == 0) {
     return(list("collective" = data.table(start = integer(0), end = integer(0)),

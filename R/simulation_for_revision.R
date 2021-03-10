@@ -59,6 +59,12 @@ small_classify_results <- function() {
 }
 
 
+runtime_vardp <- function(n = 1000, p = 10) {
+  start_time <- proc.time()[3]
+  res <- simulate_detection(init_data(n = n, p = p), method_params(cost = "var_pgl"))
+  end_time <- proc.time()[3]
+  print(paste0("Runtime: ", round((end_time - start_time) / 60, 3), " minutes."))
+}
 
 
 
@@ -70,7 +76,7 @@ changing_var_setup <- function(precision_type = "banded",
                                shape = c(5, 6, 8),
                                rho = c(0.9, 0.5),
                                vartheta = c(2, 1)) {
-  p <- 10
+  p <- 100
   n <- 200
   location <- 50
   duration <- 5
@@ -104,7 +110,8 @@ changing_var_runs <- function(precision_type = "banded",
 
 #' @export
 all_changing_var_runs <- function() {
-  changing_var_runs("banded", shape = c(5, 6), rho = 0.9, vartheta = c(1, 2), n_sim = 100)
+  changing_var_runs("banded", shape = c(5, 6), rho = 0.9, vartheta = 2, n_sim = 100)
+  changing_var_runs("banded", shape = c(5, 6), rho = 0.5, vartheta = 2, n_sim = 100)
 }
 
 changing_var_results <- function() {
@@ -114,6 +121,12 @@ changing_var_results <- function() {
         cbind(data.table(vartheta = rep(2, 2)),
               multi_anom_table(p = 10, vartheta = 2, precision_type = "banded", rho = 0.9,
                                shape = c(5, 6), point_anom = FALSE, latex = FALSE, file_name = "classify_anom_sd_change.csv")))
+  multi_anom_table(p = 100, vartheta = 2, precision_type = "banded", rho = 0.5,
+                   shape = c(5, 6), point_anom = FALSE, latex = FALSE, file_name = "classify_anom_sd_change.csv")
+
+
+multi_anom_table(p = 10, vartheta = 1, precision_type = "banded", rho = 0.9,
+                   shape = c(5, 6), point_anom = FALSE, latex = FALSE, file_name = "multiple_anom_FINAL.csv")
 }
 
 

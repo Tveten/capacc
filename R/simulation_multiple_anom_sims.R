@@ -117,7 +117,7 @@ multiple_anom_setup <- function(p = 10, precision_type = "banded",
   method <- method_params(b = NA)
   precision_est_struct <- "banded"
   est_band <- c(0, 4)
-  variables <- list("cost"        = c("iid", "cor", "inspect"),
+  variables <- list("cost"        = c("iid", "cor", "decor", "inspect", "gflars"),
                     "precision_est_struct" = precision_est_struct,
                     "est_band"    = est_band,
                     "rho"         = rho,
@@ -160,12 +160,12 @@ all_multiple_anom_runs10 <- function(cpus = 1) {
 
 #' @export
 all_multiple_anom_runs100 <- function(cpus = 1) {
-  multiple_anom_runs(100, "lattice", cpus = cpus)
-  multiple_anom_runs(100, "lattice", point_anoms = TRUE, cpus = cpus)
   multiple_anom_runs(100, "banded", cpus = cpus)
   multiple_anom_runs(100, "banded", point_anoms = TRUE, cpus = cpus)
   multiple_anom_runs(100, "global_const", cpus = cpus)
   multiple_anom_runs(100, "global_const", point_anoms = TRUE, cpus = cpus)
+  multiple_anom_runs(100, "lattice", cpus = cpus)
+  multiple_anom_runs(100, "lattice", point_anoms = TRUE, cpus = cpus)
 }
 
 # Varying cost, rho, vartheta shape and precision_type in sims.
@@ -177,7 +177,7 @@ multi_anom_table <- function(p = 10, vartheta = 2, perf_metric = "arand_acc",
                              rho = c(0.5, 0.7, 0.9),
                              shape = c(5, 6, 8),
                              point_anom = c(FALSE, TRUE),
-                             tuning_tol = 0.01,
+                             tuning_tol = 0.02,
                              latex = FALSE,
                              file_name = "multiple_anom_FINAL.csv") {
   v <- list(p = p, vartheta = vartheta)
@@ -207,11 +207,7 @@ multi_anom_table <- function(p = 10, vartheta = 2, perf_metric = "arand_acc",
 
 multi_anom_row <- function(pm_dt, perf_metric, pt, rh, sh, pa) {
   pm_dt <- pm_dt[precision_type == pt & rho == rh & shape == sh & point_anom == pa]
-  seeds <- unique(pm_dt$seed)
-  if (length(seeds) > 1) {
-    warning("Number of seeds is greater than 1. Picking the first one.")
-    pm_dt <- pm_dt[seed == seeds[1]]
-  }
+  pm_dt <- pm_dt[, .SD[seed == unique(seed)[1]], by = cost]
   pm_dt <- pm_dt[, .(pt = pt,
                      rh = rh,
                      sh = sh,
@@ -220,16 +216,15 @@ multi_anom_row <- function(pm_dt, perf_metric, pt, rh, sh, pa) {
                  by = cost]
   pm_dt <- pm_dt[order(cost)]
 
-  pm_vec <- pm_dt$pm
+  pm_vec <- round(pm_dt$pm, 2)
   which_max <- which.max(pm_vec)
-  which_notmax <- (1:length(pm_vec))[-which_max]
-  pm_vec <- round(pm_vec, 2)
+  which_approx_max <- pm_vec >= pm_vec[which_max] - 0.005
   pm_vec <- vapply(pm_vec, function(x) {
     if (isTRUE(all.equal(x, 0))) x <- abs(x)
     sprintf("%.2f", x)
   }, character(1))
-  pm_vec[which_max] <- paste0("$\\mathbf{", pm_vec[which_max] , "}$")
-  pm_vec[which_notmax] <- paste0("$", pm_vec[which_notmax], "$")
+  pm_vec[which_approx_max] <- paste0("$\\mathbf{", pm_vec[which_approx_max] , "}$")
+  pm_vec[!which_approx_max] <- paste0("$", pm_vec[!which_approx_max], "$")
   wide_pm <- matrix(c(pt, rh, sh, pa, pm_vec), ncol = 4 + length(pm_vec))
   colnames(wide_pm) <- c("$\\mathbf{Q}$", "$\\rho$", "shape",
                           "pt_anoms", pm_dt$cost)
@@ -238,8 +233,16 @@ multi_anom_row <- function(pm_dt, perf_metric, pt, rh, sh, pa) {
   else if (wide_pm[1, 1] == "lattice") wide_pm[1, 1] <- "$\\mathbf{Q}_\\text{lat}$"
   else if (wide_pm[1, 1] == "global_const") wide_pm[1, 1] <- "$\\mathbf{Q}_\\text{con}$"
 
-  # wide_pm[, c(1:4, 6, 5, 8, 7)]
+  # 5: CAPA-CC
+  # 6: GF LARS.
+  # 7: MVCAPA
+  # 8: Whiten + MVCAPA
+  # 9: inspect(I)
+  # 10: inspect(Q)
+  # wide_pm[, c(1:4, 5, 8, 7, 10, 9, 6)]  # Ordering methods.
+  # wide_pm[, c(1:4, 5, 8, 7, 10)]  # Ordering methods.
   wide_pm
+  # wide_pm
 }
 
 latex_ari_table <- function(x, p, vartheta) {
@@ -247,10 +250,18 @@ latex_ari_table <- function(x, p, vartheta) {
   x[pt_anoms == TRUE, pt_anoms := "\\checkmark"]
   x[pt_anoms == FALSE, pt_anoms := "--"]
 
+  l_unique <- unlist(lapply(x, function(y) length(unique(y))))
+  l1_vars <- x[, l_unique == 1, with = FALSE]
+  x <- x[, l_unique > 1, with = FALSE]
+
   caption <- paste0("ARI for ",
                     "$p = ", p,
-                    "$, $\\vartheta = ", vartheta,
-                    "$. The largest value for each data setting is given in bold.")
+                    "$, $\\vartheta = ", vartheta, "$")
+  if (any(colnames(l1_vars) == "shape"))
+    caption <- paste0(caption, ", change class $\\bmu_{(", l1_vars[1], ")}$.")
+  else caption <- paste0(caption, ".")
+  caption <- paste0(caption,
+                    " The largest value for each data setting is given in bold.")
   label <- paste0("tab:ari_p", p, "_vartheta", vartheta)
 
   date_line <- paste0('% ', date())
@@ -267,22 +278,22 @@ latex_ari_table <- function(x, p, vartheta) {
                      '\\end{table}', sep = ' \n')
 
   mid_sep <- ' \n\\midrule'
-  # colnames(x) <- c("$\\bQ$", "$\\rho$", "$\\bmu_{(\\cdot)}$", "Pt. anoms",
-  #                  "CAPA-CC($\\hat{\\bQ}(4)$)",
-  #                  "MVCAPA",
-  #                  "inspect($\\hat{\\bQ}$)",
-  #                  "inspect($\\bI$)")
-  colnames(x) <- c("$\\vartheta$",
-                   "$\\bQ$", "$\\rho$", "$\\bmu_{(\\cdot)}$", "Pt. anoms",
-                   "CAPA-CC($\\hat{\\bQ}(4)$)",
-                   "Group Fused LARS",
-                   "MVCAPA",
-                   "VAR DP",
-                   "Whiten + MVCAPA",
-                   "inspect($\\hat{\\bQ}$)",
-                   "inspect($\\bI$)")
-  heading <- paste(colnames(x), collapse = " & ")
 
+  x[, shape := paste0("$", shape, "$")]
+  colnames(x)[grepl("shape", colnames(x))] <- "$\\bmu_{(\\cdot)}$"
+  colnames(x)[grepl("pt_anoms", colnames(x))] <- "Pt. anoms"
+  colnames(x)[grepl("CAPA-CC", colnames(x))] <- "CAPA-CC($\\hat{\\mathbf{Q}}(4)$)"
+  colnames(x)[grepl("inspect", colnames(x)) & grepl("Q", colnames(x))] <- "inspect($\\hat{\\mathbf{Q}}$)"
+
+  # colnames(x)[1:4] <- c("$\\bQ$", "$\\rho$", "$\\bmu_{(\\cdot)}$", "Pt. anoms")
+                   # "CAPA-CC($\\hat{\\bQ}(4)$)",
+                   # "Whiten + MVCAPA",
+                   # "MVCAPA",
+                   # "inspect($\\bI$)")
+                   # "inspect($\\hat{\\bQ}$)",
+                   # "Group Fused LARS",
+                   # "VAR DP",
+  heading <- paste(colnames(x), collapse = " & ")
   latex_table <- paste(date_line, begin_table, heading, sep = ' \n')
   latex_table <- paste0(latex_table, " \\\\", mid_sep)
   for (i in 1:nrow(x)) {
@@ -297,6 +308,12 @@ latex_ari_table <- function(x, p, vartheta) {
 tables_to_show <- function() {
   # Table in main text:
   multi_anom_table(p = 100, vartheta = 2, shape = c(5, 8), rho = c(0.5, 0.9), latex = TRUE)
+
+  # Table in main text after revision:
+
+  multi_anom_table(p = 100, vartheta = 1, shape = 6, rho = c(0.5, 0.7, 0.9))
+  multi_anom_table(p = 100, vartheta = 1, shape = c(6, 8), rho = c(0.5, 0.7, 0.9))
+  multi_anom_table(p = 100, vartheta = 1, shape = c(6, 8), rho = c(0.5, 0.7, 0.9), latex = TRUE)
 
   # Other tables:
   multi_anom_table(p = 10, vartheta = 1.5)

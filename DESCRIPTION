@@ -10,7 +10,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Depends:
-    data.table (>= 1.12),
+    data.table (>= 1.12)
 Imports: 
     anomaly (>= 4.0.1),
     Matrix (>= 1.2),
