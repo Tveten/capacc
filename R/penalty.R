@@ -67,6 +67,7 @@ iid_penalty <- function(n, p, b = 1) {
     beta
 }
 
+#' @export
 iid_point_penalty <- function(n, p, b = 1) {
   point_pen <- get_penalty("point", n, p, b)
   point_pen$beta
