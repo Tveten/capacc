@@ -1,3 +1,4 @@
+#' @export
 get_penalty <- function(penalty_regime, n, p, b = 1, a = 2) {
   if (penalty_regime == 'sparse') {
     penalty_obj <- linear_penalty(n, p, b = b, a = a)
@@ -51,6 +52,7 @@ k_star <- function(alpha_lin, alpha_const, beta) {
   else return(0);
 }
 
+#' @export
 iid_penalty <- function(n, p, b = 1) {
     s = 2 * log(n)
     a_vector = qchisq(seq(p-1,0)/p, 1)
