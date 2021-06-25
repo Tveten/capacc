@@ -61,8 +61,11 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
       anoms <- unlist(lapply(1:nrow(true_anoms), function(i) (true_anoms$start[i] + 1):true_anoms$end[i]))
       true_anoms <- data.frame(x = 1:n, anom = "Known normal", variable = names[length(names)], stringsAsFactors = FALSE)
       true_anoms$anom[anoms] <- "Known anomaly"
-      out <- out + ggplot2::geom_rug(data = true_anoms[true_anoms$anom == "Known anomaly", ], inherit.aes = FALSE,
-                                     sides = "b", outside = TRUE, length = unit(0.5, "cm"),
+      out <- out + ggplot2::geom_rug(data = true_anoms[true_anoms$anom == "Known anomaly", ],
+                                     inherit.aes = FALSE,
+                                     sides = "b",
+                                     outside = TRUE,
+                                     length = ggplot2::unit(0.5, "cm"),
                                      # size = 0.8,
                                      colour = "dodgerblue3",
                                      mapping = ggplot2::aes(x = x, linetype = anom)) +
@@ -81,10 +84,11 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
       est_anoms$anom[all_anom_est_x] <- "Estimated anomaly"
       out <- suppressMessages(out + ggplot2::geom_rug(data = est_anoms[est_anoms$anom == "Estimated anomaly", ],
                                                       inherit.aes = FALSE,
-                                     sides = "b", outside = TRUE, length = unit(0.5 - 0.5 / 1.618, "cm"),
-                                     # size = 0.3,
-                                     colour = est_col,
-                                     mapping = ggplot2::aes(x = x)) +
+                                                      sides = "b",
+                                                      outside = TRUE,
+                                                      length = ggplot2::unit(0.5 - 0.5 / 1.618, "cm"),
+                                                      colour = est_col,
+                                                      mapping = ggplot2::aes(x = x)) +
         ggplot2::coord_cartesian(clip = "off"))
     }
 
@@ -122,7 +126,7 @@ capa_line_plot <- function(object, epoch = dim(object$x)[1],
                                 panel.grid.minor = ggplot2::element_blank(),
                                 # Change axis line
                                 axis.line = ggplot2::element_line(colour = "black"),
-                                axis.ticks.length.x=unit(0.65, "cm"),
+                                axis.ticks.length.x=ggplot2::unit(0.65, "cm"),
                                 legend.position = legend_position
                               ) +
       ggplot2::xlab("t") +

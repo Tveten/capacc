@@ -226,7 +226,8 @@ latex_subset_est_table <- function(x, p, shape, alpha) {
 }
 
 size_J_hist <- function(p = 10, vartheta = 2, shape = 6, rho = 0.9,
-                        proportions = 1/p, durations = 10, alpha = 0.05) {
+                        proportions = 1/p, durations = 10, alpha = 0.05,
+                        bw = FALSE) {
   out_file <- "subset_est_FINAL.csv"
   all_res <- read_results(out_file)
   if (isTRUE(all.equal(proportions, 1/p))) shape <- 0
@@ -237,10 +238,15 @@ size_J_hist <- function(p = 10, vartheta = 2, shape = 6, rho = 0.9,
   res <- rename_cost(res)
   # res <- res[size_J > 0]
 
-  col_name_dt <- cost_names_colours()[name %in% res[, unique(cost)]]
-  cols <- col_name_dt$colour
-  names(cols) <- col_name_dt$name
-  res[, "cost" := factor(cost, levels = col_name_dt$name)]
+  graphics_name_dt <- cost_names_graphics()[name %in% res[, unique(cost)]]
+  res[, "cost" := factor(cost, levels = graphics_name_dt$name)]
+  if (bw) {
+    n_costs <- length(unique(res$cost))
+    cols <- RColorBrewer::brewer.pal(n_costs + 1, "Greys")[2:(n_costs + 1)]
+  } else {
+    cols <- graphics_name_dt$colour
+    names(cols) <- graphics_name_dt$name
+  }
   print(unique(res$size_J))
   if (shape == 0)
     title_text <- paste0("$J = ", l$prop * p, "$")
@@ -249,13 +255,13 @@ size_J_hist <- function(p = 10, vartheta = 2, shape = 6, rho = 0.9,
   else if (shape == 6)
     title_text <- paste0("$J = ", l$prop * p, "$, $\\mu_{(\\Sigma)}$")
 
-  ggplot2::ggplot(data = res, ggplot2::aes(x = as.factor(size_J), fill = cost, )) +
+  ggplot2::ggplot(data = res, ggplot2::aes(x = as.factor(size_J), fill = cost)) +
     ggplot2::geom_bar(position = "dodge") +
     ggplot2::scale_x_discrete(latex2exp::TeX("$\\hat{J}$")) +
     ggplot2::scale_y_continuous("Count per 1000") +
     ggplot2::scale_fill_manual(name = "Method",
-                               breaks = col_name_dt$name,
-                               labels = unname(latex2exp::TeX(col_name_dt$name)),
+                               breaks = graphics_name_dt$name,
+                               labels = unname(latex2exp::TeX(graphics_name_dt$name)),
                                values = cols) +
     ggplot2::ggtitle(latex2exp::TeX(title_text)) +
     ggplot2::theme_classic() +
@@ -267,12 +273,13 @@ size_J_hist <- function(p = 10, vartheta = 2, shape = 6, rho = 0.9,
 
 grid_plot_size_J <- function(p = 10, vartheta = 2, rho = 0.7, durations = 10,
                              proportions = c(1/p, round(sqrt(p)) / p), alpha = 0.05,
-                             shape = 6, out_file = "sizeJ") {
+                             shape = 6, out_file = "sizeJ", bw = FALSE) {
   # plots <- c(lapply(proportions, size_J_hist, p = p, vartheta = vartheta,
   #                   rho = rho, shape = 6, durations = durations, alpha = alpha),
   #            list(size_J_hist(p, vartheta, 5, rho, proportions[2], durations, alpha)))
   plots <- lapply(proportions, size_J_hist, p = p, vartheta = vartheta,
-                  rho = rho, shape = shape, durations = durations, alpha = alpha)
+                  rho = rho, shape = shape, durations = durations, alpha = alpha,
+                  bw = bw)
   # print(list(p, vartheta, 5, rho, proportions[2]))
   # plots <- size_J_hist(p, vartheta, 5, rho, proportions[2])
   # print(plots)
@@ -307,6 +314,8 @@ all_grid_J_plots <- function() {
                        rho = rho, alpha = 0.005)
     }
   }
+  grid_plot_size_J(p = 10, vartheta = 2, rho = 0.9, alpha = 0.005,
+                   out_file = "sizeJ_bw", bw = TRUE)
 }
 
 all_J_tables <- function() {
