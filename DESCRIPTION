@@ -25,11 +25,11 @@ Imports:
     glassoFast (>= 1.0),
     latex2exp (>= 0.4),
     Rfast (>= 1.9.9),
-    jointseg (>= 1.0.2),
-    glmnet (>= 4.1),
-    gglasso (>= 1.5)
 Suggests: 
-    testthat (>= 2.1.0)
+    testthat (>= 2.1.0),
+    glmnet (>= 4.1),
+    gglasso (>= 1.5),
+    jointseg (>= 1.0.2)
 Remotes:
     Tveten/tpca
 RoxygenNote: 7.1.1
